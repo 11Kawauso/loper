@@ -309,7 +309,7 @@ function getFilteredPosts() {
       return false;
     }
 
-    if (state.activeTags.size > 0 && !post.tags.some(t => state.activeTags.has(t))) return false;
+    if (state.activeTags.size > 0 && ![...state.activeTags].every(t => post.tags.includes(t))) return false;
 
     return true;
   });
