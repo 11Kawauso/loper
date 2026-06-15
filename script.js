@@ -138,7 +138,7 @@ const state = {
   allPosts: [],          // 読み込み済みの投稿（無限スクロールで増える）
   nextId: 1,
   currentCategory: 'all',
-  activeTag: null,
+  activeTags: new Set(),
   showPinnedOnly: false,
   searchKeyword: '',
   loading: false,
@@ -303,7 +303,7 @@ function getFilteredPosts() {
       return false;
     }
 
-    if (state.activeTag && !post.tags.includes(state.activeTag)) return false;
+    if (state.activeTags.size > 0 && !post.tags.some(t => state.activeTags.has(t))) return false;
 
     return true;
   });
@@ -321,7 +321,7 @@ function renderTagList() {
     item.className = 'tag-item';
     item.dataset.tag = tag;
     item.textContent = '#' + tag;
-    if (state.activeTag === tag) {
+    if (state.activeTags.has(tag)) {
       item.classList.add('active');
     }
     els.tagList.appendChild(item);
@@ -339,7 +339,7 @@ function renderTagPanel() {
     item.className = 'tag-item';
     item.dataset.tag = tag;
     item.textContent = '#' + tag;
-    if (state.activeTag === tag) {
+    if (state.activeTags.has(tag)) {
       item.classList.add('active');
     }
     els.tagPanel.appendChild(item);
@@ -550,7 +550,7 @@ function toggleTagPanel() {
 function selectCategory(categoryId) {
   state.currentCategory = categoryId;
   state.showPinnedOnly = false;
-  state.activeTag = null;
+  state.activeTags = new Set();
   state.searchKeyword = '';
   els.searchInput.value = '';
 
@@ -585,10 +585,10 @@ function setupTagListEvents() {
     if (!item) return;
 
     const tag = item.dataset.tag;
-    if (state.activeTag === tag) {
-      state.activeTag = null;
+    if (state.activeTags.has(tag)) {
+      state.activeTags.delete(tag);
     } else {
-      state.activeTag = tag;
+      state.activeTags.add(tag);
     }
     renderTagList();
     if (els.tagPanel.classList.contains('open')) {
