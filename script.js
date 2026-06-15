@@ -180,6 +180,7 @@ function cacheElements() {
 
   els.searchInput = document.getElementById('searchInput');
   els.searchBtn = document.getElementById('searchBtn');
+  els.clearTagsBtn = document.getElementById('clearTagsBtn');
 
   els.profileIcon = document.getElementById('profileIcon');
 
@@ -233,6 +234,7 @@ function init() {
   setupPulldown();
   setupTagPanelToggle();
   setupTagListEvents();
+  setupClearTagsBtn();
   setupPinSection();
   setupPostButton();
   setupSearch();
@@ -590,6 +592,7 @@ function setupTagListEvents() {
     } else {
       state.activeTags.add(tag);
     }
+    updateClearTagsBtn();
     renderTagList();
     if (els.tagPanel.classList.contains('open')) {
       renderTagPanel();
@@ -644,6 +647,25 @@ function setupTagListEvents() {
       hasDragged = false;
     }
   }, true);
+}
+
+/* =========================================================
+   タグ削除ボタン
+   ========================================================= */
+function updateClearTagsBtn() {
+  els.clearTagsBtn.classList.toggle('has-tags', state.activeTags.size > 0);
+}
+
+function setupClearTagsBtn() {
+  els.clearTagsBtn.addEventListener('click', () => {
+    state.activeTags = new Set();
+    updateClearTagsBtn();
+    renderTagList();
+    if (els.tagPanel.classList.contains('open')) {
+      renderTagPanel();
+    }
+    renderPosts();
+  });
 }
 
 /* =========================================================
