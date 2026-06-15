@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>loper - 開発仲間募集サイト</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="logo-area">
+      <a href="kurokamiroom.html"><img src="../loper_MainIcon.png" alt="キャラクター" class="logo-icon"></a>
+      <img src="../loper_logo.png" alt="loper" class="logo-img">
+    </div>
+
+    <div class="search-area">
+      <input type="text" class="search-input" id="searchInput" placeholder="検索">
+      <button class="search-btn" id="searchBtn" aria-label="検索">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="profile-icon" id="profileIcon"></div>
+  </header>
+
+  <!-- カテゴリ・タグバー -->
+  <div class="category-tag-bar">
+    <div class="category-dropdown" id="categoryDropdown">
+      <span class="category-current" id="categoryCurrent">すべて</span>
+      <span class="dropdown-arrow">▽</span>
+
+      <div class="category-pulldown" id="categoryPulldown">
+        <div class="pulldown-item active" data-category="all">
+          <span class="category-item-icon">🗂️</span><span>すべて</span>
+        </div>
+        <div class="pulldown-item" data-category="game">
+          <span class="category-item-icon">🎮</span><span>ゲーム</span>
+        </div>
+        <div class="pulldown-item" data-category="app">
+          <span class="category-item-icon">📱</span><span>アプリ</span>
+        </div>
+        <div class="pulldown-item" data-category="site">
+          <span class="category-item-icon">🌐</span><span>サイト</span>
+        </div>
+        <div class="pulldown-item" data-category="video">
+          <span class="category-item-icon">🎬</span><span>映像</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tag-list" id="tagList">
+      <!-- タグはJSで生成 -->
+    </div>
+  </div>
+
+  <!-- タグ一覧パネル（カテゴリ名クリックで開閉） -->
+  <div class="tag-panel" id="tagPanel">
+    <!-- タグはJSで生成 -->
+  </div>
+
+  <!-- 本体 -->
+  <div class="body-container">
+
+    <!-- サイドバー -->
+    <aside class="sidebar">
+      <div class="category-list-section">
+        <div class="category-list-header">カテゴリ 一覧</div>
+
+        <div class="category-item active" data-category="all">
+          <span class="category-item-icon">🗂️</span>
+          <span class="category-item-label">すべて</span>
+        </div>
+        <div class="category-item" data-category="game">
+          <span class="category-item-icon">🎮</span>
+          <span class="category-item-label">ゲーム</span>
+        </div>
+        <div class="category-item" data-category="app">
+          <span class="category-item-icon">📱</span>
+          <span class="category-item-label">アプリ</span>
+        </div>
+        <div class="category-item" data-category="site">
+          <span class="category-item-icon">🌐</span>
+          <span class="category-item-label">サイト</span>
+        </div>
+        <div class="category-item" data-category="video">
+          <span class="category-item-icon">🎬</span>
+          <span class="category-item-label">映像</span>
+        </div>
+      </div>
+
+      <div class="pin-section">
+        <div class="category-item" id="pinItem">
+          <span class="category-item-icon">📌</span>
+          <span class="category-item-label">ピン止め</span>
+        </div>
+      </div>
+
+      <div class="post-button-area">
+        <button class="post-button" id="postButton">投稿</button>
+      </div>
+    </aside>
+
+    <!-- 投稿一覧 -->
+    <main class="content-area" id="contentArea">
+      <div class="posts-grid" id="postsGrid">
+        <!-- 投稿カードはJSで生成 -->
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<!-- 投稿詳細モーダル -->
+<div class="modal-overlay" id="detailModalOverlay">
+  <div class="modal" id="detailModal">
+    <button class="modal-close" id="detailModalClose">×</button>
+
+    <div class="post-header modal-header">
+      <div class="post-avatar" id="detailAvatar"></div>
+      <span class="post-author" id="detailAuthor"></span>
+    </div>
+
+    <h2 class="modal-title" id="detailTitle"></h2>
+
+    <div class="post-content-box modal-content-box" id="detailDesc"></div>
+
+    <div class="post-tags modal-tags" id="detailTags"></div>
+
+    <div class="post-footer modal-footer">
+      <span class="post-date" id="detailDate"></span>
+      <span class="post-likes" id="detailLikes"></span>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn pin" id="detailPinBtn">ピン止めする</button>
+    </div>
+  </div>
+</div>
+
+<!-- 投稿作成モーダル -->
+<div class="modal-overlay" id="postModalOverlay">
+  <div class="modal" id="postModal">
+    <button class="modal-close" id="postModalClose">×</button>
+    <h2 class="modal-title">投稿を作成</h2>
+
+    <form id="postForm">
+      <div class="form-group">
+        <label for="postTitleInput">タイトル</label>
+        <input type="text" id="postTitleInput" placeholder="募集内容のタイトルを入力" required>
+      </div>
+
+      <div class="form-group">
+        <label for="postCategoryInput">カテゴリ</label>
+        <select id="postCategoryInput">
+          <option value="game">ゲーム</option>
+          <option value="app">アプリ</option>
+          <option value="site">サイト</option>
+          <option value="video">映像</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="postImageInput">画像（任意）</label>
+        <input type="file" id="postImageInput" accept="image/*">
+      </div>
+
+      <div class="form-group">
+        <label for="postTagsInput">タグ（カンマ区切り）</label>
+        <input type="text" id="postTagsInput" placeholder="例：Unity, 2D, チーム募集">
+      </div>
+
+      <div class="form-group">
+        <label for="postDescInput">詳細</label>
+        <textarea id="postDescInput" placeholder="募集内容の詳細を入力"></textarea>
+      </div>
+
+      <button type="submit" class="form-submit">投稿する</button>
+    </form>
+  </div>
+</div>
+
+<!-- トースト -->
+<div class="toast" id="toast"></div>
+
+<!-- プロフィール画面（画面左からスライド表示） -->
+<div class="profile-overlay" id="profileOverlay">
+  <div class="profile-panel" id="profilePanel">
+    <div class="profile-panel-header">
+      <button class="profile-icon-btn" id="profileCloseBtn" aria-label="メイン画面へ戻る">×</button>
+      <button class="profile-icon-btn" id="profileSettingsBtn" aria-label="設定">⚙</button>
+    </div>
+
+    <div class="profile-avatar-wrap">
+      <div class="profile-avatar" id="profileAvatar"></div>
+      <input type="file" id="profileAvatarInput" accept="image/*" class="visually-hidden">
+    </div>
+
+    <input type="text" class="profile-name-input" id="profileNameInput" maxlength="20" value="名前">
+
+    <textarea class="profile-bio" id="profileBio" placeholder="自己紹介や説明文を入力してください"></textarea>
+
+    <div class="profile-links">
+      <input type="text" class="profile-link-input" id="profileLink1" placeholder="GitHub のURL">
+      <input type="text" class="profile-link-input" id="profileLink2" placeholder="Discord のURL">
+      <input type="text" class="profile-link-input" id="profileLink3" placeholder="X のURL">
+      <input type="text" class="profile-link-input" id="profileLink4" placeholder="自作サイトのURL">
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
