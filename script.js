@@ -181,6 +181,9 @@ function cacheElements() {
   els.searchInput = document.getElementById('searchInput');
   els.searchBtn = document.getElementById('searchBtn');
   els.clearTagsBtn = document.getElementById('clearTagsBtn');
+  els.selectedTagsDropdown = document.getElementById('selectedTagsDropdown');
+  els.selectedTagsLabel = document.getElementById('selectedTagsLabel');
+  els.selectedTagsPulldown = document.getElementById('selectedTagsPulldown');
 
   els.profileIcon = document.getElementById('profileIcon');
 
@@ -235,6 +238,7 @@ function init() {
   setupTagPanelToggle();
   setupTagListEvents();
   setupClearTagsBtn();
+  setupSelectedTagsDropdown();
   setupPinSection();
   setupPostButton();
   setupSearch();
@@ -653,13 +657,54 @@ function setupTagListEvents() {
    タグ削除ボタン
    ========================================================= */
 function updateClearTagsBtn() {
-  els.clearTagsBtn.classList.toggle('has-tags', state.activeTags.size > 0);
+  const hasTags = state.activeTags.size > 0;
+  els.clearTagsBtn.classList.toggle('has-tags', hasTags);
+  els.selectedTagsDropdown.classList.toggle('has-tags', hasTags);
+  els.selectedTagsLabel.textContent = hasTags
+    ? '選択タグ (' + state.activeTags.size + ')'
+    : '選択タグ';
+}
+
+function renderSelectedTagsPulldown() {
+  els.selectedTagsPulldown.innerHTML = '';
+  if (state.activeTags.size === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'selected-tags-pulldown-empty';
+    empty.textContent = '選択中のタグはありません';
+    els.selectedTagsPulldown.appendChild(empty);
+    return;
+  }
+  state.activeTags.forEach((tag) => {
+    const item = document.createElement('div');
+    item.className = 'selected-tags-pulldown-item';
+    item.textContent = '#' + tag;
+    els.selectedTagsPulldown.appendChild(item);
+  });
+}
+
+function setupSelectedTagsDropdown() {
+  els.selectedTagsDropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = !els.selectedTagsPulldown.classList.contains('open');
+    if (willOpen) renderSelectedTagsPulldown();
+    els.selectedTagsDropdown.classList.toggle('open', willOpen);
+    els.selectedTagsPulldown.classList.toggle('open', willOpen);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!els.selectedTagsDropdown.contains(e.target)) {
+      els.selectedTagsDropdown.classList.remove('open');
+      els.selectedTagsPulldown.classList.remove('open');
+    }
+  });
 }
 
 function setupClearTagsBtn() {
   els.clearTagsBtn.addEventListener('click', () => {
     state.activeTags = new Set();
     updateClearTagsBtn();
+    els.selectedTagsDropdown.classList.remove('open');
+    els.selectedTagsPulldown.classList.remove('open');
     renderTagList();
     if (els.tagPanel.classList.contains('open')) {
       renderTagPanel();
