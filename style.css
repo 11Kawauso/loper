@@ -787,12 +787,13 @@ button {
 
 .modal-image-box.has-image {
   display: flex;
+  flex-direction: row;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .modal-thumbnail {
-  width: calc(25% - 6px);
+  flex: 1;
+  min-width: 0;
   aspect-ratio: 1 / 1;
   object-fit: cover;
   border-radius: 6px;

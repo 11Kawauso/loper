@@ -45,7 +45,7 @@ const basePosts = [
     tags: ['Unity', '2D', 'PixelArt', '初心者歓迎'],
     date: '2026年06月01日',
     likes: 24,
-    image: null,
+    images: [],
   },
   {
     category: 'app',
@@ -54,7 +54,7 @@ const basePosts = [
     tags: ['Flutter', 'iOS', 'Android', '個人開発'],
     date: '2026年06月02日',
     likes: 11,
-    image: null,
+    images: [],
   },
   {
     category: 'site',
@@ -63,7 +63,7 @@ const basePosts = [
     tags: ['React', 'ポートフォリオ', 'デザイナー募集'],
     date: '2026年06月03日',
     likes: 8,
-    image: null,
+    images: [],
   },
   {
     category: 'video',
@@ -72,7 +72,7 @@ const basePosts = [
     tags: ['PV', 'AfterEffects', '編集者募集'],
     date: '2026年06月04日',
     likes: 35,
-    image: null,
+    images: [],
   },
   {
     category: 'game',
@@ -81,7 +81,7 @@ const basePosts = [
     tags: ['Unity', 'RPG', '経験者募集'],
     date: '2026年06月05日',
     likes: 19,
-    image: null,
+    images: [],
   },
   {
     category: 'app',
@@ -90,7 +90,7 @@ const basePosts = [
     tags: ['ReactNative', 'ツールアプリ', '生活系'],
     date: '2026年06月06日',
     likes: 6,
-    image: null,
+    images: [],
   },
   {
     category: 'site',
@@ -99,7 +99,7 @@ const basePosts = [
     tags: ['WordPress', 'ブログ', 'コーダー募集'],
     date: '2026年06月07日',
     likes: 14,
-    image: null,
+    images: [],
   },
   {
     category: 'video',
@@ -108,7 +108,7 @@ const basePosts = [
     tags: ['編集者募集', 'PV', 'MV'],
     date: '2026年06月08日',
     likes: 27,
-    image: null,
+    images: [],
   },
   {
     category: 'game',
@@ -117,7 +117,7 @@ const basePosts = [
     tags: ['UE5', '3D', 'プログラマー募集'],
     date: '2026年06月09日',
     likes: 42,
-    image: null,
+    images: [],
   },
   {
     category: 'app',
@@ -126,7 +126,7 @@ const basePosts = [
     tags: ['Flutter', '教育', '個人開発'],
     date: '2026年06月10日',
     likes: 9,
-    image: null,
+    images: [],
   },
 ];
 
@@ -197,7 +197,6 @@ function cacheElements() {
   els.detailAuthor = document.getElementById('detailAuthor');
   els.detailTitle = document.getElementById('detailTitle');
   els.detailImageBox = document.getElementById('detailImageBox');
-  els.detailImage = document.getElementById('detailImage');
   els.lightboxOverlay = document.getElementById('lightboxOverlay');
   els.lightboxImage = document.getElementById('lightboxImage');
   els.detailDesc = document.getElementById('detailDesc');
@@ -270,7 +269,7 @@ function generatePostsBatch(count) {
       date: template.date,
       likes: template.likes,
       liked: false,
-      image: template.image,
+      images: template.images.slice(),
       pinned: INITIAL_PINNED_INDEXES.includes((id - 1) % basePosts.length) && id <= basePosts.length,
     });
     state.nextId++;
@@ -851,14 +850,19 @@ function openDetailModal(post) {
 
   els.detailTitle.textContent = post.title;
 
-  // 画像（サムネイル表示。クリックでライトボックス）
-  if (post.image) {
-    els.detailImage.src = post.image;
-    els.detailImage.onclick = () => openLightbox(post.image);
+  // 画像（サムネイル一覧。クリックでライトボックス）
+  els.detailImageBox.innerHTML = '';
+  if (post.images && post.images.length > 0) {
+    post.images.forEach((src) => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.className = 'modal-thumbnail';
+      img.alt = '';
+      img.addEventListener('click', () => openLightbox(src));
+      els.detailImageBox.appendChild(img);
+    });
     els.detailImageBox.classList.add('has-image');
   } else {
-    els.detailImage.src = '';
-    els.detailImage.onclick = null;
     els.detailImageBox.classList.remove('has-image');
   }
 
@@ -957,7 +961,7 @@ function setupPostModal() {
     const tags = [...postSelectedTags, ...freeTags];
     const description = els.postDescInput.value.trim() || '詳細はまだ記入されていません。';
 
-    const finishCreatingPost = (imageDataUrl) => {
+    const finishCreatingPost = (images) => {
       const newPost = {
         id: state.nextId,
         category: category,
@@ -967,7 +971,7 @@ function setupPostModal() {
         date: formatDate(new Date()),
         likes: 0,
         liked: false,
-        image: imageDataUrl || null,
+        images: images,
         pinned: false,
       };
       state.nextId++;
@@ -981,13 +985,15 @@ function setupPostModal() {
       showToast('投稿を作成しました');
     };
 
-    const imageFile = els.postImageInput.files[0];
-    if (imageFile) {
-      const reader = new FileReader();
-      reader.onload = (ev) => finishCreatingPost(ev.target.result);
-      reader.readAsDataURL(imageFile);
+    const imageFiles = [...els.postImageInput.files].slice(0, 4);
+    if (imageFiles.length > 0) {
+      Promise.all(imageFiles.map((file) => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target.result);
+        reader.readAsDataURL(file);
+      }))).then((images) => finishCreatingPost(images));
     } else {
-      finishCreatingPost(null);
+      finishCreatingPost([]);
     }
   });
 }
