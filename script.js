@@ -156,7 +156,7 @@ let postSelectedTags = new Set();
 
 const MAX_POSTS = 60;       // これ以上はロードしない
 const PAGE_SIZE = 4;        // 1回のスクロールで読み込む件数
-const ADS_EVERY = 10;       // 何件ごとに広告を挟むか
+const ADS_EVERY = 20;       // 何件ごとに広告を挟むか
 
 /* ---------------- DOM要素 ---------------- */
 const els = {};
