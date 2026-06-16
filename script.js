@@ -146,7 +146,7 @@ const state = {
   reachedEnd: false,
   profile: {
     name: '名前',
-    avatarUrl: null,
+    avatarUrl: 'images/ProfileIcon.png',
     bio: '',
     links: [''],
   },
