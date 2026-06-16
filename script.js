@@ -907,8 +907,7 @@ function formatDate(date) {
 }
 
 function renderPostTagSelector() {
-  const category = els.postCategoryInput.value;
-  const tags = CATEGORY_TAGS[category] || [];
+  const tags = CATEGORY_TAGS.all || [];
   els.postTagSelector.innerHTML = '';
   tags.forEach((tag) => {
     const pill = document.createElement('span');
@@ -932,10 +931,6 @@ function setupPostModal() {
     if (e.target === els.postModalOverlay) closePostModal();
   });
 
-  els.postCategoryInput.addEventListener('change', () => {
-    postSelectedTags = new Set();
-    renderPostTagSelector();
-  });
 
   els.postForm.addEventListener('submit', (e) => {
     e.preventDefault();
