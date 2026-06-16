@@ -780,6 +780,25 @@ button {
   margin: 0 0 14px;
 }
 
+.modal-image-box {
+  display: none;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.modal-image-box.has-image {
+  display: block;
+}
+
+.modal-image-box img {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  background: #000;
+}
+
 .modal-content-box {
   height: auto;
   min-height: 140px;

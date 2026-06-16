@@ -196,6 +196,8 @@ function cacheElements() {
   els.detailAvatar = document.getElementById('detailAvatar');
   els.detailAuthor = document.getElementById('detailAuthor');
   els.detailTitle = document.getElementById('detailTitle');
+  els.detailImageBox = document.getElementById('detailImageBox');
+  els.detailImage = document.getElementById('detailImage');
   els.detailDesc = document.getElementById('detailDesc');
   els.detailTags = document.getElementById('detailTags');
   els.detailDate = document.getElementById('detailDate');
@@ -424,15 +426,9 @@ function createPostCard(post) {
   title.textContent = post.title;
   card.appendChild(title);
 
-  // 内容（画像を添付している場合は内容枠の中に表示）
+  // 内容（テキストのみ。画像は詳細モーダルで表示）
   const contentBox = document.createElement('div');
   contentBox.className = 'post-content-box';
-  if (post.image) {
-    const img = document.createElement('img');
-    img.src = post.image;
-    img.alt = '';
-    contentBox.appendChild(img);
-  }
   contentBox.appendChild(document.createTextNode(post.description));
   card.appendChild(contentBox);
 
@@ -844,15 +840,17 @@ function openDetailModal(post) {
 
   els.detailTitle.textContent = post.title;
 
-  // 内容（画像が添付されている場合は内容枠の中に表示）
-  els.detailDesc.innerHTML = '';
+  // 画像（別枠で表示）
   if (post.image) {
-    const img = document.createElement('img');
-    img.src = post.image;
-    img.alt = '';
-    els.detailDesc.appendChild(img);
+    els.detailImage.src = post.image;
+    els.detailImageBox.classList.add('has-image');
+  } else {
+    els.detailImage.src = '';
+    els.detailImageBox.classList.remove('has-image');
   }
-  els.detailDesc.appendChild(document.createTextNode(post.description));
+
+  // 内容
+  els.detailDesc.textContent = post.description;
 
   els.detailTags.innerHTML = '';
   post.tags.forEach((tag) => {
