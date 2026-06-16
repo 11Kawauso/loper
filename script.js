@@ -148,7 +148,7 @@ const state = {
     name: '名前',
     avatarUrl: null,
     bio: '',
-    links: ['', '', '', ''],
+    links: [''],
   },
 };
 
@@ -219,12 +219,8 @@ function cacheElements() {
   els.profileAvatarInput = document.getElementById('profileAvatarInput');
   els.profileNameInput = document.getElementById('profileNameInput');
   els.profileBio = document.getElementById('profileBio');
-  els.profileLinks = [
-    document.getElementById('profileLink1'),
-    document.getElementById('profileLink2'),
-    document.getElementById('profileLink3'),
-    document.getElementById('profileLink4'),
-  ];
+  els.profileLinksContainer = document.getElementById('profileLinks');
+  els.profileAddLinkBtn = document.getElementById('profileAddLinkBtn');
 }
 
 /* ---------------- 初期化 ---------------- */
@@ -1026,12 +1022,50 @@ function setupProfilePanel() {
     state.profile.bio = els.profileBio.value;
   });
 
-  // リンク（GitHub / Discord / X / 自作サイト）
-  els.profileLinks.forEach((input, index) => {
+  // リンク
+  renderProfileLinks();
+  els.profileAddLinkBtn.addEventListener('click', () => {
+    if (state.profile.links.length >= 10) return;
+    state.profile.links.push('');
+    renderProfileLinks();
+  });
+}
+
+const MAX_LINKS = 10;
+
+function renderProfileLinks() {
+  els.profileLinksContainer.innerHTML = '';
+
+  state.profile.links.forEach((url, index) => {
+    const row = document.createElement('div');
+    row.className = 'profile-link-row';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'profile-link-input';
+    input.placeholder = 'URLを入力';
+    input.value = url;
     input.addEventListener('input', () => {
       state.profile.links[index] = input.value;
     });
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'profile-link-remove-btn';
+    removeBtn.textContent = '×';
+    removeBtn.title = 'このリンクを削除';
+    removeBtn.addEventListener('click', () => {
+      state.profile.links.splice(index, 1);
+      if (state.profile.links.length === 0) state.profile.links.push('');
+      renderProfileLinks();
+    });
+
+    row.appendChild(input);
+    row.appendChild(removeBtn);
+    els.profileLinksContainer.appendChild(row);
   });
+
+  els.profileAddLinkBtn.disabled = state.profile.links.length >= MAX_LINKS;
 }
 
 /* =========================================================
