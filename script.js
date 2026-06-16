@@ -227,6 +227,7 @@ function cacheElements() {
   els.profileSettingsBtn = document.getElementById('profileSettingsBtn');
   els.profileAvatar = document.getElementById('profileAvatar');
   els.profileAvatarInput = document.getElementById('profileAvatarInput');
+  els.profileAvatarDeleteBtn = document.getElementById('profileAvatarDeleteBtn');
   els.profileNameInput = document.getElementById('profileNameInput');
   els.profileBio = document.getElementById('profileBio');
   els.profileLinksContainer = document.getElementById('profileLinks');
@@ -1052,6 +1053,15 @@ function setupProfilePanel() {
   // アイコンクリックでファイル選択 → トリムモーダルへ
   els.profileAvatar.addEventListener('click', () => {
     els.profileAvatarInput.click();
+  });
+
+  // バツボタンで初期アイコンに戻す
+  els.profileAvatarDeleteBtn.addEventListener('click', () => {
+    if (window.confirm('アイコンを削除します。')) {
+      state.profile.avatarUrl = 'images/ProfileIcon.png';
+      applyProfileAvatar();
+      renderPosts();
+    }
   });
 
   // 名前（文字数制限はmaxlengthで設定済み）

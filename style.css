@@ -1164,6 +1164,37 @@ button {
 .profile-avatar-wrap {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.profile-avatar-delete-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.profile-avatar-wrap:hover .profile-avatar-delete-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.profile-avatar-delete-btn:hover {
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .profile-avatar {
