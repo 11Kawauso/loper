@@ -1171,14 +1171,23 @@ button {
 
 .profile-name-input {
   width: 100%;
-  border: none;
-  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.15);
   outline: none;
   text-align: center;
   font-size: 18px;
   font-weight: bold;
   font-family: inherit;
   color: var(--profile-name-color);
+  padding: 8px 20px;
+  box-sizing: border-box;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.profile-name-input:focus {
+  border-color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .profile-name-input::placeholder {
