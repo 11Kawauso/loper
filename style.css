@@ -1164,12 +1164,14 @@ button {
 .profile-avatar-wrap {
   display: flex;
   justify-content: center;
-  align-items: center;
-  gap: 10px;
   position: relative;
 }
 
 .profile-avatar-delete-btn {
+  position: absolute;
+  left: calc(50% + 48px);
+  top: 50%;
+  transform: translateY(-50%);
   width: 32px;
   height: 32px;
   border: none;
@@ -1185,7 +1187,6 @@ button {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s, background 0.15s;
-  flex-shrink: 0;
 }
 
 .profile-avatar-wrap:hover .profile-avatar-delete-btn {

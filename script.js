@@ -260,6 +260,7 @@ function init() {
   setupProfileIcon();
   setupAvatarCrop();
   setupProfilePanel();
+  applyProfileAvatar();
   setupDetailModal();
   setupPostModal();
   setupInfiniteScroll();
