@@ -152,6 +152,8 @@ const state = {
   },
 };
 
+let postSelectedTags = new Set();
+
 const MAX_POSTS = 60;       // これ以上はロードしない
 const PAGE_SIZE = 4;        // 1回のスクロールで読み込む件数
 const ADS_EVERY = 10;       // 何件ごとに広告を挟むか
@@ -206,6 +208,7 @@ function cacheElements() {
   els.postTitleInput = document.getElementById('postTitleInput');
   els.postCategoryInput = document.getElementById('postCategoryInput');
   els.postImageInput = document.getElementById('postImageInput');
+  els.postTagSelector = document.getElementById('postTagSelector');
   els.postTagsInput = document.getElementById('postTagsInput');
   els.postDescInput = document.getElementById('postDescInput');
 
@@ -889,6 +892,8 @@ function closeDetailModal() {
 function setupPostButton() {
   els.postButton.addEventListener('click', () => {
     els.postForm.reset();
+    postSelectedTags = new Set();
+    renderPostTagSelector();
     els.postModalOverlay.classList.add('show');
   });
 }
@@ -901,10 +906,35 @@ function formatDate(date) {
   return y + '年' + m + '月' + d + '日';
 }
 
+function renderPostTagSelector() {
+  const category = els.postCategoryInput.value;
+  const tags = CATEGORY_TAGS[category] || [];
+  els.postTagSelector.innerHTML = '';
+  tags.forEach((tag) => {
+    const pill = document.createElement('span');
+    pill.className = 'tag-pill' + (postSelectedTags.has(tag) ? ' selected' : '');
+    pill.textContent = '#' + tag;
+    pill.addEventListener('click', () => {
+      if (postSelectedTags.has(tag)) {
+        postSelectedTags.delete(tag);
+      } else {
+        postSelectedTags.add(tag);
+      }
+      pill.classList.toggle('selected', postSelectedTags.has(tag));
+    });
+    els.postTagSelector.appendChild(pill);
+  });
+}
+
 function setupPostModal() {
   els.postModalClose.addEventListener('click', closePostModal);
   els.postModalOverlay.addEventListener('click', (e) => {
     if (e.target === els.postModalOverlay) closePostModal();
+  });
+
+  els.postCategoryInput.addEventListener('change', () => {
+    postSelectedTags = new Set();
+    renderPostTagSelector();
   });
 
   els.postForm.addEventListener('submit', (e) => {
@@ -914,10 +944,11 @@ function setupPostModal() {
     if (!title) return;
 
     const category = els.postCategoryInput.value;
-    const tags = els.postTagsInput.value
+    const freeTags = els.postTagsInput.value
       .split(',')
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
+    const tags = [...postSelectedTags, ...freeTags];
     const description = els.postDescInput.value.trim() || '詳細はまだ記入されていません。';
 
     const finishCreatingPost = (imageDataUrl) => {

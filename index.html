@@ -188,8 +188,15 @@
       </div>
 
       <div class="form-group">
-        <label for="postTagsInput">タグ（カンマ区切り）</label>
-        <input type="text" id="postTagsInput" placeholder="例：Unity, 2D, チーム募集">
+        <label>タグ（選択）</label>
+        <div class="post-tag-selector" id="postTagSelector">
+          <!-- カテゴリに応じてJSで生成 -->
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="postTagsInput">タグ（自由記入・カンマ区切り）</label>
+        <input type="text" id="postTagsInput" placeholder="例：チーム募集, 週末開発">
       </div>
 
       <div class="form-group">

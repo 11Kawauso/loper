@@ -885,6 +885,28 @@ button {
   filter: brightness(1.05);
 }
 
+.post-tag-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #CFDEDD;
+  border-radius: 8px;
+  background: #fff;
+  min-height: 48px;
+}
+
+.post-tag-selector .tag-pill {
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.post-tag-selector .tag-pill.selected {
+  background: var(--card-border);
+  color: #fff;
+}
+
 /* ================= トースト ================= */
 .toast {
   position: fixed;
