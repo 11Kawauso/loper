@@ -499,12 +499,16 @@ function createAdCard() {
   label.className = 'ad-label';
   label.textContent = '広告';
 
-  const sub = document.createElement('div');
-  sub.className = 'ad-sub';
-  sub.textContent = 'Advertisement';
+  const iframe = document.createElement('iframe');
+  iframe.width = '728';
+  iframe.height = '90';
+  iframe.frameBorder = '0';
+  iframe.scrolling = 'no';
+  iframe.style.maxWidth = '100%';
+  iframe.srcdoc = '<script src="https://adm.shinobi.jp/s/020801d9775fade5560851d4680bfc79"><\/script>';
 
   ad.appendChild(label);
-  ad.appendChild(sub);
+  ad.appendChild(iframe);
   return ad;
 }
 
