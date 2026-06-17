@@ -505,7 +505,7 @@ function createAdCard() {
   iframe.frameBorder = '0';
   iframe.scrolling = 'no';
   iframe.style.maxWidth = '100%';
-  iframe.srcdoc = '<script src="https://adm.shinobi.jp/s/020801d9775fade5560851d4680bfc79"><\/script>';
+  iframe.src = 'ad.html';
 
   ad.appendChild(label);
   ad.appendChild(iframe);
