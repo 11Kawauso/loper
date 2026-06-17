@@ -1034,9 +1034,9 @@ function closeProfilePanel() {
 }
 
 function applyProfileAvatar() {
-  els.profileAvatar.style.backgroundImage = state.profile.avatarUrl
-    ? 'url(' + state.profile.avatarUrl + ')'
-    : '';
+  const url = state.profile.avatarUrl ? 'url(' + state.profile.avatarUrl + ')' : '';
+  els.profileAvatar.style.backgroundImage = url;
+  els.profileIcon.style.backgroundImage = url;
 }
 
 function setupProfilePanel() {
