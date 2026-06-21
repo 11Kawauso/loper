@@ -144,6 +144,7 @@ const state = {
   searchKeyword: '',
   loading: false,
   reachedEnd: false,
+  currentUser: null,
   profile: {
     name: '名前',
     avatarUrl: 'images/ProfileIcon.png',
@@ -243,6 +244,10 @@ function cacheElements() {
   els.profileBio = document.getElementById('profileBio');
   els.profileLinksContainer = document.getElementById('profileLinks');
   els.profileAddLinkBtn = document.getElementById('profileAddLinkBtn');
+  els.profileLoginSection = document.getElementById('profileLoginSection');
+  els.profileContent = document.getElementById('profileContent');
+  els.githubLoginBtn = document.getElementById('githubLoginBtn');
+  els.profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
   els.avatarCropOverlay = document.getElementById('avatarCropOverlay');
   els.avatarCropContainer = document.getElementById('avatarCropContainer');
@@ -275,6 +280,7 @@ function init() {
   setupDetailModal();
   setupPostModal();
   setupInfiniteScroll();
+  setupFirebase();
 }
 
 /* =========================================================
@@ -1213,18 +1219,21 @@ function setupProfilePanel() {
       state.profile.avatarUrl = 'images/ProfileIcon.png';
       applyProfileAvatar();
       renderPosts();
+      debouncedSaveProfile();
     }
   });
 
   // 名前（文字数制限はmaxlengthで設定済み）
   els.profileNameInput.addEventListener('input', () => {
     state.profile.name = els.profileNameInput.value;
-    renderPosts(); // 投稿カードの名前にも反映
+    renderPosts();
+    debouncedSaveProfile();
   });
 
   // 自己紹介
   els.profileBio.addEventListener('input', () => {
     state.profile.bio = els.profileBio.value;
+    debouncedSaveProfile();
   });
 
   // リンク
@@ -1252,6 +1261,7 @@ function renderProfileLinks() {
     input.value = url;
     input.addEventListener('input', () => {
       state.profile.links[index] = input.value;
+      debouncedSaveProfile();
     });
 
     const removeBtn = document.createElement('button');
@@ -1263,6 +1273,7 @@ function renderProfileLinks() {
       state.profile.links.splice(index, 1);
       if (state.profile.links.length === 0) state.profile.links.push('');
       renderProfileLinks();
+      debouncedSaveProfile();
     });
 
     row.appendChild(input);
@@ -1418,6 +1429,7 @@ function confirmAvatarCrop() {
   applyProfileAvatar();
   renderPosts();
   closeAvatarCrop();
+  debouncedSaveProfile();
 }
 
 /* =========================================================
@@ -1432,4 +1444,140 @@ function showToast(message) {
   toastTimer = setTimeout(() => {
     els.toast.classList.remove('show');
   }, 2200);
+}
+
+/* =========================================================
+   Firebase：認証 & Firestore
+   ========================================================= */
+function setupFirebase() {
+  const fb = window._firebase;
+  if (!fb) return;
+
+  fb.onAuthStateChanged(fb.auth, (user) => {
+    if (user) {
+      onFirebaseLogin(user);
+    } else {
+      onFirebaseLogout();
+    }
+  });
+
+  els.githubLoginBtn.addEventListener('click', loginWithGithub);
+  els.profileLogoutBtn.addEventListener('click', logoutFirebase);
+}
+
+async function loginWithGithub() {
+  const fb = window._firebase;
+  if (!fb) return;
+  try {
+    const provider = new fb.GithubAuthProvider();
+    await fb.signInWithPopup(fb.auth, provider);
+  } catch (err) {
+    if (err.code !== 'auth/popup-closed-by-user') {
+      showToast('ログインに失敗しました');
+    }
+    console.error(err);
+  }
+}
+
+async function logoutFirebase() {
+  const fb = window._firebase;
+  if (!fb) return;
+  try {
+    await fb.signOut(fb.auth);
+    showToast('ログアウトしました');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function onFirebaseLogin(user) {
+  state.currentUser = user;
+
+  els.profileLoginSection.style.display = 'none';
+  els.profileContent.style.display = 'flex';
+
+  const fb = window._firebase;
+  const userRef = fb.doc(fb.db, 'users', user.uid);
+
+  try {
+    const snap = await fb.getDoc(userRef);
+
+    if (snap.exists()) {
+      const data = snap.data();
+      state.profile.name = data.name || user.displayName || '名前';
+      state.profile.avatarUrl = data.avatarUrl || user.photoURL || '';
+      state.profile.bio = data.bio || '';
+      state.profile.links = data.links && data.links.length > 0 ? data.links : [''];
+    } else {
+      state.profile.name = user.displayName || '名前';
+      state.profile.avatarUrl = user.photoURL || '';
+      state.profile.bio = '';
+      state.profile.links = [''];
+
+      await fb.setDoc(userRef, {
+        name: state.profile.name,
+        avatarUrl: state.profile.avatarUrl,
+        bio: state.profile.bio,
+        links: state.profile.links,
+        githubUid: user.uid,
+        githubName: user.displayName,
+        githubPhoto: user.photoURL,
+        email: user.email,
+        createdAt: new Date().toISOString(),
+      });
+    }
+  } catch (err) {
+    console.error('Firestore load error:', err);
+    state.profile.name = user.displayName || '名前';
+    state.profile.avatarUrl = user.photoURL || '';
+  }
+
+  els.profileNameInput.value = state.profile.name;
+  els.profileBio.value = state.profile.bio;
+  applyProfileAvatar();
+  renderProfileLinks();
+  renderPosts();
+}
+
+function onFirebaseLogout() {
+  state.currentUser = null;
+
+  els.profileLoginSection.style.display = 'flex';
+  els.profileContent.style.display = 'none';
+
+  state.profile.name = '名前';
+  state.profile.avatarUrl = 'images/ProfileIcon.png';
+  state.profile.bio = '';
+  state.profile.links = [''];
+
+  els.profileNameInput.value = state.profile.name;
+  els.profileBio.value = state.profile.bio;
+  applyProfileAvatar();
+  renderProfileLinks();
+  renderPosts();
+}
+
+let saveProfileTimer = null;
+function debouncedSaveProfile() {
+  if (!state.currentUser) return;
+  clearTimeout(saveProfileTimer);
+  saveProfileTimer = setTimeout(() => saveProfileToFirestore(), 1000);
+}
+
+async function saveProfileToFirestore() {
+  const fb = window._firebase;
+  if (!fb || !state.currentUser) return;
+
+  try {
+    const userRef = fb.doc(fb.db, 'users', state.currentUser.uid);
+    await fb.setDoc(userRef, {
+      name: state.profile.name,
+      avatarUrl: state.profile.avatarUrl,
+      bio: state.profile.bio,
+      links: state.profile.links.filter(l => l.trim() !== ''),
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (err) {
+    console.error('Firestore save error:', err);
+  }
 }
