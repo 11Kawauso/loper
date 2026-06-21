@@ -761,9 +761,12 @@ button {
   max-width: 560px;
   max-height: 85vh;
   overflow-y: auto;
+  scrollbar-width: none;
   padding: 28px;
   position: relative;
 }
+
+.modal::-webkit-scrollbar { display: none; }
 
 .modal.cat-game  { border-top-color: var(--card-border-game); }
 .modal.cat-app   { border-top-color: var(--card-border-app); }
@@ -862,10 +865,13 @@ button {
   min-height: 140px;
   max-height: 320px;
   overflow-y: auto;
+  scrollbar-width: none;
   display: block;
   -webkit-line-clamp: unset;
   margin-bottom: 16px;
 }
+
+.modal-content-box::-webkit-scrollbar { display: none; }
 
 .modal-tags {
   flex-wrap: wrap;
@@ -1146,9 +1152,12 @@ button {
   flex-direction: column;
   gap: 18px;
   overflow-y: auto;
+  scrollbar-width: none;
   transform: translateX(-100%);
   transition: transform 0.25s ease;
 }
+
+.profile-panel::-webkit-scrollbar { display: none; }
 
 .profile-overlay.show .profile-panel {
   transform: translateX(0);
@@ -1460,7 +1469,10 @@ button {
   padding: 12px;
   max-height: 200px;
   overflow-y: auto;
+  scrollbar-width: none;
 }
+
+.post-tag-dropdown-panel::-webkit-scrollbar { display: none; }
 
 .post-tag-dropdown-panel.open { display: block; }
 
