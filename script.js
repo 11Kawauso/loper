@@ -138,6 +138,36 @@ const basePosts = [
     images: [],
     deadlineDays: 30,
   },
+  {
+    category: 'video',
+    title: '自主制作アニメのBGM・SE担当を募集中',
+    description: '個人で制作中の短編アニメーションにBGMや効果音をつけてくれる方を探しています。ジャンルはSFファンタジーです。',
+    tags: ['アニメーション', 'Blender', '3DCG'],
+    date: '2026年06月11日',
+    likes: 18,
+    images: [],
+    deadlineDays: 45,
+  },
+  {
+    category: 'video',
+    title: 'MV制作チームのモーションデザイナー募集',
+    description: 'ボカロ楽曲のMVを制作するチームです。AfterEffectsやCinema4Dでモーショングラフィックスを作れる方を募集しています。',
+    tags: ['MV', 'AfterEffects', 'Cinema4D', 'VFX'],
+    date: '2026年06月12日',
+    likes: 31,
+    images: [],
+    deadlineDays: 60,
+  },
+  {
+    category: 'video',
+    title: 'ドキュメンタリー映像の撮影・編集メンバー募集',
+    description: '地域の伝統文化を記録するドキュメンタリー映像を制作中です。撮影や編集に興味がある方、一緒に作品を作りませんか。',
+    tags: ['PremierePro', '編集者募集', 'PV'],
+    date: '2026年06月13日',
+    likes: 12,
+    images: [],
+    deadlineDays: 30,
+  },
 ];
 
 /* 初期でピン止めしておく basePosts のインデックス */
