@@ -960,6 +960,10 @@ function closeDetailModal() {
    ========================================================= */
 function setupPostButton() {
   els.postButton.addEventListener('click', () => {
+    if (!state.currentUser) {
+      showLoginPrompt();
+      return;
+    }
     els.postForm.reset();
     postSelectedTags = new Set();
     postSelectedFiles = [];
@@ -1463,6 +1467,28 @@ function setupFirebase() {
 
   els.githubLoginBtn.addEventListener('click', loginWithGithub);
   els.profileLogoutBtn.addEventListener('click', logoutFirebase);
+  setupLoginPrompt();
+}
+
+/* ログイン促進モーダル */
+function setupLoginPrompt() {
+  const overlay = document.getElementById('loginPromptOverlay');
+  const closeBtn = document.getElementById('loginPromptClose');
+  const githubBtn = document.getElementById('loginPromptGithubBtn');
+
+  closeBtn.addEventListener('click', () => overlay.classList.remove('show'));
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('show');
+  });
+
+  githubBtn.addEventListener('click', async () => {
+    overlay.classList.remove('show');
+    await loginWithGithub();
+  });
+}
+
+function showLoginPrompt() {
+  document.getElementById('loginPromptOverlay').classList.add('show');
 }
 
 async function loginWithGithub() {

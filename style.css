@@ -1422,6 +1422,49 @@ button {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* ================= ログイン促進モーダル ================= */
+.login-prompt-modal {
+  background: #fff;
+  border-radius: 18px;
+  width: 90%;
+  max-width: 380px;
+  padding: 40px 32px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.login-prompt-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--content-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-prompt-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text-dark);
+}
+
+.login-prompt-message {
+  font-size: 14px;
+  color: #7A9CA0;
+  line-height: 1.6;
+}
+
+.login-prompt-btn {
+  margin-top: 8px;
+  max-width: 100%;
+  width: 240px;
+}
+
 /* ================= 文字数カウンター ================= */
 .char-counter {
   display: block;
