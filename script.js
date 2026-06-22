@@ -1470,7 +1470,11 @@ function setupFirebase() {
   });
 
   els.githubLoginBtn.addEventListener('click', loginWithGithub);
-  els.profileLogoutBtn.addEventListener('click', logoutFirebase);
+  els.profileLogoutBtn.addEventListener('click', () => {
+    if (window.confirm('ログアウトしますか？')) {
+      logoutFirebase();
+    }
+  });
   setupLoginPrompt();
 }
 
