@@ -1465,6 +1465,81 @@ button {
   width: 240px;
 }
 
+/* ================= 確認モーダル（ログアウト・アイコン削除） ================= */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.confirm-overlay.show {
+  display: flex;
+}
+
+.confirm-modal {
+  background: #E6F5F3;
+  border: 3px solid var(--header-bg);
+  border-radius: 20px;
+  width: 90%;
+  max-width: 380px;
+  padding: 32px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.confirm-message {
+  font-size: 17px;
+  font-weight: bold;
+  color: var(--text-dark);
+  text-align: center;
+}
+
+.confirm-image {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+}
+
+.confirm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+}
+
+.confirm-btn {
+  min-width: 110px;
+  height: 42px;
+  border: none;
+  border-radius: 21px;
+  font-size: 15px;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.confirm-btn:hover {
+  filter: brightness(0.93);
+}
+
+.confirm-btn.ok {
+  background: #8A9A9C;
+  color: #fff;
+}
+
+.confirm-btn.cancel {
+  background: var(--header-bg);
+  color: #fff;
+}
+
 /* ================= 文字数カウンター ================= */
 .char-counter {
   display: block;

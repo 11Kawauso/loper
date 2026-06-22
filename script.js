@@ -1225,14 +1225,9 @@ function setupProfilePanel() {
     els.profileAvatarInput.click();
   });
 
-  // バツボタンで初期アイコンに戻す
+  // バツボタンで削除確認モーダルを表示
   els.profileAvatarDeleteBtn.addEventListener('click', () => {
-    if (window.confirm('アイコンを削除します。')) {
-      state.profile.avatarUrl = 'images/ProfileIcon.png';
-      applyProfileAvatar();
-      renderPosts();
-      debouncedSaveProfile();
-    }
+    showIconDeleteConfirm();
   });
 
   // 名前（文字数制限はmaxlengthで設定済み）
@@ -1475,9 +1470,7 @@ function setupFirebase() {
 
   els.githubLoginBtn.addEventListener('click', loginWithGithub);
   els.profileLogoutBtn.addEventListener('click', () => {
-    if (window.confirm('ログアウトしますか？')) {
-      logoutFirebase();
-    }
+    showLogoutConfirm();
   });
   setupLoginPrompt();
 }
@@ -1501,6 +1494,48 @@ function setupLoginPrompt() {
 
 function showLoginPrompt() {
   document.getElementById('loginPromptOverlay').classList.add('show');
+}
+
+/* ログアウト確認モーダル */
+function showLogoutConfirm() {
+  const overlay = document.getElementById('logoutConfirmOverlay');
+  overlay.classList.add('show');
+
+  const ok = document.getElementById('logoutConfirmOk');
+  const cancel = document.getElementById('logoutConfirmCancel');
+
+  const close = () => {
+    overlay.classList.remove('show');
+    ok.replaceWith(ok.cloneNode(true));
+    cancel.replaceWith(cancel.cloneNode(true));
+  };
+
+  ok.addEventListener('click', () => { close(); logoutFirebase(); }, { once: true });
+  cancel.addEventListener('click', close, { once: true });
+}
+
+/* アイコン削除確認モーダル */
+function showIconDeleteConfirm() {
+  const overlay = document.getElementById('iconDeleteConfirmOverlay');
+  overlay.classList.add('show');
+
+  const ok = document.getElementById('iconDeleteConfirmOk');
+  const cancel = document.getElementById('iconDeleteConfirmCancel');
+
+  const close = () => {
+    overlay.classList.remove('show');
+    ok.replaceWith(ok.cloneNode(true));
+    cancel.replaceWith(cancel.cloneNode(true));
+  };
+
+  ok.addEventListener('click', () => {
+    close();
+    state.profile.avatarUrl = 'images/ProfileIcon.png';
+    applyProfileAvatar();
+    renderPosts();
+    debouncedSaveProfile();
+  }, { once: true });
+  cancel.addEventListener('click', close, { once: true });
 }
 
 async function loginWithGithub() {
