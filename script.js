@@ -525,6 +525,16 @@ function createPostCard(post) {
   dateEl.textContent = '投稿日時　' + post.date;
   footer.appendChild(dateEl);
 
+  if (post.createdAt && post.deadlineDays) {
+    const deadline = new Date(post.createdAt);
+    deadline.setDate(deadline.getDate() + post.deadlineDays);
+    const remaining = Math.ceil((deadline - new Date()) / (24 * 60 * 60 * 1000));
+    const deadlineEl = document.createElement('span');
+    deadlineEl.className = 'post-deadline' + (remaining <= 3 ? ' urgent' : '');
+    deadlineEl.textContent = '残り ' + remaining + ' 日';
+    footer.appendChild(deadlineEl);
+  }
+
   const likesEl = document.createElement('span');
   likesEl.className = 'post-likes' + (post.liked ? ' liked' : '');
   likesEl.textContent = '👍 ' + post.likes;

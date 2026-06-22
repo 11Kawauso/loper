@@ -643,13 +643,23 @@ button {
 .post-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   font-size: 12px;
   color: #7A9CA0;
   margin-top: auto;
 }
 
+.post-deadline {
+  color: var(--header-bg);
+  font-weight: bold;
+}
+
+.post-deadline.urgent {
+  color: #D03030;
+}
+
 .post-likes {
+  margin-left: auto;
   cursor: pointer;
   user-select: none;
   transition: transform 0.1s;
