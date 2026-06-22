@@ -1300,6 +1300,10 @@ function setupProfilePanel() {
   });
 
   els.profileSettingsBtn.addEventListener('click', () => {
+    if (!state.currentUser) {
+      showLoginPrompt();
+      return;
+    }
     openSettings();
   });
 
