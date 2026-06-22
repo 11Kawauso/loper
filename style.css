@@ -1475,6 +1475,11 @@ button {
   width: 240px;
 }
 
+#loginPromptOverlay,
+#settingsOverlay {
+  z-index: 1600;
+}
+
 /* ================= 確認モーダル（ログアウト・アイコン削除） ================= */
 .confirm-overlay {
   position: fixed;
