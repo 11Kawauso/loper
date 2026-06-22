@@ -787,6 +787,10 @@ function setupClearTagsBtn() {
    ========================================================= */
 function setupPinSection() {
   els.pinItem.addEventListener('click', () => {
+    if (!state.currentUser) {
+      showLoginPrompt();
+      return;
+    }
     state.showPinnedOnly = true;
     state.searchKeyword = '';
     els.searchInput.value = '';
