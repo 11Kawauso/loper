@@ -1540,6 +1540,148 @@ button {
   color: #fff;
 }
 
+/* ================= 募集期限入力 ================= */
+.deadline-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deadline-input-wrap input[type="number"] {
+  width: 100px;
+  border: 1px solid #CFDEDD;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  color: var(--text-dark);
+}
+
+.deadline-input-wrap input[type="number"]:focus {
+  border-color: var(--card-border);
+}
+
+.deadline-unit {
+  font-size: 14px;
+  color: var(--text-dark);
+}
+
+/* ================= 設定画面 ================= */
+.settings-panel {
+  background: #fff;
+  border-radius: 18px;
+  width: 90%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 28px;
+  position: relative;
+}
+
+.settings-panel::-webkit-scrollbar { display: none; }
+
+.settings-section {
+  margin-bottom: 28px;
+}
+
+.settings-section-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--text-dark);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--content-bg);
+}
+
+.settings-name-row {
+  display: flex;
+  gap: 10px;
+}
+
+.settings-name-input {
+  flex: 1;
+  border: 1px solid #CFDEDD;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  color: var(--text-dark);
+}
+
+.settings-name-input:focus {
+  border-color: var(--card-border);
+}
+
+.settings-name-save {
+  padding: 0 20px;
+  height: 42px;
+  border: none;
+  border-radius: 21px;
+  background: var(--header-bg);
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.settings-name-save:hover {
+  filter: brightness(0.93);
+}
+
+/* 期限切れ募集一覧 */
+.expired-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.expired-post-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--content-bg);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.expired-post-item:hover {
+  background: #D0EAE8;
+}
+
+.expired-post-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.expired-post-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expired-post-meta {
+  font-size: 12px;
+  color: #7A9CA0;
+  margin-top: 2px;
+}
+
+.expired-posts-empty {
+  text-align: center;
+  padding: 24px;
+  color: #7A9CA0;
+  font-size: 14px;
+}
+
 /* ================= 文字数カウンター ================= */
 .char-counter {
   display: block;

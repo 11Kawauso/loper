@@ -46,6 +46,7 @@ const basePosts = [
     date: '2026年06月01日',
     likes: 24,
     images: [],
+    deadlineDays: 60,
   },
   {
     category: 'app',
@@ -55,6 +56,7 @@ const basePosts = [
     date: '2026年06月02日',
     likes: 11,
     images: [],
+    deadlineDays: 45,
   },
   {
     category: 'site',
@@ -64,6 +66,7 @@ const basePosts = [
     date: '2026年06月03日',
     likes: 8,
     images: [],
+    deadlineDays: 30,
   },
   {
     category: 'video',
@@ -73,6 +76,7 @@ const basePosts = [
     date: '2026年06月04日',
     likes: 35,
     images: [],
+    deadlineDays: 14,
   },
   {
     category: 'game',
@@ -82,6 +86,7 @@ const basePosts = [
     date: '2026年06月05日',
     likes: 19,
     images: [],
+    deadlineDays: 90,
   },
   {
     category: 'app',
@@ -91,6 +96,7 @@ const basePosts = [
     date: '2026年06月06日',
     likes: 6,
     images: [],
+    deadlineDays: 10,
   },
   {
     category: 'site',
@@ -100,6 +106,7 @@ const basePosts = [
     date: '2026年06月07日',
     likes: 14,
     images: [],
+    deadlineDays: 30,
   },
   {
     category: 'video',
@@ -109,6 +116,7 @@ const basePosts = [
     date: '2026年06月08日',
     likes: 27,
     images: [],
+    deadlineDays: 7,
   },
   {
     category: 'game',
@@ -118,6 +126,7 @@ const basePosts = [
     date: '2026年06月09日',
     likes: 42,
     images: [],
+    deadlineDays: 60,
   },
   {
     category: 'app',
@@ -127,6 +136,7 @@ const basePosts = [
     date: '2026年06月10日',
     likes: 9,
     images: [],
+    deadlineDays: 30,
   },
 ];
 
@@ -230,6 +240,13 @@ function cacheElements() {
   els.postTagDisplayText = document.getElementById('postTagDisplayText');
   els.postTagSelector = document.getElementById('postTagSelector');
   els.postTagsInput = document.getElementById('postTagsInput');
+  els.postDeadlineInput = document.getElementById('postDeadlineInput');
+
+  els.settingsOverlay = document.getElementById('settingsOverlay');
+  els.settingsCloseBtn = document.getElementById('settingsCloseBtn');
+  els.settingsNameInput = document.getElementById('settingsNameInput');
+  els.settingsNameSave = document.getElementById('settingsNameSave');
+  els.expiredPostsList = document.getElementById('expiredPostsList');
 
   els.toast = document.getElementById('toast');
 
@@ -280,6 +297,7 @@ function init() {
   setupDetailModal();
   setupPostModal();
   setupInfiniteScroll();
+  setupSettings();
   setupFirebase();
 }
 
@@ -298,6 +316,8 @@ function generatePostsBatch(count) {
       description: template.description,
       tags: template.tags.slice(),
       date: template.date,
+      createdAt: parseDateString(template.date),
+      deadlineDays: template.deadlineDays,
       likes: template.likes,
       liked: false,
       images: template.images.slice(),
@@ -324,13 +344,34 @@ function loadMorePosts() {
 }
 
 /* =========================================================
+   期限判定
+   ========================================================= */
+function parseDateString(dateStr) {
+  const m = dateStr.match(/(\d{4})年(\d{2})月(\d{2})日/);
+  if (!m) return new Date();
+  return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+}
+
+function isPostExpired(post) {
+  if (!post.createdAt || !post.deadlineDays) return false;
+  const deadline = new Date(post.createdAt);
+  deadline.setDate(deadline.getDate() + post.deadlineDays);
+  return new Date() > deadline;
+}
+
+function getExpiredPosts() {
+  return state.allPosts.filter(post => isPostExpired(post));
+}
+
+/* =========================================================
    フィルタリング
    ========================================================= */
 function getFilteredPosts() {
   const keyword = state.searchKeyword.trim().toLowerCase();
 
   return state.allPosts.filter((post) => {
-    // 検索キーワードがある場合はカテゴリ・ピン条件を無視して検索のみ適用
+    if (isPostExpired(post)) return false;
+
     if (keyword) {
       const inTitle = post.title.toLowerCase().includes(keyword);
       const inTags = post.tags.some((t) => t.toLowerCase().includes(keyword));
@@ -1081,6 +1122,7 @@ function setupPostModal() {
       .filter((t) => t.length > 0);
     const tags = [...postSelectedTags, ...freeTags];
     const description = els.postDescInput.value.trim() || '詳細はまだ記入されていません。';
+    const deadlineDays = Math.min(365, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
 
     const finishCreatingPost = (images) => {
       const newPost = {
@@ -1090,6 +1132,8 @@ function setupPostModal() {
         description: description,
         tags: tags.length > 0 ? tags : ['未設定'],
         date: formatDate(new Date()),
+        createdAt: new Date(),
+        deadlineDays: deadlineDays,
         likes: 0,
         liked: false,
         images: images,
@@ -1215,9 +1259,8 @@ function setupProfilePanel() {
     if (e.target === els.profileOverlay) closeProfilePanel();
   });
 
-  // 設定ボタン（このデモでは未実装）
   els.profileSettingsBtn.addEventListener('click', () => {
-    showToast('設定画面へ移行します（このデモでは未実装です）');
+    openSettings();
   });
 
   // アイコンクリックでファイル選択 → トリムモーダルへ
@@ -1451,6 +1494,80 @@ function showToast(message) {
   toastTimer = setTimeout(() => {
     els.toast.classList.remove('show');
   }, 2200);
+}
+
+/* =========================================================
+   Firebase：認証 & Firestore
+   ========================================================= */
+/* =========================================================
+   設定画面
+   ========================================================= */
+function setupSettings() {
+  els.settingsCloseBtn.addEventListener('click', closeSettings);
+  els.settingsOverlay.addEventListener('click', (e) => {
+    if (e.target === els.settingsOverlay) closeSettings();
+  });
+
+  els.settingsNameSave.addEventListener('click', () => {
+    const newName = els.settingsNameInput.value.trim();
+    if (!newName) return;
+    state.profile.name = newName;
+    els.profileNameInput.value = newName;
+    renderPosts();
+    debouncedSaveProfile();
+    showToast('名前を変更しました');
+  });
+}
+
+function openSettings() {
+  els.settingsNameInput.value = state.profile.name;
+  renderExpiredPosts();
+  els.settingsOverlay.classList.add('show');
+}
+
+function closeSettings() {
+  els.settingsOverlay.classList.remove('show');
+}
+
+function renderExpiredPosts() {
+  const expired = getExpiredPosts();
+  els.expiredPostsList.innerHTML = '';
+
+  if (expired.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'expired-posts-empty';
+    empty.textContent = '期限切れの募集はありません';
+    els.expiredPostsList.appendChild(empty);
+    return;
+  }
+
+  expired.forEach((post) => {
+    const item = document.createElement('div');
+    item.className = 'expired-post-item';
+    item.addEventListener('click', () => {
+      closeSettings();
+      openDetailModal(post);
+    });
+
+    const info = document.createElement('div');
+    info.className = 'expired-post-info';
+
+    const title = document.createElement('div');
+    title.className = 'expired-post-title';
+    title.textContent = post.title;
+
+    const deadline = new Date(post.createdAt);
+    deadline.setDate(deadline.getDate() + post.deadlineDays);
+
+    const meta = document.createElement('div');
+    meta.className = 'expired-post-meta';
+    meta.textContent = post.date + ' ／ 期限 ' + formatDate(deadline);
+
+    info.appendChild(title);
+    info.appendChild(meta);
+    item.appendChild(info);
+    els.expiredPostsList.appendChild(item);
+  });
 }
 
 /* =========================================================
