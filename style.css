@@ -380,6 +380,27 @@ button {
   color: var(--category-text-color);
 }
 
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menu-list-item {
+  display: block;
+  padding: 14px 18px;
+  font-size: 15px;
+  color: var(--category-text-color);
+  text-decoration: none;
+  border-radius: 10px;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.menu-list-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 /* ================= カテゴリ・タグバー ================= */
 .category-tag-bar {
   display: flex;
