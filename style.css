@@ -630,6 +630,7 @@ button {
 .category-item[data-category="app"] .category-item-arrow   { color: var(--card-border-app); }
 .category-item[data-category="site"] .category-item-arrow  { color: var(--card-border-site); }
 .category-item[data-category="video"] .category-item-arrow { color: #B0B0B0; }
+.category-item[data-category="pin"] .category-item-arrow   { color: #D03030; }
 
 .pin-section {
   border-top: 1px solid var(--sidebar-border);
