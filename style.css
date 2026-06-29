@@ -601,6 +601,36 @@ button {
   flex-shrink: 0;
 }
 
+.category-item-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.category-item-arrow {
+  font-size: 20px;
+  font-weight: bold;
+  flex-shrink: 0;
+  line-height: 1;
+  display: none;
+}
+
+.category-item.active .category-item-arrow {
+  display: block;
+}
+
+.category-item.active .category-item-label {
+  text-align: center;
+}
+
+/* カテゴリ別の矢印カラー */
+.category-item[data-category="all"] .category-item-arrow   { color: #D4B830; }
+.category-item[data-category="game"] .category-item-arrow  { color: var(--card-border-game); }
+.category-item[data-category="app"] .category-item-arrow   { color: var(--card-border-app); }
+.category-item[data-category="site"] .category-item-arrow  { color: var(--card-border-site); }
+.category-item[data-category="video"] .category-item-arrow { color: #B0B0B0; }
+
 .pin-section {
   border-top: 1px solid var(--sidebar-border);
   padding: 10px 0;
