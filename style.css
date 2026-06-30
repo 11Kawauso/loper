@@ -307,6 +307,7 @@ button {
   width: 300px;
   max-width: 80%;
   background: var(--sidebar-bg);
+  border-radius: 28px 0 0 28px;
   padding: 22px 24px 28px;
   display: flex;
   flex-direction: column;
