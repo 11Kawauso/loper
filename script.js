@@ -1326,8 +1326,12 @@ function applyProfileAvatar() {
 }
 
 function setupProfilePanel() {
-  // ×ボタン・背景クリックでメイン画面へ戻る
-  els.profileCloseBtn.addEventListener('click', closeProfilePanel);
+  // ×ボタンでメニュー画面へ戻る
+  els.profileCloseBtn.addEventListener('click', () => {
+    closeProfilePanel();
+    openMenu();
+  });
+  // 背景クリックで一気にメイン画面へ戻る
   els.profileOverlay.addEventListener('click', (e) => {
     if (e.target === els.profileOverlay) closeProfilePanel();
   });
