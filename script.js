@@ -606,6 +606,7 @@ function createAdCard() {
   iframe.frameBorder = '0';
   iframe.scrolling = 'no';
   iframe.style.maxWidth = '100%';
+  iframe.sandbox = 'allow-scripts allow-popups';
   iframe.src = 'ad.html';
 
   ad.appendChild(label);
