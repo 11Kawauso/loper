@@ -744,6 +744,81 @@ button {
   gap: 10px;
 }
 
+/* ================= 投稿カード「…」メニュー ================= */
+.post-more-wrap {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.post-more-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: var(--content-bg);
+  color: var(--text-dark);
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.post-more-btn:hover {
+  background: #CDE7E5;
+}
+
+.post-more-btn.report {
+  background: #FBDADA;
+  color: #C72E2E;
+}
+
+.post-more-btn.report:hover {
+  background: #F6C0C0;
+}
+
+.post-more-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 150px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  padding: 6px 0;
+  z-index: 20;
+}
+
+.post-more-menu.open {
+  display: block;
+}
+
+.post-more-menu-item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+
+.post-more-menu-item:hover {
+  background: var(--content-bg);
+}
+
+.post-more-menu-item.danger {
+  color: #D03030;
+}
+
 .post-avatar {
   width: 32px;
   height: 32px;
@@ -1601,6 +1676,22 @@ button {
 }
 
 /* ================= ログイン促進モーダル ================= */
+.deadline-edit-modal {
+  background: #fff;
+  border-radius: 18px;
+  width: 90%;
+  max-width: 380px;
+  padding: 28px;
+  position: relative;
+}
+
+.deadline-edit-message {
+  font-size: 13px;
+  color: #7A9CA0;
+  margin: -6px 0 16px;
+  line-height: 1.6;
+}
+
 .login-prompt-modal {
   background: #fff;
   border-radius: 18px;

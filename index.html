@@ -176,7 +176,7 @@
 <div class="modal-overlay" id="postModalOverlay">
   <div class="modal post-modal cat-game" id="postModal">
     <button class="modal-close" id="postModalClose">×</button>
-    <h2 class="modal-title">投稿を作成</h2>
+    <h2 class="modal-title" id="postModalTitle">投稿を作成</h2>
 
     <form id="postForm">
       <div class="form-group">
@@ -226,7 +226,7 @@
         <input type="text" id="postTagsInput" placeholder="例：チーム募集,週末開発">
       </div>
 
-      <div class="form-group">
+      <div class="form-group" id="postDeadlineGroup">
         <label for="postDeadlineInput">募集期限</label>
         <div class="deadline-input-wrap">
           <input type="number" id="postDeadlineInput" min="1" max="365" value="30">
@@ -234,7 +234,7 @@
         </div>
       </div>
 
-      <button type="submit" class="form-submit">投稿する</button>
+      <button type="submit" class="form-submit" id="postSubmitBtn">投稿する</button>
     </form>
   </div>
 </div>
@@ -273,6 +273,31 @@
       <button class="confirm-btn ok" id="logoutConfirmOk">OK</button>
       <button class="confirm-btn cancel" id="logoutConfirmCancel">キャンセル</button>
     </div>
+  </div>
+</div>
+
+<!-- 汎用確認モーダル（投稿削除など） -->
+<div class="confirm-overlay" id="genericConfirmOverlay">
+  <div class="confirm-modal">
+    <p class="confirm-message" id="genericConfirmMessage"></p>
+    <div class="confirm-actions">
+      <button class="confirm-btn ok" id="genericConfirmOk">OK</button>
+      <button class="confirm-btn cancel" id="genericConfirmCancel">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 期限変更モーダル -->
+<div class="modal-overlay" id="deadlineEditOverlay">
+  <div class="deadline-edit-modal">
+    <button class="modal-close" id="deadlineEditClose">×</button>
+    <h2 class="modal-title">募集期限を変更</h2>
+    <p class="deadline-edit-message">本日から数えて、何日間募集を続けますか？</p>
+    <div class="deadline-input-wrap">
+      <input type="number" id="deadlineEditInput" min="1" max="365" value="30">
+      <span class="deadline-unit">日間</span>
+    </div>
+    <button class="form-submit" id="deadlineEditSave" type="button">変更する</button>
   </div>
 </div>
 
@@ -394,7 +419,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
   import { getAuth, GithubAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAp7tJpiTHP27bKIK5orCivTqvzalIZWGw",
@@ -412,7 +437,7 @@
   window._firebase = {
     auth, db,
     GithubAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
-    doc, setDoc, getDoc,
+    doc, setDoc, getDoc, collection, addDoc,
   };
 </script>
 </body>

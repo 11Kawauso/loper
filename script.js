@@ -196,6 +196,9 @@ const state = {
 let postSelectedTags = new Set();
 let postSelectedFiles = [];
 let previewUrls = [];
+let postExistingImages = [];
+let editingPostId = null;
+let editingDeadlinePostId = null;
 
 const CROP_SIZE = 280;    // トリムコンテナのサイズ（px）
 const CROP_RADIUS = 120;  // トリム円の半径（px）
@@ -275,6 +278,19 @@ function cacheElements() {
   els.postTagSelector = document.getElementById('postTagSelector');
   els.postTagsInput = document.getElementById('postTagsInput');
   els.postDeadlineInput = document.getElementById('postDeadlineInput');
+  els.postDeadlineGroup = document.getElementById('postDeadlineGroup');
+  els.postModalTitle = document.getElementById('postModalTitle');
+  els.postSubmitBtn = document.getElementById('postSubmitBtn');
+
+  els.genericConfirmOverlay = document.getElementById('genericConfirmOverlay');
+  els.genericConfirmMessage = document.getElementById('genericConfirmMessage');
+  els.genericConfirmOk = document.getElementById('genericConfirmOk');
+  els.genericConfirmCancel = document.getElementById('genericConfirmCancel');
+
+  els.deadlineEditOverlay = document.getElementById('deadlineEditOverlay');
+  els.deadlineEditClose = document.getElementById('deadlineEditClose');
+  els.deadlineEditInput = document.getElementById('deadlineEditInput');
+  els.deadlineEditSave = document.getElementById('deadlineEditSave');
 
   els.settingsOverlay = document.getElementById('settingsOverlay');
   els.settingsCloseBtn = document.getElementById('settingsCloseBtn');
@@ -331,6 +347,8 @@ function init() {
   setupPostModal();
   setupInfiniteScroll();
   setupSettings();
+  setupGenericConfirm();
+  setupDeadlineEditModal();
   setupFirebase();
 }
 
@@ -355,6 +373,7 @@ function generatePostsBatch(count) {
       liked: false,
       images: template.images.slice(),
       pinned: INITIAL_PINNED_INDEXES.includes((id - 1) % basePosts.length) && id <= basePosts.length,
+      authorUid: null,
     });
     state.nextId++;
   }
@@ -524,6 +543,8 @@ function createPostCard(post) {
   author.textContent = state.profile.name || '名前';
   header.appendChild(author);
 
+  header.appendChild(createPostMoreMenu(post));
+
   card.appendChild(header);
 
   // タイトル（太字）
@@ -582,6 +603,116 @@ function createPostCard(post) {
   card.addEventListener('click', () => openDetailModal(post));
 
   return card;
+}
+
+/* =========================================================
+   投稿カード「…」メニュー（自分の投稿＝編集/期限変更/削除、他人の投稿＝通報）
+   ========================================================= */
+function isOwnPost(post) {
+  return !!(state.currentUser && post.authorUid && post.authorUid === state.currentUser.uid);
+}
+
+function closeAllPostMenus() {
+  document.querySelectorAll('.post-more-menu.open').forEach((menu) => menu.classList.remove('open'));
+}
+
+function createPostMoreMenu(post) {
+  const wrap = document.createElement('div');
+  wrap.className = 'post-more-wrap';
+
+  const own = isOwnPost(post);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'post-more-btn' + (own ? '' : ' report');
+  btn.textContent = '…';
+  btn.title = own ? '投稿の操作' : 'この投稿を通報';
+
+  const menu = document.createElement('div');
+  menu.className = 'post-more-menu';
+
+  if (own) {
+    menu.appendChild(createPostMoreMenuItem('編集', false, (e) => {
+      e.stopPropagation();
+      closeAllPostMenus();
+      openEditPostModal(post);
+    }));
+    menu.appendChild(createPostMoreMenuItem('期限変更', false, (e) => {
+      e.stopPropagation();
+      closeAllPostMenus();
+      openDeadlineEditModal(post);
+    }));
+    menu.appendChild(createPostMoreMenuItem('削除', true, (e) => {
+      e.stopPropagation();
+      closeAllPostMenus();
+      showGenericConfirm('この投稿を削除しますか？', () => {
+        state.allPosts = state.allPosts.filter((p) => p.id !== post.id);
+        renderPosts();
+        showToast('投稿を削除しました');
+      });
+    }));
+  } else {
+    const reasons = [
+      { label: '不適切な投稿', value: 'inappropriate' },
+      { label: 'スパム', value: 'spam' },
+      { label: 'その他', value: 'other' },
+    ];
+    reasons.forEach((r) => {
+      menu.appendChild(createPostMoreMenuItem(r.label, true, (e) => {
+        e.stopPropagation();
+        closeAllPostMenus();
+        reportPost(post, r.value);
+      }));
+    });
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = !menu.classList.contains('open');
+    closeAllPostMenus();
+    menu.classList.toggle('open', willOpen);
+  });
+
+  wrap.appendChild(btn);
+  wrap.appendChild(menu);
+  return wrap;
+}
+
+function createPostMoreMenuItem(label, danger, onClick) {
+  const item = document.createElement('button');
+  item.type = 'button';
+  item.className = 'post-more-menu-item' + (danger ? ' danger' : '');
+  item.textContent = label;
+  item.addEventListener('click', onClick);
+  return item;
+}
+
+document.addEventListener('click', () => closeAllPostMenus());
+
+/* 通報をFirestoreのreportsコレクションへ保存 */
+async function reportPost(post, reason) {
+  if (!state.currentUser) {
+    showLoginPrompt();
+    return;
+  }
+  const fb = window._firebase;
+  if (!fb) {
+    showToast('通報機能が利用できません');
+    return;
+  }
+  try {
+    await fb.addDoc(fb.collection(fb.db, 'reports'), {
+      postId: String(post.id),
+      postTitle: post.title,
+      reason: reason,
+      reporterUid: state.currentUser.uid,
+      createdAt: new Date().toISOString(),
+    });
+    showToast('通報しました。ご協力ありがとうございます');
+  } catch (err) {
+    console.error('Firestore report error:', err);
+    showToast('通報に失敗しました');
+  }
 }
 
 /* いいねのトグル */
@@ -1064,21 +1195,62 @@ function setupPostButton() {
       showLoginPrompt();
       return;
     }
-    els.postForm.reset();
-    postSelectedTags = new Set();
-    postSelectedFiles = [];
-    previewUrls.forEach(url => URL.revokeObjectURL(url));
-    previewUrls = [];
-    els.imagePreviewContainer.innerHTML = '';
-    els.titleCharCounter.textContent = '0 / 30';
-    els.titleCharCounter.className = 'char-counter';
-    els.descCharCounter.textContent = '0 / 500';
-    els.descCharCounter.className = 'char-counter';
-    updateFileInputDisplay();
-    updatePostModalBorder();
-    renderPostTagSelector();
+    resetPostForm();
+    els.postModalTitle.textContent = '投稿を作成';
+    els.postSubmitBtn.textContent = '投稿する';
+    els.postDeadlineGroup.style.display = '';
     els.postModalOverlay.classList.add('show');
   });
+}
+
+/* フォームを新規投稿用の初期状態にリセット */
+function resetPostForm() {
+  editingPostId = null;
+  els.postForm.reset();
+  postSelectedTags = new Set();
+  postSelectedFiles = [];
+  postExistingImages = [];
+  previewUrls.forEach(url => URL.revokeObjectURL(url));
+  previewUrls = [];
+  els.imagePreviewContainer.innerHTML = '';
+  els.titleCharCounter.textContent = '0 / 30';
+  els.titleCharCounter.className = 'char-counter';
+  els.descCharCounter.textContent = '0 / 500';
+  els.descCharCounter.className = 'char-counter';
+  updateFileInputDisplay();
+  updatePostModalBorder();
+  renderPostTagSelector();
+}
+
+/* 既存の投稿を編集モードでフォームに反映 */
+function openEditPostModal(post) {
+  resetPostForm();
+  editingPostId = post.id;
+
+  els.postTitleInput.value = post.title;
+  els.postTitleInput.dispatchEvent(new Event('input'));
+
+  els.postCategoryInput.value = post.category;
+  updatePostModalBorder();
+
+  els.postDescInput.value = post.description;
+  els.postDescInput.dispatchEvent(new Event('input'));
+
+  const knownTags = post.tags.filter((t) => (CATEGORY_TAGS.all || []).includes(t));
+  const freeTags = post.tags.filter((t) => !(CATEGORY_TAGS.all || []).includes(t));
+  postSelectedTags = new Set(knownTags);
+  els.postTagsInput.value = freeTags.join(',');
+  renderPostTagSelector();
+
+  postExistingImages = (post.images || []).slice();
+  updateImagePreviews();
+  updateFileInputDisplay();
+
+  els.postModalTitle.textContent = '投稿を編集';
+  els.postSubmitBtn.textContent = '更新する';
+  els.postDeadlineGroup.style.display = 'none';
+
+  els.postModalOverlay.classList.add('show');
 }
 
 /* 現在日時を「yyyy年mm月dd日」形式に変換 */
@@ -1136,7 +1308,7 @@ function setupPostModal() {
   // 画像選択
   els.postImageInput.addEventListener('change', (e) => {
     const newFiles = [...e.target.files];
-    const remaining = 4 - postSelectedFiles.length;
+    const remaining = 4 - (postExistingImages.length + postSelectedFiles.length);
     if (remaining > 0) {
       postSelectedFiles = [...postSelectedFiles, ...newFiles.slice(0, remaining)];
     }
@@ -1173,9 +1345,27 @@ function setupPostModal() {
       .filter((t) => t.length > 0);
     const tags = [...postSelectedTags, ...freeTags];
     const description = els.postDescInput.value.trim() || '詳細はまだ記入されていません。';
-    const deadlineDays = Math.min(365, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
 
-    const finishCreatingPost = (images) => {
+    const finishSaving = (newImages) => {
+      const images = [...postExistingImages, ...newImages].slice(0, 4);
+
+      if (editingPostId !== null) {
+        const post = state.allPosts.find((p) => p.id === editingPostId);
+        if (post) {
+          post.category = category;
+          post.title = title;
+          post.description = description;
+          post.tags = tags.length > 0 ? tags : ['未設定'];
+          post.images = images;
+        }
+        editingPostId = null;
+        renderPosts();
+        closePostModal();
+        showToast('投稿を更新しました');
+        return;
+      }
+
+      const deadlineDays = Math.min(365, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
       const newPost = {
         id: state.nextId,
         category: category,
@@ -1189,6 +1379,7 @@ function setupPostModal() {
         liked: false,
         images: images,
         pinned: false,
+        authorUid: state.currentUser ? state.currentUser.uid : null,
       };
       state.nextId++;
 
@@ -1200,15 +1391,15 @@ function setupPostModal() {
       showToast('投稿を作成しました');
     };
 
-    const imageFiles = postSelectedFiles.slice(0, 4);
+    const imageFiles = postSelectedFiles.slice(0, 4 - postExistingImages.length);
     if (imageFiles.length > 0) {
       Promise.all(imageFiles.map((file) => new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (ev) => resolve(ev.target.result);
         reader.readAsDataURL(file);
-      }))).then((images) => finishCreatingPost(images));
+      }))).then((images) => finishSaving(images));
     } else {
-      finishCreatingPost([]);
+      finishSaving([]);
     }
   });
 }
@@ -1217,6 +1408,7 @@ function closePostModal() {
   els.postModalOverlay.classList.remove('show');
   els.postTagDropdownPanel.classList.remove('open');
   els.postTagDropdown.classList.remove('open');
+  editingPostId = null;
 }
 
 function updatePostModalBorder() {
@@ -1235,7 +1427,7 @@ function updatePostTagDisplayText() {
 }
 
 function updateFileInputDisplay() {
-  const count = postSelectedFiles.length;
+  const count = postExistingImages.length + postSelectedFiles.length;
   if (count === 0) {
     els.fileInputDisplay.textContent = 'ファイルが選択されていません';
     els.fileInputDisplay.setAttribute('for', 'postImageInput');
@@ -1252,6 +1444,29 @@ function updateImagePreviews() {
   previewUrls.forEach(url => URL.revokeObjectURL(url));
   previewUrls = [];
   els.imagePreviewContainer.innerHTML = '';
+
+  postExistingImages.forEach((url, i) => {
+    const item = document.createElement('div');
+    item.className = 'image-preview-item';
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = '';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'image-preview-remove';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => {
+      postExistingImages.splice(i, 1);
+      updateImagePreviews();
+      updateFileInputDisplay();
+    });
+
+    item.appendChild(img);
+    item.appendChild(removeBtn);
+    els.imagePreviewContainer.appendChild(item);
+  });
 
   postSelectedFiles.forEach((file, i) => {
     const url = URL.createObjectURL(file);
@@ -1739,6 +1954,67 @@ function showIconDeleteConfirm() {
     debouncedSaveProfile();
   }, { once: true });
   cancel.addEventListener('click', close, { once: true });
+}
+
+/* =========================================================
+   汎用確認モーダル（投稿削除など）
+   ========================================================= */
+function setupGenericConfirm() {
+  els.genericConfirmOverlay.addEventListener('click', (e) => {
+    if (e.target === els.genericConfirmOverlay) els.genericConfirmOverlay.classList.remove('show');
+  });
+}
+
+function showGenericConfirm(message, onConfirm) {
+  els.genericConfirmMessage.textContent = message;
+  els.genericConfirmOverlay.classList.add('show');
+
+  const ok = document.getElementById('genericConfirmOk');
+  const cancel = document.getElementById('genericConfirmCancel');
+
+  const close = () => {
+    els.genericConfirmOverlay.classList.remove('show');
+    ok.replaceWith(ok.cloneNode(true));
+    cancel.replaceWith(cancel.cloneNode(true));
+  };
+
+  ok.addEventListener('click', () => { close(); onConfirm(); }, { once: true });
+  cancel.addEventListener('click', close, { once: true });
+}
+
+/* =========================================================
+   募集期限の変更モーダル
+   ========================================================= */
+function openDeadlineEditModal(post) {
+  editingDeadlinePostId = post.id;
+  els.deadlineEditInput.value = post.deadlineDays || 30;
+  els.deadlineEditOverlay.classList.add('show');
+}
+
+function closeDeadlineEditModal() {
+  editingDeadlinePostId = null;
+  els.deadlineEditOverlay.classList.remove('show');
+}
+
+function setupDeadlineEditModal() {
+  els.deadlineEditClose.addEventListener('click', closeDeadlineEditModal);
+  els.deadlineEditOverlay.addEventListener('click', (e) => {
+    if (e.target === els.deadlineEditOverlay) closeDeadlineEditModal();
+  });
+
+  els.deadlineEditSave.addEventListener('click', () => {
+    const post = state.allPosts.find((p) => p.id === editingDeadlinePostId);
+    if (!post) {
+      closeDeadlineEditModal();
+      return;
+    }
+    const days = Math.min(365, Math.max(1, parseInt(els.deadlineEditInput.value) || 30));
+    post.createdAt = new Date();
+    post.deadlineDays = days;
+    closeDeadlineEditModal();
+    renderPosts();
+    showToast('募集期限を変更しました');
+  });
 }
 
 async function loginWithGithub() {
