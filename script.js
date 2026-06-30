@@ -249,6 +249,7 @@ function cacheElements() {
   els.detailModalClose = document.getElementById('detailModalClose');
   els.detailAvatar = document.getElementById('detailAvatar');
   els.detailAuthor = document.getElementById('detailAuthor');
+  els.detailMoreMenuWrap = document.getElementById('detailMoreMenuWrap');
   els.detailTitle = document.getElementById('detailTitle');
   els.detailImageBox = document.getElementById('detailImageBox');
   els.lightboxOverlay = document.getElementById('lightboxOverlay');
@@ -543,8 +544,6 @@ function createPostCard(post) {
   author.textContent = state.profile.name || '名前';
   header.appendChild(author);
 
-  header.appendChild(createPostMoreMenu(post));
-
   card.appendChild(header);
 
   // タイトル（太字）
@@ -635,11 +634,13 @@ function createPostMoreMenu(post) {
     menu.appendChild(createPostMoreMenuItem('編集', false, (e) => {
       e.stopPropagation();
       closeAllPostMenus();
+      closeDetailModal();
       openEditPostModal(post);
     }));
     menu.appendChild(createPostMoreMenuItem('期限変更', false, (e) => {
       e.stopPropagation();
       closeAllPostMenus();
+      closeDetailModal();
       openDeadlineEditModal(post);
     }));
     menu.appendChild(createPostMoreMenuItem('削除', true, (e) => {
@@ -647,6 +648,7 @@ function createPostMoreMenu(post) {
       closeAllPostMenus();
       showGenericConfirm('この投稿を削除しますか？', () => {
         state.allPosts = state.allPosts.filter((p) => p.id !== post.id);
+        closeDetailModal();
         renderPosts();
         showToast('投稿を削除しました');
       });
@@ -1132,6 +1134,9 @@ function openDetailModal(post) {
     ? 'url(' + state.profile.avatarUrl + ')'
     : '';
   els.detailAuthor.textContent = state.profile.name || '名前';
+
+  els.detailMoreMenuWrap.innerHTML = '';
+  els.detailMoreMenuWrap.appendChild(createPostMoreMenu(post));
 
   els.detailTitle.textContent = post.title;
 
