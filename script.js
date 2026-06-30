@@ -230,7 +230,6 @@ function cacheElements() {
 
   els.searchInput = document.getElementById('searchInput');
   els.searchBtn = document.getElementById('searchBtn');
-  els.clearTagsBtn = document.getElementById('clearTagsBtn');
   els.selectedTagsDropdown = document.getElementById('selectedTagsDropdown');
   els.selectedTagsLabel = document.getElementById('selectedTagsLabel');
   els.selectedTagsPulldown = document.getElementById('selectedTagsPulldown');
@@ -320,7 +319,6 @@ function init() {
   setupPulldown();
   setupTagPanelToggle();
   setupTagListEvents();
-  setupClearTagsBtn();
   setupSelectedTagsDropdown();
   setupPinSection();
   setupPostButton();
@@ -794,11 +792,21 @@ function setupTagListEvents() {
    ========================================================= */
 function updateClearTagsBtn() {
   const hasTags = state.activeTags.size > 0;
-  els.clearTagsBtn.classList.toggle('has-tags', hasTags);
   els.selectedTagsDropdown.classList.toggle('has-tags', hasTags);
   els.selectedTagsLabel.textContent = hasTags
     ? '選択タグ (' + state.activeTags.size + ')'
     : '選択タグ';
+}
+
+function clearAllTags() {
+  state.activeTags = new Set();
+  updateClearTagsBtn();
+  renderTagList();
+  if (els.tagPanel.classList.contains('open')) {
+    renderTagPanel();
+  }
+  renderPosts();
+  renderSelectedTagsPulldown();
 }
 
 function renderSelectedTagsPulldown() {
@@ -810,6 +818,17 @@ function renderSelectedTagsPulldown() {
     els.selectedTagsPulldown.appendChild(empty);
     return;
   }
+
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'selected-tags-pulldown-clear';
+  clearBtn.textContent = 'すべて削除';
+  clearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearAllTags();
+  });
+  els.selectedTagsPulldown.appendChild(clearBtn);
+
   state.activeTags.forEach((tag) => {
     const item = document.createElement('div');
     item.className = 'selected-tags-pulldown-item';
@@ -851,20 +870,6 @@ function setupSelectedTagsDropdown() {
       els.selectedTagsDropdown.classList.remove('open');
       els.selectedTagsPulldown.classList.remove('open');
     }
-  });
-}
-
-function setupClearTagsBtn() {
-  els.clearTagsBtn.addEventListener('click', () => {
-    state.activeTags = new Set();
-    updateClearTagsBtn();
-    els.selectedTagsDropdown.classList.remove('open');
-    els.selectedTagsPulldown.classList.remove('open');
-    renderTagList();
-    if (els.tagPanel.classList.contains('open')) {
-      renderTagPanel();
-    }
-    renderPosts();
   });
 }
 
