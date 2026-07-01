@@ -488,13 +488,27 @@ button {
   white-space: nowrap;
 }
 
-.pulldown-item:hover {
+.pulldown-item:hover,
+.sort-pulldown-item:hover {
   background: var(--content-bg);
 }
 
-.pulldown-item.active {
+.pulldown-item.active,
+.sort-pulldown-item.active {
   background: var(--tag-pill-bg);
   font-weight: bold;
+}
+
+.sort-pulldown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: normal;
+  color: var(--text-dark);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .tag-list {

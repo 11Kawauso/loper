@@ -182,6 +182,7 @@ const state = {
   activeTags: new Set(),
   showPinnedOnly: false,
   searchKeyword: '',
+  sortOrder: 'newest',
   loading: false,
   reachedEnd: false,
   currentUser: null,
@@ -234,6 +235,11 @@ function cacheElements() {
 
   els.searchInput = document.getElementById('searchInput');
   els.searchBtn = document.getElementById('searchBtn');
+  els.sortDropdown = document.getElementById('sortDropdown');
+  els.sortCurrentLabel = document.getElementById('sortCurrentLabel');
+  els.sortPulldown = document.getElementById('sortPulldown');
+  els.sortPulldownItems = document.querySelectorAll('.sort-pulldown-item');
+
   els.selectedTagsDropdown = document.getElementById('selectedTagsDropdown');
   els.selectedTagsLabel = document.getElementById('selectedTagsLabel');
   els.selectedTagsPulldown = document.getElementById('selectedTagsPulldown');
@@ -338,6 +344,7 @@ function init() {
 
   setupCategorySidebar();
   setupPulldown();
+  setupSortDropdown();
   setupTagPanelToggle();
   setupTagListEvents();
   setupSelectedTagsDropdown();
@@ -426,7 +433,7 @@ function getExpiredPosts() {
 function getFilteredPosts() {
   const keyword = state.searchKeyword.trim().toLowerCase();
 
-  return state.allPosts.filter((post) => {
+  const filtered = state.allPosts.filter((post) => {
     if (isPostExpired(post)) return false;
 
     if (keyword) {
@@ -445,6 +452,8 @@ function getFilteredPosts() {
 
     return true;
   });
+
+  return sortPosts(filtered);
 }
 
 /* =========================================================
@@ -788,6 +797,81 @@ function setupPulldown() {
 function closePulldown() {
   els.categoryDropdown.classList.remove('open');
   els.categoryPulldown.classList.remove('open');
+}
+
+/* =========================================================
+   並び替え
+   ========================================================= */
+const SORT_LABELS = {
+  newest: '新着順',
+  oldest: '古い順',
+  deadline_long: '期限が長い順',
+  deadline_short: '期限が短い順',
+};
+
+function setupSortDropdown() {
+  els.sortDropdown.addEventListener('click', (e) => {
+    if (e.target.closest('.sort-pulldown-item')) return;
+    const willOpen = !els.sortPulldown.classList.contains('open');
+    els.sortDropdown.classList.toggle('open', willOpen);
+    els.sortPulldown.classList.toggle('open', willOpen);
+  });
+
+  els.sortPulldownItems.forEach((item) => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectSortOrder(item.dataset.sort);
+      closeSortPulldown();
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!els.sortDropdown.contains(e.target)) {
+      closeSortPulldown();
+    }
+  });
+}
+
+function closeSortPulldown() {
+  els.sortDropdown.classList.remove('open');
+  els.sortPulldown.classList.remove('open');
+}
+
+function selectSortOrder(sortOrder) {
+  if (!sortOrder || state.sortOrder === sortOrder) return;
+  state.sortOrder = sortOrder;
+  els.sortCurrentLabel.textContent = SORT_LABELS[sortOrder];
+  els.sortPulldownItems.forEach((item) => {
+    item.classList.toggle('active', item.dataset.sort === sortOrder);
+  });
+  renderPosts();
+}
+
+function getPostDeadline(post) {
+  if (!post.createdAt || !post.deadlineDays) return null;
+  const deadline = new Date(post.createdAt);
+  deadline.setDate(deadline.getDate() + post.deadlineDays);
+  return deadline;
+}
+
+function sortPosts(posts) {
+  const sorted = posts.slice();
+  switch (state.sortOrder) {
+    case 'oldest':
+      sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      break;
+    case 'deadline_long':
+      sorted.sort((a, b) => (getPostDeadline(b) || 0) - (getPostDeadline(a) || 0));
+      break;
+    case 'deadline_short':
+      sorted.sort((a, b) => (getPostDeadline(a) || 0) - (getPostDeadline(b) || 0));
+      break;
+    case 'newest':
+    default:
+      sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      break;
+  }
+  return sorted;
 }
 
 /* 選んだカテゴリ名をクリックすると、タグ一覧パネルを開閉する
