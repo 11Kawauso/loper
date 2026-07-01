@@ -229,6 +229,11 @@ function cacheElements() {
   els.pulldownItems = document.querySelectorAll('.pulldown-item');
   els.pinItem = document.getElementById('pinItem');
 
+  els.sidebar = document.getElementById('sidebar');
+  els.sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+  els.sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+  els.sidebarOverlay = document.getElementById('sidebarOverlay');
+
   els.postButton = document.getElementById('postButton');
   els.contentArea = document.getElementById('contentArea');
   els.postsGrid = document.getElementById('postsGrid');
@@ -343,6 +348,7 @@ function init() {
   renderTagList();
 
   setupCategorySidebar();
+  setupSidebarToggle();
   setupPulldown();
   setupSortDropdown();
   setupTagPanelToggle();
@@ -769,6 +775,32 @@ function setupCategorySidebar() {
       selectCategory(item.dataset.category);
     });
   });
+}
+
+/* =========================================================
+   サイドバー（モバイル用スライド開閉）
+   ========================================================= */
+function setupSidebarToggle() {
+  els.sidebarToggleBtn.addEventListener('click', openSidebarDrawer);
+  els.sidebarCloseBtn.addEventListener('click', closeSidebarDrawer);
+  els.sidebarOverlay.addEventListener('click', closeSidebarDrawer);
+
+  els.sidebar.addEventListener('click', (e) => {
+    if (e.target === els.sidebarCloseBtn) return;
+    if (window.matchMedia('(max-width: 900px)').matches) {
+      closeSidebarDrawer();
+    }
+  });
+}
+
+function openSidebarDrawer() {
+  els.sidebar.classList.add('open');
+  els.sidebarOverlay.classList.add('show');
+}
+
+function closeSidebarDrawer() {
+  els.sidebar.classList.remove('open');
+  els.sidebarOverlay.classList.remove('show');
 }
 
 function setupPulldown() {

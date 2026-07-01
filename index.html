@@ -55,6 +55,12 @@
 
   <!-- カテゴリ・タグバー -->
   <div class="category-tag-bar">
+    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="カテゴリメニューを開く">
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+    </button>
+
     <div class="category-dropdown" id="categoryDropdown">
       <span class="category-current" id="categoryCurrent">すべて</span>
       <span class="dropdown-arrow">▽</span>
@@ -92,7 +98,10 @@
   <div class="body-container">
 
     <!-- サイドバー -->
-    <aside class="sidebar">
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="閉じる">×</button>
+
       <div class="category-list-section">
         <div class="category-list-header">カテゴリ 一覧</div>
 
