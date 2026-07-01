@@ -624,7 +624,7 @@ function createPostMoreMenu(post) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'post-more-btn' + (own ? '' : ' report');
-  btn.textContent = '…';
+  btn.textContent = '⋯';
   btn.title = own ? '投稿の操作' : 'この投稿を通報';
 
   const menu = document.createElement('div');
