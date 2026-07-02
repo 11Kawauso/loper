@@ -619,6 +619,8 @@ button {
 
 .sidebar-close-btn {
   display: none;
+  align-items: center;
+  justify-content: center;
   align-self: flex-end;
   margin: 10px 14px 0 0;
   width: 32px;
