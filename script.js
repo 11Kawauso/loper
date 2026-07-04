@@ -758,7 +758,7 @@ function createAdCard() {
   iframe.frameBorder = '0';
   iframe.scrolling = 'no';
   iframe.style.maxWidth = '100%';
-  iframe.sandbox = 'allow-scripts allow-popups';
+  iframe.sandbox = 'allow-scripts allow-popups allow-same-origin';
   iframe.src = 'ad.html';
 
   ad.appendChild(label);
