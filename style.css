@@ -162,6 +162,7 @@ button {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   height: 38px;
   padding: 0 14px;
@@ -174,6 +175,7 @@ button {
   user-select: none;
   transition: background 0.15s;
   flex-shrink: 0;
+  min-width: 140px;
 }
 
 .selected-tags-dropdown:hover {
@@ -2277,6 +2279,7 @@ button {
     font-size: 12px;
     padding: 0 10px;
     height: 34px;
+    min-width: 0;
   }
 
   .category-dropdown {
