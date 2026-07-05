@@ -207,7 +207,8 @@ const CROP_RADIUS = 120;  // トリム円の半径（px）
 const cropState = { scale: 1, minScale: 1, maxScale: 4, tx: 0, ty: 0, dragging: false, lastX: 0, lastY: 0 };
 
 const MAX_POSTS = 60;       // これ以上はロードしない
-const PAGE_SIZE = 4;        // 1回のスクロールで読み込む件数
+const INITIAL_PAGE_SIZE = 12; // 初回表示件数
+const PAGE_SIZE = 8;        // 1回のスクロールで読み込む件数
 const ADS_EVERY = 20;       // 何件ごとに広告を挟むか
 
 /* ---------------- DOM要素 ---------------- */
@@ -343,7 +344,7 @@ function cacheElements() {
 /* ---------------- 初期化 ---------------- */
 function init() {
   // 最初の投稿を読み込む
-  loadMorePosts();
+  loadMorePosts(INITIAL_PAGE_SIZE);
 
   renderTagList();
 
@@ -398,11 +399,11 @@ function generatePostsBatch(count) {
   return newPosts;
 }
 
-function loadMorePosts() {
+function loadMorePosts(count = PAGE_SIZE) {
   if (state.loading || state.reachedEnd) return;
   state.loading = true;
 
-  const newPosts = generatePostsBatch(PAGE_SIZE);
+  const newPosts = generatePostsBatch(count);
   state.allPosts = state.allPosts.concat(newPosts);
 
   if (state.allPosts.length >= MAX_POSTS) {
