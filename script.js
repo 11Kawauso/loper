@@ -237,6 +237,8 @@ function cacheElements() {
 
   els.postButton = document.getElementById('postButton');
   els.contentArea = document.getElementById('contentArea');
+  els.contentSlider = document.getElementById('contentSlider');
+  els.postsPane = document.getElementById('postsPane');
   els.postsGrid = document.getElementById('postsGrid');
 
   els.searchInput = document.getElementById('searchInput');
@@ -257,9 +259,9 @@ function cacheElements() {
   els.menuProfileName = document.getElementById('menuProfileName');
   els.menuProfileArea = document.querySelector('.menu-profile-area');
 
-  els.detailModalOverlay = document.getElementById('detailModalOverlay');
-  els.detailModal = document.getElementById('detailModal');
-  els.detailModalClose = document.getElementById('detailModalClose');
+  els.detailPane = document.getElementById('detailPane');
+  els.detailCard = document.getElementById('detailCard');
+  els.detailBackBtn = document.getElementById('detailBackBtn');
   els.detailAvatar = document.getElementById('detailAvatar');
   els.detailAuthor = document.getElementById('detailAuthor');
   els.detailMoreMenuWrap = document.getElementById('detailMoreMenuWrap');
@@ -878,6 +880,7 @@ function selectSortOrder(sortOrder) {
     item.classList.toggle('active', item.dataset.sort === sortOrder);
   });
   renderPosts();
+  closeDetailModal();
 }
 
 function getPostDeadline(post) {
@@ -968,7 +971,8 @@ function selectCategory(categoryId) {
     renderTagPanel();
   }
   renderPosts();
-  els.contentArea.scrollTop = 0;
+  closeDetailModal();
+  els.postsPane.scrollTop = 0;
 }
 
 /* =========================================================
@@ -991,6 +995,7 @@ function setupTagListEvents() {
       renderTagPanel();
     }
     renderPosts();
+    closeDetailModal();
   };
 
   els.tagList.addEventListener('click', handleTagClick);
@@ -1062,6 +1067,7 @@ function clearAllTags() {
   }
   renderPosts();
   renderSelectedTagsPulldown();
+  closeDetailModal();
 }
 
 function renderSelectedTagsPulldown() {
@@ -1103,6 +1109,7 @@ function renderSelectedTagsPulldown() {
       if (els.tagPanel.classList.contains('open')) renderTagPanel();
       renderPosts();
       renderSelectedTagsPulldown();
+      closeDetailModal();
     });
 
     item.appendChild(label);
@@ -1145,7 +1152,8 @@ function setupPinSection() {
     els.pinItem.classList.add('active');
 
     renderPosts();
-    els.contentArea.scrollTop = 0;
+    closeDetailModal();
+    els.postsPane.scrollTop = 0;
   });
 }
 
@@ -1180,8 +1188,8 @@ function togglePin(post, btnEl) {
     }
   }
 
-  // 詳細モーダルが同じ投稿を開いている場合はボタン表示も更新
-  if (els.detailModalOverlay.classList.contains('show') && els.detailModalOverlay.dataset.postId === String(post.id)) {
+  // 詳細画面が同じ投稿を開いている場合はボタン表示も更新
+  if (els.contentSlider.classList.contains('show-detail') && els.detailPane.dataset.postId === String(post.id)) {
     updateDetailPinButton(post);
   }
 }
@@ -1209,15 +1217,16 @@ function runSearch() {
   }
 
   renderPosts();
-  els.contentArea.scrollTop = 0;
+  closeDetailModal();
+  els.postsPane.scrollTop = 0;
 }
 
 /* =========================================================
    無限スクロール
    ========================================================= */
 function setupInfiniteScroll() {
-  els.contentArea.addEventListener('scroll', () => {
-    const el = els.contentArea;
+  els.postsPane.addEventListener('scroll', () => {
+    const el = els.postsPane;
     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 80;
     if (nearBottom) {
       loadMorePosts();
@@ -1226,13 +1235,10 @@ function setupInfiniteScroll() {
 }
 
 /* =========================================================
-   投稿詳細モーダル
+   投稿詳細（一覧エリアがスライドして切り替わる）
    ========================================================= */
 function setupDetailModal() {
-  els.detailModalClose.addEventListener('click', closeDetailModal);
-  els.detailModalOverlay.addEventListener('click', (e) => {
-    if (e.target === els.detailModalOverlay) closeDetailModal();
-  });
+  els.detailBackBtn.addEventListener('click', closeDetailModal);
 
   els.lightboxOverlay.addEventListener('click', () => {
     els.lightboxOverlay.classList.remove('show');
@@ -1245,10 +1251,10 @@ function openLightbox(src) {
 }
 
 function openDetailModal(post) {
-  els.detailModalOverlay.dataset.postId = String(post.id);
+  els.detailPane.dataset.postId = String(post.id);
 
-  // カテゴリに応じたモーダルの配色（ゲーム=青／アプリ=紫／サイト=茶色／映像=白）
-  els.detailModal.className = 'modal ' + (CATEGORY_BORDER_CLASS[post.category] || '');
+  // カテゴリに応じたカードの配色（ゲーム=青／アプリ=紫／サイト=茶色／映像=白）
+  els.detailCard.className = 'detail-card ' + (CATEGORY_BORDER_CLASS[post.category] || '');
 
   // アイコン・名前（自分のアカウント情報）
   els.detailAvatar.style.backgroundImage = state.profile.avatarUrl
@@ -1300,7 +1306,8 @@ function openDetailModal(post) {
     updateDetailPinButton(post);
   };
 
-  els.detailModalOverlay.classList.add('show');
+  els.contentSlider.classList.add('show-detail');
+  els.detailPane.scrollTop = 0;
 }
 
 function updateDetailPinButton(post) {
@@ -1309,7 +1316,7 @@ function updateDetailPinButton(post) {
 }
 
 function closeDetailModal() {
-  els.detailModalOverlay.classList.remove('show');
+  els.contentSlider.classList.remove('show-detail');
 }
 
 /* =========================================================

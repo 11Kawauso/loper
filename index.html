@@ -151,45 +151,54 @@
       </div>
     </aside>
 
-    <!-- 投稿一覧 -->
+    <!-- 投稿一覧／投稿詳細（横スライドで切り替え） -->
     <main class="content-area" id="contentArea">
-      <div class="posts-grid" id="postsGrid">
-        <!-- 投稿カードはJSで生成 -->
+      <div class="content-slider" id="contentSlider">
+
+        <!-- 投稿一覧 -->
+        <div class="content-pane posts-pane" id="postsPane">
+          <div class="posts-grid" id="postsGrid">
+            <!-- 投稿カードはJSで生成 -->
+          </div>
+        </div>
+
+        <!-- 投稿詳細 -->
+        <div class="content-pane detail-pane" id="detailPane">
+          <div class="detail-card" id="detailCard">
+            <button class="detail-back-btn" id="detailBackBtn">
+              <span aria-hidden="true">‹</span> 戻る
+            </button>
+
+            <div class="post-header modal-header">
+              <div class="post-avatar" id="detailAvatar"></div>
+              <span class="post-author" id="detailAuthor"></span>
+              <div id="detailMoreMenuWrap"></div>
+            </div>
+
+            <h2 class="modal-title" id="detailTitle"></h2>
+
+            <div class="post-content-box modal-content-box" id="detailDesc"></div>
+
+            <div class="modal-image-box" id="detailImageBox">
+              <!-- サムネイルはJSで生成 -->
+            </div>
+
+            <div class="post-tags modal-tags" id="detailTags"></div>
+
+            <div class="post-footer modal-footer">
+              <span class="post-date" id="detailDate"></span>
+              <span class="post-likes" id="detailLikes"></span>
+            </div>
+
+            <div class="modal-actions">
+              <button class="modal-btn pin" id="detailPinBtn">ピン止めする</button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </main>
 
-  </div>
-</div>
-
-<!-- 投稿詳細モーダル -->
-<div class="modal-overlay" id="detailModalOverlay">
-  <div class="modal" id="detailModal">
-    <button class="modal-close" id="detailModalClose">×</button>
-
-    <div class="post-header modal-header">
-      <div class="post-avatar" id="detailAvatar"></div>
-      <span class="post-author" id="detailAuthor"></span>
-      <div id="detailMoreMenuWrap"></div>
-    </div>
-
-    <h2 class="modal-title" id="detailTitle"></h2>
-
-    <div class="post-content-box modal-content-box" id="detailDesc"></div>
-
-    <div class="modal-image-box" id="detailImageBox">
-      <!-- サムネイルはJSで生成 -->
-    </div>
-
-    <div class="post-tags modal-tags" id="detailTags"></div>
-
-    <div class="post-footer modal-footer">
-      <span class="post-date" id="detailDate"></span>
-      <span class="post-likes" id="detailLikes"></span>
-    </div>
-
-    <div class="modal-actions">
-      <button class="modal-btn pin" id="detailPinBtn">ピン止めする</button>
-    </div>
   </div>
 </div>
 

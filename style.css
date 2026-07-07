@@ -753,23 +753,42 @@ button {
   box-shadow: 0 2px 6px rgba(79, 140, 138, 0.35);
 }
 
-/* ================= 投稿一覧 ================= */
+/* ================= 投稿一覧／投稿詳細（スライド切替） ================= */
 .content-area {
   flex: 1;
   background: var(--content-bg);
+  overflow: hidden;
+  position: relative;
+}
+
+.content-slider {
+  display: flex;
+  width: 200%;
+  height: 100%;
+  transition: transform 0.3s ease;
+}
+
+.content-slider.show-detail {
+  transform: translateX(-50%);
+}
+
+.content-pane {
+  width: 50%;
+  height: 100%;
+  flex-shrink: 0;
   overflow-y: auto;
   padding: 28px;
 }
 
-.content-area::-webkit-scrollbar {
+.content-pane::-webkit-scrollbar {
   width: 14px;
 }
 
-.content-area::-webkit-scrollbar-track {
+.content-pane::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
 }
 
-.content-area::-webkit-scrollbar-thumb {
+.content-pane::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: 7px;
   border: 3px solid var(--scrollbar-track);
@@ -780,6 +799,47 @@ button {
   grid-template-columns: 1fr 1fr;
   gap: 28px;
   align-content: start;
+}
+
+/* ================= 投稿詳細カード ================= */
+.detail-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  border-top: 6px solid var(--card-border-game);
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 28px;
+  position: relative;
+}
+
+.detail-card.cat-game  { border-top-color: var(--card-border-game); }
+.detail-card.cat-app   { border-top-color: var(--card-border-app); }
+.detail-card.cat-site  { border-top-color: var(--card-border-site); }
+.detail-card.cat-video { border-top-color: var(--card-border-video); }
+
+.detail-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: var(--content-bg);
+  color: var(--text-dark);
+  font-size: 14px;
+  font-weight: bold;
+  padding: 8px 18px 8px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  margin-bottom: 18px;
+  transition: background 0.15s;
+}
+
+.detail-back-btn span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.detail-back-btn:hover {
+  background: #CDE7E5;
 }
 
 .post-card {
@@ -1142,7 +1202,7 @@ button {
 #detailMoreMenuWrap {
   position: absolute;
   top: 16px;
-  right: 58px;
+  right: 16px;
 }
 
 .modal-title {
@@ -2288,7 +2348,7 @@ button {
     font-size: 14px;
   }
 
-  .content-area {
+  .content-pane {
     padding: 16px;
   }
 
