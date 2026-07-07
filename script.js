@@ -208,7 +208,7 @@ const cropState = { scale: 1, minScale: 1, maxScale: 4, tx: 0, ty: 0, dragging: 
 
 const MAX_POSTS = 60;       // これ以上はロードしない
 const INITIAL_PAGE_SIZE = 12; // 初回表示件数
-const PAGE_SIZE = 8;        // 1回のスクロールで読み込む件数
+const PAGE_SIZE = 16;       // 1回のスクロールで読み込む件数
 const ADS_EVERY = 20;       // 何件ごとに広告を挟むか
 
 /* ---------------- DOM要素 ---------------- */
