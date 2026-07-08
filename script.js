@@ -260,7 +260,6 @@ function cacheElements() {
   els.menuProfileArea = document.querySelector('.menu-profile-area');
 
   els.detailPane = document.getElementById('detailPane');
-  els.detailCard = document.getElementById('detailCard');
   els.detailBackBtn = document.getElementById('detailBackBtn');
   els.detailAvatar = document.getElementById('detailAvatar');
   els.detailAuthor = document.getElementById('detailAuthor');
@@ -1253,8 +1252,8 @@ function openLightbox(src) {
 function openDetailModal(post) {
   els.detailPane.dataset.postId = String(post.id);
 
-  // カテゴリに応じたカードの配色（ゲーム=青／アプリ=紫／サイト=茶色／映像=白）
-  els.detailCard.className = 'detail-card ' + (CATEGORY_BORDER_CLASS[post.category] || '');
+  // カテゴリに応じたページ上部の配色（ゲーム=青／アプリ=紫／サイト=茶色／映像=白）
+  els.detailPane.className = 'content-pane detail-pane ' + (CATEGORY_BORDER_CLASS[post.category] || '');
 
   // アイコン・名前（自分のアカウント情報）
   els.detailAvatar.style.backgroundImage = state.profile.avatarUrl

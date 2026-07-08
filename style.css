@@ -801,21 +801,17 @@ button {
   align-content: start;
 }
 
-/* ================= 投稿詳細カード ================= */
-.detail-card {
-  background: #FFFFFF;
-  border-radius: 18px;
-  border-top: 6px solid var(--card-border-game);
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 28px;
+/* ================= 投稿詳細ページ ================= */
+.detail-pane {
   position: relative;
+  background: #FFFFFF;
+  border-top: 6px solid var(--card-border-game);
 }
 
-.detail-card.cat-game  { border-top-color: var(--card-border-game); }
-.detail-card.cat-app   { border-top-color: var(--card-border-app); }
-.detail-card.cat-site  { border-top-color: var(--card-border-site); }
-.detail-card.cat-video { border-top-color: var(--card-border-video); }
+.detail-pane.cat-game  { border-top-color: var(--card-border-game); }
+.detail-pane.cat-app   { border-top-color: var(--card-border-app); }
+.detail-pane.cat-site  { border-top-color: var(--card-border-site); }
+.detail-pane.cat-video { border-top-color: var(--card-border-video); }
 
 .detail-back-btn {
   display: inline-flex;
