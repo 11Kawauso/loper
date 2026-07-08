@@ -1023,7 +1023,7 @@ button {
   white-space: nowrap;
 }
 
-/* 投稿日時・いいね */
+/* 投稿日時 */
 .post-footer {
   display: flex;
   align-items: center;
@@ -1040,22 +1040,6 @@ button {
 
 .post-deadline.urgent {
   color: #D03030;
-}
-
-.post-likes {
-  margin-left: auto;
-  cursor: pointer;
-  user-select: none;
-  transition: transform 0.1s;
-}
-
-.post-likes:hover {
-  transform: scale(1.08);
-}
-
-.post-likes.liked {
-  color: #E0A030;
-  font-weight: bold;
 }
 
 /* ピン止めボタン（カード右上） */

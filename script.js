@@ -44,7 +44,6 @@ const basePosts = [
     description: 'ドット絵スタイルの2Dアクションゲームを作っています。プログラマー、ドット絵デザイナーを募集中です。未経験の方も歓迎します。',
     tags: ['Unity', '2D', 'PixelArt', '初心者歓迎'],
     date: '2026年06月01日',
-    likes: 24,
     images: [],
     deadlineDays: 60,
   },
@@ -54,7 +53,6 @@ const basePosts = [
     description: 'Flutterで作るシンプルなタスク管理アプリです。UI実装が得意な方、一緒に開発を進めてくれる方を探しています。',
     tags: ['Flutter', 'iOS', 'Android', '個人開発'],
     date: '2026年06月02日',
-    likes: 11,
     images: [],
     deadlineDays: 45,
   },
@@ -64,7 +62,6 @@ const basePosts = [
     description: 'エンジニア向けポートフォリオサイトのテンプレートを作成中です。デザインが得意な方、コーディングを手伝ってくれる方を募集します。',
     tags: ['React', 'ポートフォリオ', 'デザイナー募集'],
     date: '2026年06月03日',
-    likes: 8,
     images: [],
     deadlineDays: 30,
   },
@@ -74,7 +71,6 @@ const basePosts = [
     description: 'YouTube向けのゲーム実況チャンネルのオープニング映像を制作しています。モーショングラフィックスの経験がある方を探しています。',
     tags: ['PV', 'AfterEffects', '編集者募集'],
     date: '2026年06月04日',
-    likes: 35,
     images: [],
     deadlineDays: 14,
   },
@@ -84,7 +80,6 @@ const basePosts = [
     description: 'ダンジョン自動生成のローグライクRPGを開発中です。レベルデザインやバランス調整に興味がある方、ぜひご参加ください。',
     tags: ['Unity', 'RPG', '経験者募集'],
     date: '2026年06月05日',
-    likes: 19,
     images: [],
     deadlineDays: 90,
   },
@@ -94,7 +89,6 @@ const basePosts = [
     description: '毎日の習慣を記録できるアプリを開発中です。使いやすいUI/UXを一緒に考えてくれる方を募集しています。',
     tags: ['ReactNative', 'ツールアプリ', '生活系'],
     date: '2026年06月06日',
-    likes: 6,
     images: [],
     deadlineDays: 10,
   },
@@ -104,7 +98,6 @@ const basePosts = [
     description: 'Vue.jsで作られた個人ブログのリニューアルプロジェクトです。SEO対策やLPの改善に詳しい方を歓迎します。',
     tags: ['WordPress', 'ブログ', 'コーダー募集'],
     date: '2026年06月07日',
-    likes: 14,
     images: [],
     deadlineDays: 30,
   },
@@ -114,7 +107,6 @@ const basePosts = [
     description: 'SNS向けのショート動画を定期的に制作するチームです。撮影や編集スキルを学びながら一緒に活動しませんか。',
     tags: ['編集者募集', 'PV', 'MV'],
     date: '2026年06月08日',
-    likes: 27,
     images: [],
     deadlineDays: 7,
   },
@@ -124,7 +116,6 @@ const basePosts = [
     description: 'UnrealEngineを使った3Dアドベンチャーゲームを開発しています。C++またはブループリントが書けるプログラマーを募集します。',
     tags: ['UE5', '3D', 'プログラマー募集'],
     date: '2026年06月09日',
-    likes: 42,
     images: [],
     deadlineDays: 60,
   },
@@ -134,7 +125,6 @@ const basePosts = [
     description: 'スキマ時間で英単語を学習できるアプリを企画中です。初心者の方も大歓迎、一緒に学びながら開発しましょう。',
     tags: ['Flutter', '教育', '個人開発'],
     date: '2026年06月10日',
-    likes: 9,
     images: [],
     deadlineDays: 30,
   },
@@ -144,7 +134,6 @@ const basePosts = [
     description: '個人で制作中の短編アニメーションにBGMや効果音をつけてくれる方を探しています。ジャンルはSFファンタジーです。',
     tags: ['アニメーション', 'Blender', '3DCG'],
     date: '2026年06月11日',
-    likes: 18,
     images: [],
     deadlineDays: 45,
   },
@@ -154,7 +143,6 @@ const basePosts = [
     description: 'ボカロ楽曲のMVを制作するチームです。AfterEffectsやCinema4Dでモーショングラフィックスを作れる方を募集しています。',
     tags: ['MV', 'AfterEffects', 'Cinema4D', 'VFX'],
     date: '2026年06月12日',
-    likes: 31,
     images: [],
     deadlineDays: 60,
   },
@@ -164,7 +152,6 @@ const basePosts = [
     description: '地域の伝統文化を記録するドキュメンタリー映像を制作中です。撮影や編集に興味がある方、一緒に作品を作りませんか。',
     tags: ['PremierePro', '編集者募集', 'PV'],
     date: '2026年06月13日',
-    likes: 12,
     images: [],
     deadlineDays: 30,
   },
@@ -271,7 +258,6 @@ function cacheElements() {
   els.detailDesc = document.getElementById('detailDesc');
   els.detailTags = document.getElementById('detailTags');
   els.detailDate = document.getElementById('detailDate');
-  els.detailLikes = document.getElementById('detailLikes');
   els.detailPinBtn = document.getElementById('detailPinBtn');
 
   els.postModalOverlay = document.getElementById('postModalOverlay');
@@ -389,8 +375,6 @@ function generatePostsBatch(count) {
       date: template.date,
       createdAt: parseDateString(template.date),
       deadlineDays: template.deadlineDays,
-      likes: template.likes,
-      liked: false,
       images: template.images.slice(),
       pinned: INITIAL_PINNED_INDEXES.includes((id - 1) % basePosts.length) && id <= basePosts.length,
       authorUid: null,
@@ -590,7 +574,7 @@ function createPostCard(post) {
   });
   card.appendChild(tagsWrap);
 
-  // 投稿日時・いいね数
+  // 投稿日時
   const footer = document.createElement('div');
   footer.className = 'post-footer';
 
@@ -608,15 +592,6 @@ function createPostCard(post) {
     deadlineEl.textContent = '残り ' + remaining + ' 日';
     footer.appendChild(deadlineEl);
   }
-
-  const likesEl = document.createElement('span');
-  likesEl.className = 'post-likes' + (post.liked ? ' liked' : '');
-  likesEl.textContent = '👍 ' + post.likes;
-  likesEl.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleLike(post, likesEl);
-  });
-  footer.appendChild(likesEl);
 
   card.appendChild(footer);
 
@@ -751,14 +726,6 @@ async function reportPost(post, reason) {
     console.error('Firestore report error:', err);
     showToast('通報に失敗しました');
   }
-}
-
-/* いいねのトグル */
-function toggleLike(post, el) {
-  post.liked = !post.liked;
-  post.likes += post.liked ? 1 : -1;
-  el.textContent = '👍 ' + post.likes;
-  el.classList.toggle('liked', post.liked);
 }
 
 function createAdCard() {
@@ -1308,11 +1275,8 @@ function openDetailModal(post) {
     els.detailTags.appendChild(pill);
   });
 
-  // 投稿日時・いいね
+  // 投稿日時
   els.detailDate.textContent = '投稿日時　' + post.date;
-  els.detailLikes.textContent = '👍 ' + post.likes;
-  els.detailLikes.classList.toggle('liked', post.liked);
-  els.detailLikes.onclick = () => toggleLike(post, els.detailLikes);
 
   updateDetailPinButton(post);
   els.detailPinBtn.onclick = () => {
@@ -1524,8 +1488,6 @@ function setupPostModal() {
         date: formatDate(new Date()),
         createdAt: new Date(),
         deadlineDays: deadlineDays,
-        likes: 0,
-        liked: false,
         images: images,
         pinned: false,
         authorUid: state.currentUser ? state.currentUser.uid : null,
