@@ -832,6 +832,8 @@ button {
 .detail-back-btn span {
   font-size: 18px;
   line-height: 1;
+  position: relative;
+  top: -2px;
 }
 
 .detail-back-btn:hover {
