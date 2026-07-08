@@ -1198,10 +1198,13 @@ button {
   margin: 8px 0 4px;
 }
 
-#detailMoreMenuWrap {
+.detail-header-actions {
   position: absolute;
   top: 16px;
   right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .modal-title {
@@ -1283,32 +1286,27 @@ button {
   margin-bottom: 20px;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.modal-btn {
-  flex: 1;
-  height: 46px;
+.detail-pin-btn {
+  width: 26px;
+  height: 26px;
   border: none;
-  border-radius: 23px;
-  font-size: 15px;
-  font-weight: bold;
+  border-radius: 50%;
+  background: var(--post-button-bg);
+  color: var(--post-button-text);
+  font-size: 14px;
+  line-height: 1;
   cursor: pointer;
-  transition: filter 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
 }
 
-.modal-btn:hover {
+.detail-pin-btn:hover {
   filter: brightness(0.96);
 }
 
-.modal-btn.pin {
-  background: var(--post-button-bg);
-  color: var(--post-button-text);
-}
-
-.modal-btn.pin.pinned {
+.detail-pin-btn.pinned {
   background: #FFD54F;
   color: #7A5B00;
 }

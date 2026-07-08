@@ -1325,7 +1325,9 @@ function openDetailModal(post) {
 }
 
 function updateDetailPinButton(post) {
-  els.detailPinBtn.textContent = post.pinned ? 'ピン止めを解除する' : 'ピン止めする';
+  const label = post.pinned ? 'ピン止めを解除する' : 'ピン止めする';
+  els.detailPinBtn.title = label;
+  els.detailPinBtn.setAttribute('aria-label', label);
   els.detailPinBtn.classList.toggle('pinned', post.pinned);
 }
 
