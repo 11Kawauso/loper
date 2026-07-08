@@ -655,18 +655,33 @@ function createPostMoreMenu(post) {
     menu.appendChild(createPostMoreMenuItem('編集', false, (e) => {
       e.stopPropagation();
       closeAllPostMenus();
+      if (!isOwnPost(post)) {
+        closeDetailModal();
+        showLoginPrompt();
+        return;
+      }
       closeDetailModal();
       openEditPostModal(post);
     }));
     menu.appendChild(createPostMoreMenuItem('期限変更', false, (e) => {
       e.stopPropagation();
       closeAllPostMenus();
+      if (!isOwnPost(post)) {
+        closeDetailModal();
+        showLoginPrompt();
+        return;
+      }
       closeDetailModal();
       openDeadlineEditModal(post);
     }));
     menu.appendChild(createPostMoreMenuItem('削除', true, (e) => {
       e.stopPropagation();
       closeAllPostMenus();
+      if (!isOwnPost(post)) {
+        closeDetailModal();
+        showLoginPrompt();
+        return;
+      }
       showGenericConfirm('この投稿を削除しますか？', () => {
         state.allPosts = state.allPosts.filter((p) => p.id !== post.id);
         closeDetailModal();
@@ -2254,6 +2269,7 @@ function onFirebaseLogout() {
   applyProfileAvatar();
   renderProfileLinks();
   renderPosts();
+  closeDetailModal();
 }
 
 let saveProfileTimer = null;
