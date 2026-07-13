@@ -169,6 +169,7 @@ const state = {
   activeTags: new Set(),
   showPinnedOnly: false,
   searchKeyword: '',
+  searchIncludeBody: false,
   sortOrder: 'newest',
   loading: false,
   reachedEnd: false,
@@ -228,8 +229,11 @@ function cacheElements() {
   els.postsPane = document.getElementById('postsPane');
   els.postsGrid = document.getElementById('postsGrid');
 
+  els.searchArea = document.getElementById('searchArea');
   els.searchInput = document.getElementById('searchInput');
   els.searchBtn = document.getElementById('searchBtn');
+  els.searchOptionsPanel = document.getElementById('searchOptionsPanel');
+  els.searchIncludeBody = document.getElementById('searchIncludeBody');
   els.sortDropdown = document.getElementById('sortDropdown');
   els.sortCurrentLabel = document.getElementById('sortCurrentLabel');
   els.sortPulldown = document.getElementById('sortPulldown');
@@ -431,7 +435,8 @@ function getFilteredPosts() {
     if (keyword) {
       const inTitle = post.title.toLowerCase().includes(keyword);
       const inTags = post.tags.some((t) => t.toLowerCase().includes(keyword));
-      return inTitle || inTags;
+      const inBody = state.searchIncludeBody && post.description.toLowerCase().includes(keyword);
+      return inTitle || inTags || inBody;
     }
 
     if (state.showPinnedOnly && !post.pinned) return false;
@@ -1183,6 +1188,27 @@ function setupSearch() {
   els.searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       runSearch();
+    }
+  });
+
+  // 検索バーにフォーカスしたらオプションパネルを表示
+  els.searchInput.addEventListener('focus', () => {
+    els.searchOptionsPanel.classList.add('open');
+  });
+
+  // 検索バーの外側をクリックしたら閉じる
+  document.addEventListener('click', (e) => {
+    if (!els.searchArea.contains(e.target)) {
+      els.searchOptionsPanel.classList.remove('open');
+    }
+  });
+
+  // 「本文も含める」の切り替え。検索中なら即座に結果へ反映する
+  els.searchIncludeBody.addEventListener('change', () => {
+    state.searchIncludeBody = els.searchIncludeBody.checked;
+    if (state.searchKeyword.trim()) {
+      renderPosts();
+      els.postsPane.scrollTop = 0;
     }
   });
 }
