@@ -1306,6 +1306,32 @@ button {
   margin-bottom: 20px;
 }
 
+/* 投稿詳細の連絡先欄 */
+.detail-contact {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  background: var(--content-box-bg);
+  border: 2px solid var(--content-box-border);
+  border-radius: 10px;
+}
+
+.detail-contact-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--header-bg);
+}
+
+.detail-contact-value {
+  font-size: 13px;
+  color: var(--text-dark);
+  word-break: break-word;
+  white-space: pre-line;
+}
+
 .detail-pin-btn {
   width: 26px;
   height: 26px;

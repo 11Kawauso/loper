@@ -195,6 +195,11 @@
 
           <div class="post-tags modal-tags" id="detailTags"></div>
 
+          <div class="detail-contact" id="detailContact">
+            <span class="detail-contact-label">連絡先</span>
+            <span class="detail-contact-value" id="detailContactValue"></span>
+          </div>
+
           <div class="post-footer modal-footer">
             <span class="post-date" id="detailDate"></span>
           </div>
@@ -258,6 +263,11 @@
       <div class="form-group">
         <label for="postTagsInput">タグ（自由記入・カンマ区切り）</label>
         <input type="text" id="postTagsInput" placeholder="例：チーム募集,週末開発">
+      </div>
+
+      <div class="form-group">
+        <label for="postContactInput">連絡先</label>
+        <input type="text" id="postContactInput" placeholder="例：X（旧Twitter）: @your_id / メール: you@example.com" maxlength="100">
       </div>
 
       <div class="form-group" id="postDeadlineGroup">

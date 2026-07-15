@@ -44,6 +44,7 @@ const basePosts = [
     description: 'ドット絵スタイルの2Dアクションゲームを作っています。プログラマー、ドット絵デザイナーを募集中です。未経験の方も歓迎します。',
     tags: ['Unity', '2D', 'PixelArt', '初心者歓迎'],
     date: '2026年06月01日',
+    contact: 'X（旧Twitter）: @pixel_game_dev',
     images: [],
     deadlineDays: 60,
   },
@@ -53,6 +54,7 @@ const basePosts = [
     description: 'Flutterで作るシンプルなタスク管理アプリです。UI実装が得意な方、一緒に開発を進めてくれる方を探しています。',
     tags: ['Flutter', 'iOS', 'Android', '個人開発'],
     date: '2026年06月02日',
+    contact: 'Discord: taskapp#1234',
     images: [],
     deadlineDays: 45,
   },
@@ -62,6 +64,7 @@ const basePosts = [
     description: 'エンジニア向けポートフォリオサイトのテンプレートを作成中です。デザインが得意な方、コーディングを手伝ってくれる方を募集します。',
     tags: ['React', 'ポートフォリオ', 'デザイナー募集'],
     date: '2026年06月03日',
+    contact: 'メール: portfolio.design@example.com',
     images: [],
     deadlineDays: 30,
   },
@@ -71,6 +74,7 @@ const basePosts = [
     description: 'YouTube向けのゲーム実況チャンネルのオープニング映像を制作しています。モーショングラフィックスの経験がある方を探しています。',
     tags: ['PV', 'AfterEffects', '編集者募集'],
     date: '2026年06月04日',
+    contact: 'X（旧Twitter）: @op_movie_team',
     images: [],
     deadlineDays: 14,
   },
@@ -80,6 +84,7 @@ const basePosts = [
     description: 'ダンジョン自動生成のローグライクRPGを開発中です。レベルデザインやバランス調整に興味がある方、ぜひご参加ください。',
     tags: ['Unity', 'RPG', '経験者募集'],
     date: '2026年06月05日',
+    contact: 'Discord: roguelike_dev#5678',
     images: [],
     deadlineDays: 90,
   },
@@ -89,6 +94,7 @@ const basePosts = [
     description: '毎日の習慣を記録できるアプリを開発中です。使いやすいUI/UXを一緒に考えてくれる方を募集しています。',
     tags: ['ReactNative', 'ツールアプリ', '生活系'],
     date: '2026年06月06日',
+    contact: 'メール: habit.app.ux@example.com',
     images: [],
     deadlineDays: 10,
   },
@@ -98,6 +104,7 @@ const basePosts = [
     description: 'Vue.jsで作られた個人ブログのリニューアルプロジェクトです。SEO対策やLPの改善に詳しい方を歓迎します。',
     tags: ['WordPress', 'ブログ', 'コーダー募集'],
     date: '2026年06月07日',
+    contact: 'X（旧Twitter）: @blog_renewal',
     images: [],
     deadlineDays: 30,
   },
@@ -107,6 +114,7 @@ const basePosts = [
     description: 'SNS向けのショート動画を定期的に制作するチームです。撮影や編集スキルを学びながら一緒に活動しませんか。',
     tags: ['編集者募集', 'PV', 'MV'],
     date: '2026年06月08日',
+    contact: 'Discord: shortmovie#4321',
     images: [],
     deadlineDays: 7,
   },
@@ -116,6 +124,7 @@ const basePosts = [
     description: 'UnrealEngineを使った3Dアドベンチャーゲームを開発しています。C++またはブループリントが書けるプログラマーを募集します。',
     tags: ['UE5', '3D', 'プログラマー募集'],
     date: '2026年06月09日',
+    contact: 'メール: adv.game.dev@example.com',
     images: [],
     deadlineDays: 60,
   },
@@ -125,6 +134,7 @@ const basePosts = [
     description: 'スキマ時間で英単語を学習できるアプリを企画中です。初心者の方も大歓迎、一緒に学びながら開発しましょう。',
     tags: ['Flutter', '教育', '個人開発'],
     date: '2026年06月10日',
+    contact: 'X（旧Twitter）: @english_app_dev',
     images: [],
     deadlineDays: 30,
   },
@@ -134,6 +144,7 @@ const basePosts = [
     description: '個人で制作中の短編アニメーションにBGMや効果音をつけてくれる方を探しています。ジャンルはSFファンタジーです。',
     tags: ['アニメーション', 'Blender', '3DCG'],
     date: '2026年06月11日',
+    contact: 'Discord: anime_bgm#9012',
     images: [],
     deadlineDays: 45,
   },
@@ -143,6 +154,7 @@ const basePosts = [
     description: 'ボカロ楽曲のMVを制作するチームです。AfterEffectsやCinema4Dでモーショングラフィックスを作れる方を募集しています。',
     tags: ['MV', 'AfterEffects', 'Cinema4D', 'VFX'],
     date: '2026年06月12日',
+    contact: 'X（旧Twitter）: @mv_motion_team',
     images: [],
     deadlineDays: 60,
   },
@@ -152,6 +164,7 @@ const basePosts = [
     description: '地域の伝統文化を記録するドキュメンタリー映像を制作中です。撮影や編集に興味がある方、一緒に作品を作りませんか。',
     tags: ['PremierePro', '編集者募集', 'PV'],
     date: '2026年06月13日',
+    contact: 'メール: docs.film@example.com',
     images: [],
     deadlineDays: 30,
   },
@@ -261,6 +274,8 @@ function cacheElements() {
   els.lightboxImage = document.getElementById('lightboxImage');
   els.detailDesc = document.getElementById('detailDesc');
   els.detailTags = document.getElementById('detailTags');
+  els.detailContact = document.getElementById('detailContact');
+  els.detailContactValue = document.getElementById('detailContactValue');
   els.detailDate = document.getElementById('detailDate');
   els.detailPinBtn = document.getElementById('detailPinBtn');
 
@@ -271,6 +286,7 @@ function cacheElements() {
   els.postTitleInput = document.getElementById('postTitleInput');
   els.postCategoryInput = document.getElementById('postCategoryInput');
   els.postDescInput = document.getElementById('postDescInput');
+  els.postContactInput = document.getElementById('postContactInput');
   els.titleCharCounter = document.getElementById('titleCharCounter');
   els.descCharCounter = document.getElementById('descCharCounter');
   els.postImageInput = document.getElementById('postImageInput');
@@ -379,6 +395,7 @@ function generatePostsBatch(count) {
       date: template.date,
       createdAt: parseDateString(template.date),
       deadlineDays: template.deadlineDays,
+      contact: template.contact || '',
       images: template.images.slice(),
       pinned: INITIAL_PINNED_INDEXES.includes((id - 1) % basePosts.length) && id <= basePosts.length,
       authorUid: null,
@@ -1301,6 +1318,15 @@ function openDetailModal(post) {
     els.detailTags.appendChild(pill);
   });
 
+  // 連絡先（未入力なら非表示）
+  if (post.contact && post.contact.trim()) {
+    els.detailContactValue.textContent = post.contact;
+    els.detailContact.style.display = '';
+  } else {
+    els.detailContactValue.textContent = '';
+    els.detailContact.style.display = 'none';
+  }
+
   // 投稿日時
   els.detailDate.textContent = '投稿日時　' + post.date;
 
@@ -1374,6 +1400,8 @@ function openEditPostModal(post) {
 
   els.postDescInput.value = post.description;
   els.postDescInput.dispatchEvent(new Event('input'));
+
+  els.postContactInput.value = post.contact || '';
 
   const knownTags = post.tags.filter((t) => (CATEGORY_TAGS.all || []).includes(t));
   const freeTags = post.tags.filter((t) => !(CATEGORY_TAGS.all || []).includes(t));
@@ -1484,6 +1512,7 @@ function setupPostModal() {
       .filter((t) => t.length > 0);
     const tags = [...postSelectedTags, ...freeTags];
     const description = els.postDescInput.value.trim() || '詳細はまだ記入されていません。';
+    const contact = els.postContactInput.value.trim();
 
     const finishSaving = (newImages) => {
       const images = [...postExistingImages, ...newImages].slice(0, 4);
@@ -1495,6 +1524,7 @@ function setupPostModal() {
           post.title = title;
           post.description = description;
           post.tags = tags.length > 0 ? tags : ['未設定'];
+          post.contact = contact;
           post.images = images;
         }
         editingPostId = null;
@@ -1514,6 +1544,7 @@ function setupPostModal() {
         date: formatDate(new Date()),
         createdAt: new Date(),
         deadlineDays: deadlineDays,
+        contact: contact,
         images: images,
         pinned: false,
         authorUid: state.currentUser ? state.currentUser.uid : null,
