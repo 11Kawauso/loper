@@ -1062,6 +1062,17 @@ button {
   white-space: nowrap;
 }
 
+/* 投稿カード・詳細画面のタグはクリックで検索できる */
+.post-tags .tag-pill {
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.post-tags .tag-pill:hover {
+  background: var(--card-border);
+  color: #FFFFFF;
+}
+
 /* 投稿日時 */
 .post-footer {
   display: flex;

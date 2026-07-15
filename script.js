@@ -586,13 +586,17 @@ function createPostCard(post) {
   contentBox.appendChild(document.createTextNode(post.description));
   card.appendChild(contentBox);
 
-  // タグ（横スクロールで表示）
+  // タグ（横スクロールで表示。クリックでそのタグを検索）
   const tagsWrap = document.createElement('div');
   tagsWrap.className = 'post-tags';
   post.tags.forEach((tag) => {
     const pill = document.createElement('span');
     pill.className = 'tag-pill';
     pill.textContent = '#' + tag;
+    pill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      searchByTag(tag);
+    });
     tagsWrap.appendChild(pill);
   });
   card.appendChild(tagsWrap);
@@ -1246,6 +1250,12 @@ function runSearch() {
   els.postsPane.scrollTop = 0;
 }
 
+/* タグクリックでそのタグをキーワードとして検索する */
+function searchByTag(tag) {
+  els.searchInput.value = tag;
+  runSearch();
+}
+
 /* =========================================================
    無限スクロール
    ========================================================= */
@@ -1316,6 +1326,7 @@ function openDetailModal(post) {
     const pill = document.createElement('span');
     pill.className = 'tag-pill';
     pill.textContent = '#' + tag;
+    pill.addEventListener('click', () => searchByTag(tag));
     els.detailTags.appendChild(pill);
   });
 
