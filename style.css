@@ -842,6 +842,8 @@ button {
   position: relative;
   background: #FFFFFF;
   border-top: 6px solid var(--card-border-game);
+  display: flex;
+  flex-direction: column;
 }
 
 .detail-pane.cat-game  { border-top-color: var(--card-border-game); }
@@ -852,6 +854,7 @@ button {
 .detail-back-btn {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   gap: 2px;
   border: none;
   background: var(--content-bg);
@@ -1304,6 +1307,13 @@ button {
 
 .modal-footer {
   margin-bottom: 20px;
+}
+
+/* 詳細ページでは投稿日時・期限をページ下側に配置 */
+.detail-pane .modal-footer {
+  margin-top: auto;
+  margin-bottom: 0;
+  padding-top: 20px;
 }
 
 /* 投稿詳細の連絡先欄 */

@@ -277,6 +277,7 @@ function cacheElements() {
   els.detailContact = document.getElementById('detailContact');
   els.detailContactValue = document.getElementById('detailContactValue');
   els.detailDate = document.getElementById('detailDate');
+  els.detailDeadline = document.getElementById('detailDeadline');
   els.detailPinBtn = document.getElementById('detailPinBtn');
 
   els.postModalOverlay = document.getElementById('postModalOverlay');
@@ -1327,8 +1328,19 @@ function openDetailModal(post) {
     els.detailContact.style.display = 'none';
   }
 
-  // 投稿日時
+  // 投稿日時・残り日数
   els.detailDate.textContent = '投稿日時　' + post.date;
+
+  const deadline = getPostDeadline(post);
+  if (deadline) {
+    const remaining = Math.ceil((deadline - new Date()) / (24 * 60 * 60 * 1000));
+    els.detailDeadline.textContent = '残り ' + remaining + ' 日';
+    els.detailDeadline.className = 'post-deadline' + (remaining <= 3 ? ' urgent' : '');
+    els.detailDeadline.style.display = '';
+  } else {
+    els.detailDeadline.textContent = '';
+    els.detailDeadline.style.display = 'none';
+  }
 
   updateDetailPinButton(post);
   els.detailPinBtn.onclick = () => {
