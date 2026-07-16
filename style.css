@@ -613,12 +613,25 @@ button {
   border-top: 1px solid rgba(255, 255, 255, 0.5);
   padding: 18px 28px;
   flex-shrink: 0;
+  /* タグが多くても投稿一覧を潰さないよう、高さを制限してスクロールさせる */
+  max-height: 45vh;
+  overflow-y: auto;
 }
 
 .tag-panel.open {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 12px 20px;
+  align-content: start;
+}
+
+.tag-panel::-webkit-scrollbar {
+  width: 10px;
+}
+
+.tag-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 5px;
 }
 
 .tag-panel .tag-item {

@@ -20,12 +20,15 @@ const CATEGORY_BORDER_CLASS = {
   video: 'cat-video',
 };
 
+/* 全カテゴリ共通で使う募集条件のタグ（各カテゴリの末尾に付く） */
+const COMMON_TAGS = ['初心者歓迎', '学生歓迎', '社会人歓迎', 'リモート', '週末開発', '短期', '長期', '商用', '同人・趣味'];
+
 /* カテゴリごとのタグ一覧（タグバー・タグ一覧パネル表示用） */
 const CATEGORY_TAGS = {
-  game:  ['Unity', 'UE5', 'Godot', '2D', '3D', 'PixelArt', 'VR', 'AR', 'RPG', 'アクション', 'ホラー', 'パズル', 'シミュレーション', 'FPS', 'ADV', 'オープンワールド', '初心者歓迎', '経験者募集', 'プログラマー募集', 'デザイナー募集', '作曲者募集'],
-  app:   ['Android', 'iOS', 'Windows', 'Mac', 'Flutter', 'ReactNative', 'Swift', 'Kotlin', 'WebApp', 'ツールアプリ', '個人開発', '生活系', 'SNS', 'ゲームアプリ', '教育', '健康'],
-  site:  ['HTML', 'CSS', 'JavaScript', 'React', 'Nextjs', 'PHP', 'Laravel', 'WordPress', 'ポートフォリオ', 'LP', '企業サイト', 'ECサイト', 'ブログ', 'デザイナー募集', 'コーダー募集', 'フロントエンド', 'バックエンド'],
-  video: ['MV', 'PV', 'アニメーション', 'VFX', '3DCG', 'AfterEffects', 'PremierePro', 'Blender', 'Maya', 'Cinema4D', '編集者募集', 'イラスト募集', '声優募集'],
+  game:  ['Unity', 'UE5', 'Godot', 'RPGツクール', '2D', '3D', 'PixelArt', 'VR', 'AR', 'Steam', 'ゲームジャム', 'RPG', 'アクション', 'ホラー', 'パズル', 'シミュレーション', 'FPS', 'ADV', 'オープンワールド', 'ローグライク', '経験者募集', 'プログラマー募集', 'デザイナー募集', '作曲者募集', 'レベルデザイナー募集', 'シナリオライター募集', '3Dモデラー募集', ...COMMON_TAGS],
+  app:   ['Android', 'iOS', 'Windows', 'Mac', 'Flutter', 'ReactNative', 'Swift', 'Kotlin', 'React', 'TypeScript', 'Python', 'Firebase', 'WebApp', 'ツールアプリ', 'ゲームアプリ', '個人開発', '生活系', 'SNS', '教育', '健康', 'AI', '業務効率化', 'プログラマー募集', 'デザイナー募集', 'UI/UXデザイナー募集', '企画募集', 'テスター募集', ...COMMON_TAGS],
+  site:  ['HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Vue', 'Nextjs', 'Tailwind', 'PHP', 'Laravel', 'WordPress', 'Figma', 'ポートフォリオ', 'LP', '企業サイト', 'ECサイト', 'ブログ', 'SEO', 'フロントエンド', 'バックエンド', 'プログラマー募集', 'デザイナー募集', 'コーダー募集', ...COMMON_TAGS],
+  video: ['MV', 'PV', 'アニメーション', 'VFX', '3DCG', 'ショート動画', 'ドキュメンタリー', 'YouTube', 'VTuber', 'AfterEffects', 'PremierePro', 'DaVinciResolve', 'Blender', 'Maya', 'Cinema4D', '編集者募集', 'イラスト募集', '声優募集', '作曲者募集', 'モーションデザイナー募集', '撮影者募集', ...COMMON_TAGS],
 };
 
 // 「すべて」は各カテゴリのタグをまとめたもの（重複は除く）
