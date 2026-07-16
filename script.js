@@ -186,7 +186,7 @@ const state = {
   showPinnedOnly: false,
   searchKeyword: '',
   searchIncludeBody: false,
-  sortOrder: 'newest',
+  sortOrder: 'default',
   loading: false,
   reachedEnd: false,
   currentUser: null,
@@ -849,6 +849,7 @@ function closePulldown() {
    並び替え
    ========================================================= */
 const SORT_LABELS = {
+  default: 'デフォルト',
   newest: '新着順',
   oldest: '古い順',
   deadline_long: '期限が長い順',
@@ -904,6 +905,9 @@ function getPostDeadline(post) {
 function sortPosts(posts) {
   const sorted = posts.slice();
   switch (state.sortOrder) {
+    case 'newest':
+      sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      break;
     case 'oldest':
       sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       break;
@@ -913,9 +917,9 @@ function sortPosts(posts) {
     case 'deadline_short':
       sorted.sort((a, b) => (getPostDeadline(a) || 0) - (getPostDeadline(b) || 0));
       break;
-    case 'newest':
+    case 'default':
     default:
-      sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // 並び替えをせず、取得した順のまま返す
       break;
   }
   return sorted;
