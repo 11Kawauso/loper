@@ -1342,7 +1342,8 @@ button {
 }
 
 .modal-thumbnail {
-  flex: 1;
+  /* 枚数に関係なく4枚並べたときと同じ幅（1/4）に固定 */
+  flex: 0 0 calc(25% - 6px);
   min-width: 0;
   aspect-ratio: 1 / 1;
   object-fit: cover;
