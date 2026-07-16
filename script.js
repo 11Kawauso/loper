@@ -273,6 +273,8 @@ function cacheElements() {
   els.menuProfileIcon = document.getElementById('menuProfileIcon');
   els.menuProfileName = document.getElementById('menuProfileName');
   els.menuProfileArea = document.querySelector('.menu-profile-area');
+  els.menuProfileBtn = document.getElementById('menuProfileBtn');
+  els.menuAuthBtn = document.getElementById('menuAuthBtn');
 
   els.detailPane = document.getElementById('detailPane');
   els.detailBackBtn = document.getElementById('detailBackBtn');
@@ -1795,10 +1797,26 @@ function setupProfileIcon() {
   els.menuOverlay.addEventListener('click', (e) => {
     if (e.target === els.menuOverlay) closeMenu();
   });
-  els.menuProfileArea.addEventListener('click', () => {
-    closeMenu();
-    openProfilePanel();
+  els.menuProfileArea.addEventListener('click', openProfileFromMenu);
+  els.menuProfileBtn.addEventListener('click', openProfileFromMenu);
+  els.menuAuthBtn.addEventListener('click', () => {
+    if (state.currentUser) {
+      showLogoutConfirm();
+    } else {
+      closeMenu();
+      showLoginPrompt('ログイン方法を選択してください');
+    }
   });
+}
+
+// メニューからプロフィール画面へ（未ログイン時はログインを促す）
+function openProfileFromMenu() {
+  if (!state.currentUser) {
+    showLoginPrompt('プロフィールを利用するにはログインしてください');
+    return;
+  }
+  closeMenu();
+  openProfilePanel();
 }
 
 function openMenu() {
@@ -1814,6 +1832,7 @@ function applyMenuProfile() {
   const url = state.profile.avatarUrl ? 'url(' + state.profile.avatarUrl + ')' : '';
   els.menuProfileIcon.style.backgroundImage = url;
   els.menuProfileName.textContent = state.profile.name || '名前';
+  els.menuAuthBtn.textContent = state.currentUser ? 'ログアウト' : 'ログイン';
 }
 
 function openProfilePanel() {
@@ -2286,7 +2305,8 @@ function setupLoginPrompt() {
   });
 }
 
-function showLoginPrompt() {
+function showLoginPrompt(message) {
+  document.querySelector('.login-prompt-message').textContent = message || '投稿するにはログインしてください';
   document.getElementById('loginPromptOverlay').classList.add('show');
 }
 

@@ -438,10 +438,14 @@ button {
 
 .menu-list-item {
   display: block;
+  width: 100%;
   padding: 14px 18px;
   font-size: 15px;
   color: var(--category-text-color);
   text-decoration: none;
+  text-align: left;
+  border: none;
+  background: transparent;
   border-radius: 10px;
   transition: background 0.15s;
   cursor: pointer;
@@ -449,6 +453,60 @@ button {
 
 .menu-list-item:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.menu-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.menu-section-title {
+  padding: 0 18px 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--category-header-color);
+}
+
+.menu-legal {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.menu-legal-link {
+  padding: 6px 18px;
+  font-size: 12px;
+  color: var(--category-text-color);
+  opacity: 0.85;
+  text-decoration: none;
+}
+
+.menu-legal-link:hover {
+  text-decoration: underline;
+  opacity: 1;
+}
+
+.menu-auth-btn {
+  margin: 4px 18px 0;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.menu-auth-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* ================= カテゴリ・タグバー ================= */
