@@ -194,6 +194,10 @@
             <!-- サムネイルはJSで生成 -->
           </div>
 
+          <div class="detail-files" id="detailFiles">
+            <!-- 添付ファイルはJSで生成 -->
+          </div>
+
           <div class="post-tags modal-tags" id="detailTags"></div>
 
           <div class="detail-contact" id="detailContact">
@@ -243,9 +247,9 @@
       </div>
 
       <div class="form-group">
-        <label>画像（任意・最大4枚）</label>
+        <label>画像・ファイル（任意・最大4件）</label>
         <label class="file-input-label" for="postImageInput" id="fileInputDisplay">ファイルが選択されていません</label>
-        <input type="file" id="postImageInput" accept="image/*" multiple class="visually-hidden">
+        <input type="file" id="postImageInput" multiple class="visually-hidden">
         <div class="image-preview-container" id="imagePreviewContainer"></div>
       </div>
 

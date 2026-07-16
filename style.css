@@ -1275,8 +1275,19 @@ button {
 /* 投稿作成モーダル専用（全辺ボーダー・大きめ） */
 #postModal {
   border: 3px solid var(--card-border-game);
-  max-width: 680px;
-  max-height: 90vh;
+  max-width: 780px;
+  max-height: 92vh;
+}
+
+/* スクロールしても右上のバツをモーダル内に固定 */
+#postModal .modal-close {
+  position: sticky;
+  top: 0;
+  right: auto;
+  float: right;
+  margin: -12px -12px 0 0;
+  z-index: 20;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 #postModal.cat-game { border-color: var(--card-border-game); }
@@ -1396,6 +1407,37 @@ button {
   margin-top: auto;
   margin-bottom: 0;
   padding-top: 20px;
+}
+
+/* 投稿詳細の添付ファイル */
+.detail-files {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.detail-files.has-files {
+  display: flex;
+}
+
+.detail-file-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--content-box-bg);
+  border: 2px solid var(--content-box-border);
+  border-radius: 10px;
+  color: var(--text-dark);
+  font-size: 14px;
+  text-decoration: none;
+  word-break: break-all;
+  transition: background 0.15s;
+}
+
+.detail-file-link:hover {
+  background: #EFF9F9;
 }
 
 /* 投稿詳細の連絡先欄 */
@@ -2365,6 +2407,36 @@ button {
 }
 
 .image-preview-remove:hover { background: rgba(0, 0, 0, 0.75); }
+
+/* 画像以外のファイルのプレビュー */
+.file-preview-box {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid #CFDEDD;
+  border-radius: 8px;
+  background: var(--content-box-bg);
+  overflow: hidden;
+}
+
+.file-preview-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.file-preview-name {
+  max-width: 100%;
+  font-size: 11px;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ================= タグ選択ドロップダウン ================= */
 .post-tag-dropdown {

@@ -203,6 +203,7 @@ let postSelectedTags = new Set();
 let postSelectedFiles = [];
 let previewUrls = [];
 let postExistingImages = [];
+let postExistingFiles = [];
 let editingPostId = null;
 let editingDeadlinePostId = null;
 
@@ -283,6 +284,7 @@ function cacheElements() {
   els.detailMoreMenuWrap = document.getElementById('detailMoreMenuWrap');
   els.detailTitle = document.getElementById('detailTitle');
   els.detailImageBox = document.getElementById('detailImageBox');
+  els.detailFiles = document.getElementById('detailFiles');
   els.lightboxOverlay = document.getElementById('lightboxOverlay');
   els.lightboxImage = document.getElementById('lightboxImage');
   els.detailDesc = document.getElementById('detailDesc');
@@ -1355,6 +1357,22 @@ function openDetailModal(post) {
     els.detailImageBox.classList.remove('has-image');
   }
 
+  // 添付ファイル（クリックでダウンロード）
+  els.detailFiles.innerHTML = '';
+  if (post.files && post.files.length > 0) {
+    post.files.forEach((file) => {
+      const link = document.createElement('a');
+      link.className = 'detail-file-link';
+      link.href = file.dataUrl;
+      link.download = file.name;
+      link.textContent = '📄 ' + file.name;
+      els.detailFiles.appendChild(link);
+    });
+    els.detailFiles.classList.add('has-files');
+  } else {
+    els.detailFiles.classList.remove('has-files');
+  }
+
   // 内容
   els.detailDesc.textContent = post.description;
 
@@ -1493,6 +1511,7 @@ function resetPostForm() {
   postSelectedTags = new Set();
   postSelectedFiles = [];
   postExistingImages = [];
+  postExistingFiles = [];
   previewUrls.forEach(url => URL.revokeObjectURL(url));
   previewUrls = [];
   els.imagePreviewContainer.innerHTML = '';
@@ -1528,6 +1547,7 @@ function openEditPostModal(post) {
   renderPostTagSelector();
 
   postExistingImages = (post.images || []).slice();
+  postExistingFiles = (post.files || []).slice();
   updateImagePreviews();
   updateFileInputDisplay();
 
@@ -1596,10 +1616,10 @@ function setupPostModal() {
     els.descCharCounter.className = 'char-counter' + (len >= 500 ? ' at-limit' : len >= 450 ? ' near-limit' : '');
   });
 
-  // 画像選択
+  // 画像・ファイル選択
   els.postImageInput.addEventListener('change', (e) => {
     const newFiles = [...e.target.files];
-    const remaining = 4 - (postExistingImages.length + postSelectedFiles.length);
+    const remaining = 4 - (postExistingImages.length + postExistingFiles.length + postSelectedFiles.length);
     if (remaining > 0) {
       postSelectedFiles = [...postSelectedFiles, ...newFiles.slice(0, remaining)];
     }
@@ -1638,8 +1658,9 @@ function setupPostModal() {
     const description = els.postDescInput.value.trim() || '詳細はまだ記入されていません。';
     const contact = els.postContactInput.value.trim();
 
-    const finishSaving = (newImages) => {
+    const finishSaving = (newImages, newFiles) => {
       const images = [...postExistingImages, ...newImages].slice(0, 4);
+      const files = [...postExistingFiles, ...newFiles].slice(0, 4);
 
       if (editingPostId !== null) {
         const post = state.allPosts.find((p) => p.id === editingPostId);
@@ -1650,6 +1671,7 @@ function setupPostModal() {
           post.tags = tags.length > 0 ? tags : ['未設定'];
           post.contact = contact;
           post.images = images;
+          post.files = files;
         }
         editingPostId = null;
         renderPosts();
@@ -1670,6 +1692,7 @@ function setupPostModal() {
         deadlineDays: deadlineDays,
         contact: contact,
         images: images,
+        files: files,
         pinned: false,
         authorUid: state.currentUser ? state.currentUser.uid : null,
       };
@@ -1684,16 +1707,21 @@ function setupPostModal() {
       showToast('投稿を作成しました');
     };
 
-    const imageFiles = postSelectedFiles.slice(0, 4 - postExistingImages.length);
-    if (imageFiles.length > 0) {
-      Promise.all(imageFiles.map((file) => new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (ev) => resolve(ev.target.result);
-        reader.readAsDataURL(file);
-      }))).then((images) => finishSaving(images));
-    } else {
-      finishSaving([]);
-    }
+    const readAsDataURL = (file) => new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => resolve(ev.target.result);
+      reader.readAsDataURL(file);
+    });
+
+    const remainingSlots = Math.max(0, 4 - postExistingImages.length - postExistingFiles.length);
+    const selected = postSelectedFiles.slice(0, remainingSlots);
+    const imageFiles = selected.filter((f) => f.type && f.type.startsWith('image/'));
+    const otherFiles = selected.filter((f) => !(f.type && f.type.startsWith('image/')));
+
+    Promise.all([
+      Promise.all(imageFiles.map(readAsDataURL)),
+      Promise.all(otherFiles.map((f) => readAsDataURL(f).then((dataUrl) => ({ name: f.name, dataUrl: dataUrl })))),
+    ]).then(([images, files]) => finishSaving(images, files));
   });
 }
 
@@ -1720,15 +1748,15 @@ function updatePostTagDisplayText() {
 }
 
 function updateFileInputDisplay() {
-  const count = postExistingImages.length + postSelectedFiles.length;
+  const count = postExistingImages.length + postExistingFiles.length + postSelectedFiles.length;
   if (count === 0) {
     els.fileInputDisplay.textContent = 'ファイルが選択されていません';
     els.fileInputDisplay.setAttribute('for', 'postImageInput');
   } else if (count >= 4) {
-    els.fileInputDisplay.textContent = '4枚選択中（上限）';
+    els.fileInputDisplay.textContent = '4件選択中（上限）';
     els.fileInputDisplay.removeAttribute('for');
   } else {
-    els.fileInputDisplay.textContent = count + '枚選択中（クリックで追加）';
+    els.fileInputDisplay.textContent = count + '件選択中（クリックで追加）';
     els.fileInputDisplay.setAttribute('for', 'postImageInput');
   }
 }
@@ -1761,7 +1789,28 @@ function updateImagePreviews() {
     els.imagePreviewContainer.appendChild(item);
   });
 
+  postExistingFiles.forEach((file, i) => {
+    const item = createFilePreviewItem(file.name, () => {
+      postExistingFiles.splice(i, 1);
+      updateImagePreviews();
+      updateFileInputDisplay();
+    });
+    els.imagePreviewContainer.appendChild(item);
+  });
+
   postSelectedFiles.forEach((file, i) => {
+    const removeFile = () => {
+      postSelectedFiles.splice(i, 1);
+      updateImagePreviews();
+      updateFileInputDisplay();
+    };
+
+    // 画像以外のファイルはファイル名のプレビューを表示
+    if (!(file.type && file.type.startsWith('image/'))) {
+      els.imagePreviewContainer.appendChild(createFilePreviewItem(file.name, removeFile));
+      return;
+    }
+
     const url = URL.createObjectURL(file);
     previewUrls.push(url);
 
@@ -1776,16 +1825,43 @@ function updateImagePreviews() {
     removeBtn.type = 'button';
     removeBtn.className = 'image-preview-remove';
     removeBtn.textContent = '×';
-    removeBtn.addEventListener('click', () => {
-      postSelectedFiles.splice(i, 1);
-      updateImagePreviews();
-      updateFileInputDisplay();
-    });
+    removeBtn.addEventListener('click', removeFile);
 
     item.appendChild(img);
     item.appendChild(removeBtn);
     els.imagePreviewContainer.appendChild(item);
   });
+}
+
+/* 画像以外のファイル用のプレビュー要素を作成 */
+function createFilePreviewItem(name, onRemove) {
+  const item = document.createElement('div');
+  item.className = 'image-preview-item';
+
+  const box = document.createElement('div');
+  box.className = 'file-preview-box';
+
+  const icon = document.createElement('span');
+  icon.className = 'file-preview-icon';
+  icon.textContent = '📄';
+
+  const label = document.createElement('span');
+  label.className = 'file-preview-name';
+  label.textContent = name;
+  label.title = name;
+
+  box.appendChild(icon);
+  box.appendChild(label);
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'image-preview-remove';
+  removeBtn.textContent = '×';
+  removeBtn.addEventListener('click', onRemove);
+
+  item.appendChild(box);
+  item.appendChild(removeBtn);
+  return item;
 }
 
 /* =========================================================
