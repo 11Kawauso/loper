@@ -324,6 +324,7 @@ function cacheElements() {
   els.settingsContactInput = document.getElementById('settingsContactInput');
   els.settingsContactSave = document.getElementById('settingsContactSave');
   els.expiredPostsList = document.getElementById('expiredPostsList');
+  els.myPostsList = document.getElementById('myPostsList');
 
   els.toast = document.getElementById('toast');
 
@@ -434,6 +435,7 @@ function parseDateString(dateStr) {
 }
 
 function isPostExpired(post) {
+  if (post.closed) return true;
   if (!post.createdAt || !post.deadlineDays) return false;
   const deadline = new Date(post.createdAt);
   deadline.setDate(deadline.getDate() + post.deadlineDays);
@@ -679,6 +681,23 @@ function createPostMoreMenu(post) {
       closeDetailModal();
       openDeadlineEditModal(post);
     }));
+    if (!post.closed) {
+      menu.appendChild(createPostMoreMenuItem('募集を締め切る', false, (e) => {
+        e.stopPropagation();
+        closeAllPostMenus();
+        if (!isOwnPost(post)) {
+          closeDetailModal();
+          showLoginPrompt();
+          return;
+        }
+        showGenericConfirm('この募集を締め切りますか？', () => {
+          post.closed = true;
+          closeDetailModal();
+          renderPosts();
+          showToast('募集を締め切りました');
+        });
+      }));
+    }
     menu.appendChild(createPostMoreMenuItem('削除', true, (e) => {
       e.stopPropagation();
       closeAllPostMenus();
@@ -1391,11 +1410,69 @@ function setupPostButton() {
       return;
     }
     resetPostForm();
+    if (restorePostDraft()) {
+      showToast('下書きを復元しました');
+    }
     els.postModalTitle.textContent = '投稿を作成';
     els.postSubmitBtn.textContent = '投稿する';
     els.postDeadlineGroup.style.display = '';
     els.postModalOverlay.classList.add('show');
   });
+}
+
+/* =========================================================
+   投稿の下書き（新規投稿のみ。localStorageに保存）
+   ========================================================= */
+const POST_DRAFT_KEY = 'loper_postDraft';
+
+function savePostDraft() {
+  if (editingPostId !== null) return; // 編集モードは下書き対象外
+  const draft = {
+    title: els.postTitleInput.value,
+    category: els.postCategoryInput.value,
+    description: els.postDescInput.value,
+    contact: els.postContactInput.value,
+    freeTags: els.postTagsInput.value,
+    selectedTags: [...postSelectedTags],
+    deadline: els.postDeadlineInput.value,
+  };
+  const hasContent = draft.title.trim() || draft.description.trim() || draft.contact.trim()
+    || draft.freeTags.trim() || draft.selectedTags.length > 0;
+  try {
+    if (hasContent) {
+      localStorage.setItem(POST_DRAFT_KEY, JSON.stringify(draft));
+    } else {
+      localStorage.removeItem(POST_DRAFT_KEY);
+    }
+  } catch (err) { /* localStorageが使えない環境では何もしない */ }
+}
+
+/* 下書きがあればフォームへ反映して true を返す */
+function restorePostDraft() {
+  let draft = null;
+  try {
+    draft = JSON.parse(localStorage.getItem(POST_DRAFT_KEY));
+  } catch (err) { /* 壊れた下書きは無視 */ }
+  if (!draft) return false;
+
+  els.postTitleInput.value = draft.title || '';
+  els.postTitleInput.dispatchEvent(new Event('input'));
+  els.postCategoryInput.value = draft.category || 'game';
+  updatePostModalBorder();
+  els.postDescInput.value = draft.description || '';
+  els.postDescInput.dispatchEvent(new Event('input'));
+  els.postContactInput.value = draft.contact || '';
+  els.postTagsInput.value = draft.freeTags || '';
+  postSelectedTags = new Set(draft.selectedTags || []);
+  renderPostTagSelector();
+  if (draft.deadline) els.postDeadlineInput.value = draft.deadline;
+  return true;
+}
+
+function clearPostDraft() {
+  try {
+    localStorage.removeItem(POST_DRAFT_KEY);
+  } catch (err) { /* noop */ }
 }
 
 /* フォームを新規投稿用の初期状態にリセット */
@@ -1480,9 +1557,15 @@ function renderPostTagSelector() {
 }
 
 function setupPostModal() {
-  els.postModalClose.addEventListener('click', closePostModal);
+  els.postModalClose.addEventListener('click', () => {
+    savePostDraft();
+    closePostModal();
+  });
   els.postModalOverlay.addEventListener('click', (e) => {
-    if (e.target === els.postModalOverlay) closePostModal();
+    if (e.target === els.postModalOverlay) {
+      savePostDraft();
+      closePostModal();
+    }
   });
 
   // カテゴリ変更 → モーダル枠色切替
@@ -1585,6 +1668,7 @@ function setupPostModal() {
 
       selectCategory('all');
 
+      clearPostDraft();
       closePostModal();
       showToast('投稿を作成しました');
     };
@@ -2004,6 +2088,14 @@ function setupSettings() {
     expiredArrow.classList.toggle('open', !isOpen);
   });
 
+  const myPostsHeader = document.getElementById('myPostsPulldownHeader');
+  const myPostsArrow = document.getElementById('myPostsPulldownArrow');
+  myPostsHeader.addEventListener('click', () => {
+    const isOpen = els.myPostsList.style.display !== 'none';
+    els.myPostsList.style.display = isOpen ? 'none' : 'flex';
+    myPostsArrow.classList.toggle('open', !isOpen);
+  });
+
   els.settingsNameSave.addEventListener('click', () => {
     const newName = els.settingsNameInput.value.trim();
     if (!newName) return;
@@ -2029,7 +2121,10 @@ function openSettings() {
   els.settingsContactInput.value = state.profile.contact;
   els.expiredPostsList.style.display = 'none';
   document.getElementById('expiredPulldownArrow').classList.remove('open');
+  els.myPostsList.style.display = 'none';
+  document.getElementById('myPostsPulldownArrow').classList.remove('open');
   renderExpiredPosts();
+  renderMyPosts();
   els.settingsOverlay.classList.add('show');
 }
 
@@ -2064,17 +2159,75 @@ function renderExpiredPosts() {
     title.className = 'expired-post-title';
     title.textContent = post.title;
 
-    const deadline = new Date(post.createdAt);
-    deadline.setDate(deadline.getDate() + post.deadlineDays);
-
     const meta = document.createElement('div');
     meta.className = 'expired-post-meta';
-    meta.textContent = post.date + ' ／ 期限 ' + formatDate(deadline);
+    if (post.closed) {
+      meta.textContent = post.date + ' ／ 締め切り済み';
+    } else {
+      const deadline = new Date(post.createdAt);
+      deadline.setDate(deadline.getDate() + post.deadlineDays);
+      meta.textContent = post.date + ' ／ 期限 ' + formatDate(deadline);
+    }
 
     info.appendChild(title);
     info.appendChild(meta);
     item.appendChild(info);
     els.expiredPostsList.appendChild(item);
+  });
+}
+
+/* 自分の投稿一覧（設定画面） */
+function renderMyPosts() {
+  const myPosts = state.allPosts.filter((post) => isOwnPost(post));
+  els.myPostsList.innerHTML = '';
+
+  if (!state.currentUser) {
+    const empty = document.createElement('div');
+    empty.className = 'expired-posts-empty';
+    empty.textContent = 'ログインすると表示されます';
+    els.myPostsList.appendChild(empty);
+    return;
+  }
+
+  if (myPosts.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'expired-posts-empty';
+    empty.textContent = '自分の投稿はありません';
+    els.myPostsList.appendChild(empty);
+    return;
+  }
+
+  myPosts.forEach((post) => {
+    const item = document.createElement('div');
+    item.className = 'expired-post-item';
+    item.addEventListener('click', () => {
+      closeSettings();
+      openDetailModal(post);
+    });
+
+    const info = document.createElement('div');
+    info.className = 'expired-post-info';
+
+    const title = document.createElement('div');
+    title.className = 'expired-post-title';
+    title.textContent = post.title;
+
+    const meta = document.createElement('div');
+    meta.className = 'expired-post-meta';
+    if (post.closed) {
+      meta.textContent = post.date + ' ／ 締め切り済み';
+    } else if (isPostExpired(post)) {
+      meta.textContent = post.date + ' ／ 期限切れ';
+    } else {
+      const deadline = getPostDeadline(post);
+      const remaining = deadline ? Math.ceil((deadline - new Date()) / (24 * 60 * 60 * 1000)) : null;
+      meta.textContent = post.date + (remaining !== null ? ' ／ 残り ' + remaining + ' 日' : '');
+    }
+
+    info.appendChild(title);
+    info.appendChild(meta);
+    item.appendChild(info);
+    els.myPostsList.appendChild(item);
   });
 }
 
@@ -2218,6 +2371,7 @@ function setupDeadlineEditModal() {
     const days = Math.min(365, Math.max(1, parseInt(els.deadlineEditInput.value) || 30));
     post.createdAt = new Date();
     post.deadlineDays = days;
+    post.closed = false;
     closeDeadlineEditModal();
     renderPosts();
     showToast('募集期限を変更しました');
