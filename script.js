@@ -343,6 +343,7 @@ function cacheElements() {
   els.profileLoginSection = document.getElementById('profileLoginSection');
   els.profileContent = document.getElementById('profileContent');
   els.githubLoginBtn = document.getElementById('githubLoginBtn');
+  els.twitterLoginBtn = document.getElementById('twitterLoginBtn');
   els.profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
   els.avatarCropOverlay = document.getElementById('avatarCropOverlay');
@@ -2247,6 +2248,7 @@ function setupFirebase() {
   });
 
   els.githubLoginBtn.addEventListener('click', loginWithGithub);
+  els.twitterLoginBtn.addEventListener('click', loginWithTwitter);
   els.profileLogoutBtn.addEventListener('click', () => {
     showLogoutConfirm();
   });
@@ -2258,6 +2260,7 @@ function setupLoginPrompt() {
   const overlay = document.getElementById('loginPromptOverlay');
   const closeBtn = document.getElementById('loginPromptClose');
   const githubBtn = document.getElementById('loginPromptGithubBtn');
+  const twitterBtn = document.getElementById('loginPromptTwitterBtn');
 
   closeBtn.addEventListener('click', () => overlay.classList.remove('show'));
   overlay.addEventListener('click', (e) => {
@@ -2267,6 +2270,11 @@ function setupLoginPrompt() {
   githubBtn.addEventListener('click', async () => {
     overlay.classList.remove('show');
     await loginWithGithub();
+  });
+
+  twitterBtn.addEventListener('click', async () => {
+    overlay.classList.remove('show');
+    await loginWithTwitter();
   });
 }
 
@@ -2392,6 +2400,20 @@ async function loginWithGithub() {
   }
 }
 
+async function loginWithTwitter() {
+  const fb = window._firebase;
+  if (!fb) return;
+  try {
+    const provider = new fb.TwitterAuthProvider();
+    await fb.signInWithPopup(fb.auth, provider);
+  } catch (err) {
+    if (err.code !== 'auth/popup-closed-by-user') {
+      showToast('ログインに失敗しました');
+    }
+    console.error(err);
+  }
+}
+
 async function logoutFirebase() {
   const fb = window._firebase;
   if (!fb) return;
@@ -2435,9 +2457,10 @@ async function onFirebaseLogin(user) {
         bio: state.profile.bio,
         contact: state.profile.contact,
         links: state.profile.links,
-        githubUid: user.uid,
-        githubName: user.displayName,
-        githubPhoto: user.photoURL,
+        authProvider: (user.providerData[0] && user.providerData[0].providerId) || 'unknown',
+        authProviderUid: user.uid,
+        authProviderName: user.displayName,
+        authProviderPhoto: user.photoURL,
         email: user.email,
         createdAt: new Date().toISOString(),
       });

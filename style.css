@@ -1856,7 +1856,15 @@ button {
   line-height: 1.8;
 }
 
-.github-login-btn {
+.login-btn-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.oauth-login-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1866,7 +1874,6 @@ button {
   height: 48px;
   border: none;
   border-radius: 24px;
-  background: #24292e;
   color: #fff;
   font-size: 15px;
   font-weight: bold;
@@ -1875,8 +1882,20 @@ button {
   transition: background 0.15s;
 }
 
-.github-login-btn:hover {
+.oauth-login-btn.github {
+  background: #24292e;
+}
+
+.oauth-login-btn.github:hover {
   background: #3a3f44;
+}
+
+.oauth-login-btn.twitter {
+  background: #000000;
+}
+
+.oauth-login-btn.twitter:hover {
+  background: #2b2b2b;
 }
 
 .profile-content {
@@ -1957,8 +1976,11 @@ button {
   line-height: 1.6;
 }
 
-.login-prompt-btn {
+.login-btn-group:has(.login-prompt-btn) {
   margin-top: 8px;
+}
+
+.login-prompt-btn {
   max-width: 100%;
   width: 240px;
 }
