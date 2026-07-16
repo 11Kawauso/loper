@@ -215,6 +215,14 @@ const INITIAL_PAGE_SIZE = 12; // 初回表示件数
 const PAGE_SIZE = 16;       // 1回のスクロールで読み込む件数
 const ADS_EVERY = 20;       // 何件ごとに広告を挟むか
 
+const MAX_NAME_LENGTH = 20; // 設定画面のname入力欄と同じ上限（index.htmlのmaxlengthと合わせること）
+
+/* ログインプロバイダの表示名は文字数制限が無い/緩いことがあるため、
+   サイト内の上限に合わせて切り詰める */
+function truncateName(name) {
+  return (name || '').trim().slice(0, MAX_NAME_LENGTH);
+}
+
 /* ---------------- DOM要素 ---------------- */
 const els = {};
 
@@ -2439,13 +2447,13 @@ async function onFirebaseLogin(user) {
 
     if (snap.exists()) {
       const data = snap.data();
-      state.profile.name = data.name || user.displayName || '名前';
+      state.profile.name = truncateName(data.name) || truncateName(user.displayName) || '名前';
       state.profile.avatarUrl = data.avatarUrl || user.photoURL || '';
       state.profile.bio = data.bio || '';
       state.profile.contact = data.contact || '';
       state.profile.links = data.links && data.links.length > 0 ? data.links : [''];
     } else {
-      state.profile.name = user.displayName || '名前';
+      state.profile.name = truncateName(user.displayName) || '名前';
       state.profile.avatarUrl = user.photoURL || '';
       state.profile.bio = '';
       state.profile.contact = '';
@@ -2467,7 +2475,7 @@ async function onFirebaseLogin(user) {
     }
   } catch (err) {
     console.error('Firestore load error:', err);
-    state.profile.name = user.displayName || '名前';
+    state.profile.name = truncateName(user.displayName) || '名前';
     state.profile.avatarUrl = user.photoURL || '';
   }
 
