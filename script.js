@@ -46,7 +46,7 @@ const basePosts = [
     title: '2Dアクションゲームの共同制作メンバー募集',
     description: 'ドット絵スタイルの2Dアクションゲームを作っています。プログラマー、ドット絵デザイナーを募集中です。未経験の方も歓迎します。',
     tags: ['Unity', '2D', 'PixelArt', '初心者歓迎'],
-    date: '2026年06月01日',
+    daysAgo: 12,
     contact: 'X（旧Twitter）: @pixel_game_dev',
     images: [],
     deadlineDays: 60,
@@ -56,7 +56,7 @@ const basePosts = [
     title: 'タスク管理アプリを一緒に開発しませんか',
     description: 'Flutterで作るシンプルなタスク管理アプリです。UI実装が得意な方、一緒に開発を進めてくれる方を探しています。',
     tags: ['Flutter', 'iOS', 'Android', '個人開発'],
-    date: '2026年06月02日',
+    daysAgo: 11,
     contact: 'Discord: taskapp#1234',
     images: [],
     deadlineDays: 45,
@@ -66,7 +66,7 @@ const basePosts = [
     title: 'ポートフォリオサイトのデザイン協力者募集',
     description: 'エンジニア向けポートフォリオサイトのテンプレートを作成中です。デザインが得意な方、コーディングを手伝ってくれる方を募集します。',
     tags: ['React', 'ポートフォリオ', 'デザイナー募集'],
-    date: '2026年06月03日',
+    daysAgo: 10,
     contact: 'メール: portfolio.design@example.com',
     images: [],
     deadlineDays: 30,
@@ -76,7 +76,7 @@ const basePosts = [
     title: 'ゲーム実況用オープニング映像の制作チーム',
     description: 'YouTube向けのゲーム実況チャンネルのオープニング映像を制作しています。モーショングラフィックスの経験がある方を探しています。',
     tags: ['PV', 'AfterEffects', '編集者募集'],
-    date: '2026年06月04日',
+    daysAgo: 9,
     contact: 'X（旧Twitter）: @op_movie_team',
     images: [],
     deadlineDays: 14,
@@ -86,7 +86,7 @@ const basePosts = [
     title: 'ローグライクRPGのレベルデザイナー募集',
     description: 'ダンジョン自動生成のローグライクRPGを開発中です。レベルデザインやバランス調整に興味がある方、ぜひご参加ください。',
     tags: ['Unity', 'RPG', '経験者募集'],
-    date: '2026年06月05日',
+    daysAgo: 8,
     contact: 'Discord: roguelike_dev#5678',
     images: [],
     deadlineDays: 90,
@@ -96,7 +96,7 @@ const basePosts = [
     title: '習慣化アプリのUI/UXデザイナーを探しています',
     description: '毎日の習慣を記録できるアプリを開発中です。使いやすいUI/UXを一緒に考えてくれる方を募集しています。',
     tags: ['ReactNative', 'ツールアプリ', '生活系'],
-    date: '2026年06月06日',
+    daysAgo: 7,
     contact: 'メール: habit.app.ux@example.com',
     images: [],
     deadlineDays: 10,
@@ -106,7 +106,7 @@ const basePosts = [
     title: '個人ブログのリニューアルを手伝ってくれる人',
     description: 'Vue.jsで作られた個人ブログのリニューアルプロジェクトです。SEO対策やLPの改善に詳しい方を歓迎します。',
     tags: ['WordPress', 'ブログ', 'コーダー募集'],
-    date: '2026年06月07日',
+    daysAgo: 6,
     contact: 'X（旧Twitter）: @blog_renewal',
     images: [],
     deadlineDays: 30,
@@ -116,7 +116,7 @@ const basePosts = [
     title: 'ショート動画編集メンバーを募集しています',
     description: 'SNS向けのショート動画を定期的に制作するチームです。撮影や編集スキルを学びながら一緒に活動しませんか。',
     tags: ['編集者募集', 'PV', 'MV'],
-    date: '2026年06月08日',
+    daysAgo: 5,
     contact: 'Discord: shortmovie#4321',
     images: [],
     deadlineDays: 7,
@@ -126,7 +126,7 @@ const basePosts = [
     title: '3Dアドベンチャーゲームのプログラマー募集',
     description: 'UnrealEngineを使った3Dアドベンチャーゲームを開発しています。C++またはブループリントが書けるプログラマーを募集します。',
     tags: ['UE5', '3D', 'プログラマー募集'],
-    date: '2026年06月09日',
+    daysAgo: 4,
     contact: 'メール: adv.game.dev@example.com',
     images: [],
     deadlineDays: 60,
@@ -136,7 +136,7 @@ const basePosts = [
     title: '英語学習アプリの初期開発メンバーを探してます',
     description: 'スキマ時間で英単語を学習できるアプリを企画中です。初心者の方も大歓迎、一緒に学びながら開発しましょう。',
     tags: ['Flutter', '教育', '個人開発'],
-    date: '2026年06月10日',
+    daysAgo: 3,
     contact: 'X（旧Twitter）: @english_app_dev',
     images: [],
     deadlineDays: 30,
@@ -146,7 +146,7 @@ const basePosts = [
     title: '自主制作アニメのBGM・SE担当を募集中',
     description: '個人で制作中の短編アニメーションにBGMや効果音をつけてくれる方を探しています。ジャンルはSFファンタジーです。',
     tags: ['アニメーション', 'Blender', '3DCG'],
-    date: '2026年06月11日',
+    daysAgo: 2,
     contact: 'Discord: anime_bgm#9012',
     images: [],
     deadlineDays: 45,
@@ -156,7 +156,7 @@ const basePosts = [
     title: 'MV制作チームのモーションデザイナー募集',
     description: 'ボカロ楽曲のMVを制作するチームです。AfterEffectsやCinema4Dでモーショングラフィックスを作れる方を募集しています。',
     tags: ['MV', 'AfterEffects', 'Cinema4D', 'VFX'],
-    date: '2026年06月12日',
+    daysAgo: 1,
     contact: 'X（旧Twitter）: @mv_motion_team',
     images: [],
     deadlineDays: 60,
@@ -166,7 +166,7 @@ const basePosts = [
     title: 'ドキュメンタリー映像の撮影・編集メンバー募集',
     description: '地域の伝統文化を記録するドキュメンタリー映像を制作中です。撮影や編集に興味がある方、一緒に作品を作りませんか。',
     tags: ['PremierePro', '編集者募集', 'PV'],
-    date: '2026年06月13日',
+    daysAgo: 0,
     contact: 'メール: docs.film@example.com',
     images: [],
     deadlineDays: 30,
@@ -404,14 +404,18 @@ function generatePostsBatch(count) {
   for (let i = 0; i < count; i++) {
     const template = basePosts[(state.nextId - 1) % basePosts.length];
     const id = state.nextId;
+    // ダミー投稿の投稿日は、実行時点（今日）を基準にした相対日数で計算する。
+    // 固定の絶対日付だと、時間の経過とともに募集期限が過ぎて一覧から消えてしまう。
+    const createdAt = new Date();
+    createdAt.setDate(createdAt.getDate() - (template.daysAgo || 0));
     newPosts.push({
       id: id,
       category: template.category,
       title: template.title,
       description: template.description,
       tags: template.tags.slice(),
-      date: template.date,
-      createdAt: parseDateString(template.date),
+      date: formatDate(createdAt),
+      createdAt: createdAt,
       deadlineDays: template.deadlineDays,
       contact: template.contact || '',
       images: template.images.slice(),
@@ -441,12 +445,6 @@ function loadMorePosts(count = PAGE_SIZE) {
 /* =========================================================
    期限判定
    ========================================================= */
-function parseDateString(dateStr) {
-  const m = dateStr.match(/(\d{4})年(\d{2})月(\d{2})日/);
-  if (!m) return new Date();
-  return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
-}
-
 function isPostExpired(post) {
   if (post.closed) return true;
   if (!post.createdAt || !post.deadlineDays) return false;
