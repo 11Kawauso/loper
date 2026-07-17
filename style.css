@@ -2069,6 +2069,13 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.login-prompt-logo {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
 }
 
 .login-prompt-title {
@@ -2090,6 +2097,22 @@ button {
 .login-prompt-btn {
   max-width: 100%;
   width: 240px;
+}
+
+.login-prompt-legal {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #9BB3B6;
+  margin-top: -4px;
+}
+
+.login-prompt-legal a {
+  color: #7A9CA0;
+  text-decoration: underline;
+}
+
+.login-prompt-legal a:hover {
+  color: var(--text-dark);
 }
 
 #loginPromptOverlay,
