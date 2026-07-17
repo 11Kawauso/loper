@@ -2577,6 +2577,7 @@ async function onFirebaseLogin(user) {
   els.profileContactDisplay.textContent = state.profile.contact;
   els.profileBio.value = state.profile.bio;
   applyProfileAvatar();
+  applyMenuProfile();
   renderProfileLinks();
   renderPosts();
 }
@@ -2597,6 +2598,7 @@ function onFirebaseLogout() {
   els.profileContactDisplay.textContent = state.profile.contact;
   els.profileBio.value = state.profile.bio;
   applyProfileAvatar();
+  applyMenuProfile();
   renderProfileLinks();
   renderPosts();
   closeDetailModal();
