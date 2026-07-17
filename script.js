@@ -1242,6 +1242,9 @@ function togglePin(post, btnEl) {
 /* =========================================================
    検索
    ========================================================= */
+/* 検索実行後、次に検索欄をクリックしたときに全選択するためのフラグ */
+let searchSelectAllPending = false;
+
 function setupSearch() {
   els.searchBtn.addEventListener('click', () => runSearch());
   els.searchInput.addEventListener('keydown', (e) => {
@@ -1251,8 +1254,32 @@ function setupSearch() {
   });
 
   // 検索バーにフォーカスしたらオプションパネルを表示
+  // 入力済みの文字があれば全選択する（Tabキーでのフォーカス用）
   els.searchInput.addEventListener('focus', () => {
     els.searchOptionsPanel.classList.add('open');
+    if (els.searchInput.value) els.searchInput.select();
+  });
+
+  // マウスクリックの場合、focus時のselectはmouseupで解除されてしまうため、
+  // click時点で改めて全選択する。対象は次の2パターン：
+  //   1. フォーカスが無い状態からのクリック
+  //   2. 検索実行後（キーワード確定後）の最初のクリック
+  // （それ以外のフォーカス済み欄のクリックは通常どおりカーソル移動できる）
+  let selectAllOnClick = false;
+  els.searchInput.addEventListener('pointerdown', () => {
+    selectAllOnClick = document.activeElement !== els.searchInput || searchSelectAllPending;
+  });
+  els.searchInput.addEventListener('click', () => {
+    if (selectAllOnClick && els.searchInput.value) {
+      els.searchInput.select();
+    }
+    selectAllOnClick = false;
+    searchSelectAllPending = false;
+  });
+
+  // 検索後に入力を続けた場合は「次クリックで全選択」を解除する
+  els.searchInput.addEventListener('input', () => {
+    searchSelectAllPending = false;
   });
 
   // 検索バーの外側をクリックしたら閉じる
@@ -1275,6 +1302,7 @@ function setupSearch() {
 function runSearch() {
   const keyword = els.searchInput.value.trim();
   state.searchKeyword = keyword;
+  searchSelectAllPending = !!keyword;
 
   if (keyword) {
     state.showPinnedOnly = false;
