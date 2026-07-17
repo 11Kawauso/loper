@@ -1280,6 +1280,13 @@ function setupSearch() {
   // 検索後に入力を続けた場合は「次クリックで全選択」を解除する
   els.searchInput.addEventListener('input', () => {
     searchSelectAllPending = false;
+
+    // 検索バーが空になったら検索を解除し、元の投稿一覧に戻す
+    if (els.searchInput.value.trim() === '' && state.searchKeyword) {
+      state.searchKeyword = '';
+      renderPosts();
+      els.postsPane.scrollTop = 0;
+    }
   });
 
   // 検索バーの外側をクリックしたら閉じる
