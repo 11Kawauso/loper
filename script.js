@@ -2689,15 +2689,15 @@ function setLastLoginProvider(provider) {
   } catch (err) { /* localStorageが使えない環境では何もしない */ }
 }
 
-/* 前回ログインしたプロバイダのアイコンを水色でハイライトし、案内文を表示する。
+/* 前回ログインしたプロバイダのボタンを青でハイライトし、案内文を表示する。
    初回ログイン時（記録が無い場合）は何も表示しない。 */
 function applyLastLoginHints() {
   const provider = getLastLoginProvider();
 
-  document.querySelectorAll('.oauth-login-btn.github .oauth-icon').forEach((el) => {
+  document.querySelectorAll('.oauth-login-btn.github').forEach((el) => {
     el.classList.toggle('recent-login', provider === 'github');
   });
-  document.querySelectorAll('.oauth-login-btn.twitter .oauth-icon').forEach((el) => {
+  document.querySelectorAll('.oauth-login-btn.twitter').forEach((el) => {
     el.classList.toggle('recent-login', provider === 'twitter');
   });
 

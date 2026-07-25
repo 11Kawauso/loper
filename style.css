@@ -2037,21 +2037,20 @@ button {
   background: #2b2b2b;
 }
 
-/* 前回ログインに使ったプロバイダのアイコンを水色のリングで囲む */
 .oauth-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
 }
 
-.oauth-icon.recent-login {
-  box-shadow: 0 0 0 2px #ADE6EE;
+/* 前回ログインに使ったプロバイダのボタン全体を青いリングで囲む */
+.oauth-login-btn.recent-login {
+  box-shadow: 0 0 0 2px #3B82F6;
 }
 
 .last-login-hint {
   font-size: 13px;
-  color: #ADE6EE;
+  color: #3B82F6;
   text-align: center;
   margin-top: -4px;
 }
