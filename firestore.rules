@@ -11,14 +11,54 @@ service cloud.firestore {
       allow read: if true;
 
       allow create: if request.auth != null
-        && request.resource.data.authorUid == request.auth.uid;
+        && request.resource.data.authorUid == request.auth.uid
+        && isValidPost()
+        // 投稿日時はサーバー側の時刻に固定する。
+        // クライアントが未来の日時を指定して一覧の先頭に居座るのを防ぐ。
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.pinnedBy.size() == 0
+        && request.resource.data.closed == false;
 
-      allow update: if isOwner() || isValidPinToggle();
+      allow update: if (isOwner() && isValidPost() && isValidOwnerUpdate())
+        || isValidPinToggle();
 
       allow delete: if isOwner();
 
       function isOwner() {
         return request.auth != null && resource.data.authorUid == request.auth.uid;
+      }
+
+      /* 保存される投稿の各項目が、画面の入力制限と同じ範囲に収まっているか検証する。
+         クライアントを改造して巨大なデータや不正な値を送られるのを防ぐ。 */
+      function isValidPost() {
+        let d = request.resource.data;
+        return d.authorUid is string
+          && d.title is string && d.title.size() > 0 && d.title.size() <= 30
+          && d.description is string && d.description.size() <= 500
+          && d.category in ['game', 'app', 'site', 'video']
+          && d.contact is string && d.contact.size() <= 100
+          // 選択できるタグは100種類。自由記入分も考慮して余裕をもたせている
+          && d.tags is list && d.tags.size() <= 150
+          && d.images is list && d.images.size() <= 4
+          && d.files is list && d.files.size() <= 4
+          && d.deadlineDays is number && d.deadlineDays >= 1 && d.deadlineDays <= 365
+          && d.authorName is string && d.authorName.size() <= 20
+          && d.authorAvatarUrl is string && d.authorAvatarUrl.size() <= 400000
+          && d.pinnedBy is list
+          && d.closed is bool;
+      }
+
+      /* 投稿者本人による更新でも、投稿者情報は書き換えさせない。
+         （他人になりすましたり、投稿の所有権を他人へ移すのを防ぐ）
+         投稿日時は「変更しない」か「募集期限の変更で現在時刻に更新する」のみ許可。 */
+      function isValidOwnerUpdate() {
+        let d = request.resource.data;
+        let p = resource.data;
+        return d.authorUid == p.authorUid
+          && d.authorName == p.authorName
+          && d.authorAvatarUrl == p.authorAvatarUrl
+          && d.pinnedBy == p.pinnedBy
+          && (d.createdAt == p.createdAt || d.createdAt == request.time);
       }
 
       function isValidPinToggle() {
@@ -35,9 +75,12 @@ service cloud.firestore {
       }
     }
 
-    /* ユーザープロフィール：誰でも閲覧できる。書き込みは本人のみ。 */
+    /* ユーザープロフィール：本人のみ読み書きできる。
+       メールアドレスなどの個人情報を含むため、公開してはいけない。
+       投稿一覧に表示する名前・アイコンは投稿(posts)側に複製して保存しており、
+       他人のユーザードキュメントを読む必要はない。 */
     match /users/{uid} {
-      allow read: if true;
+      allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 

@@ -223,6 +223,40 @@ function truncateName(name) {
   return (name || '').trim().slice(0, MAX_NAME_LENGTH);
 }
 
+/* =========================================================
+   URLの安全確認
+   投稿データ（画像・添付ファイル・投稿者アイコン）のURLは、
+   他の利用者が自由に書き込める値なので、そのまま使うと
+   javascript: などを仕込まれてスクリプトを実行されてしまう。
+   表示に使う前に、必ず以下の関数で安全なものだけに絞り込む。
+   ========================================================= */
+
+/* リンク（aタグのhref）に使ってよいURLだけを返す。それ以外はnull */
+function toSafeLinkUrl(url) {
+  if (typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  return /^https?:\/\/[^\s"'<>]+$/i.test(trimmed) ? trimmed : null;
+}
+
+/* 画像の表示に使ってよいURLだけを返す。それ以外はnull。
+   Supabaseのhttps URL、アイコンのdata:image、サイト内の相対パスを許可する。
+   CSSのurl()にも使うため、引用符・括弧・空白を含むものは弾く。 */
+function toSafeImageUrl(url) {
+  if (typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (/["'()\s\\]/.test(trimmed)) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^data:image\/(png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) return trimmed;
+  if (/^[\w.-]+(\/[\w.-]+)*$/.test(trimmed)) return trimmed; // 相対パス（images/ProfileIcon.png など）
+  return null;
+}
+
+/* 安全な画像URLだけをCSSのbackground-imageに設定する */
+function setBackgroundImageSafely(el, url) {
+  const safe = toSafeImageUrl(url);
+  el.style.backgroundImage = safe ? 'url("' + safe + '")' : '';
+}
+
 /* ---------------- DOM要素 ---------------- */
 const els = {};
 
@@ -658,9 +692,7 @@ function createPostCard(post) {
 
   const avatar = document.createElement('div');
   avatar.className = 'post-avatar';
-  if (post.authorAvatarUrl) {
-    avatar.style.backgroundImage = 'url(' + post.authorAvatarUrl + ')';
-  }
+  setBackgroundImageSafely(avatar, post.authorAvatarUrl);
   header.appendChild(avatar);
 
   const author = document.createElement('span');
@@ -897,7 +929,11 @@ function createAdCard() {
   iframe.frameBorder = '0';
   iframe.scrolling = 'no';
   iframe.style.maxWidth = '100%';
-  iframe.sandbox = 'allow-scripts allow-popups allow-same-origin';
+  // allow-same-origin は付けない。付けると広告配信元のスクリプトが
+  // このサイトと同一オリジンとして扱われ、ログイン情報などに
+  // アクセスできてしまうため。
+  iframe.sandbox = 'allow-scripts allow-popups allow-popups-to-escape-sandbox';
+  iframe.referrerPolicy = 'no-referrer';
   iframe.src = 'ad.html';
 
   ad.appendChild(label);
@@ -1496,7 +1532,9 @@ function setupDetailModal() {
 }
 
 function openLightbox(src) {
-  els.lightboxImage.src = src;
+  const safe = toSafeImageUrl(src);
+  if (!safe) return;
+  els.lightboxImage.src = safe;
   els.lightboxOverlay.classList.add('show');
 }
 
@@ -1507,9 +1545,7 @@ function openDetailModal(post) {
   els.detailPane.className = 'content-pane detail-pane ' + (CATEGORY_BORDER_CLASS[post.category] || '');
 
   // アイコン・名前（投稿者の情報）
-  els.detailAvatar.style.backgroundImage = post.authorAvatarUrl
-    ? 'url(' + post.authorAvatarUrl + ')'
-    : '';
+  setBackgroundImageSafely(els.detailAvatar, post.authorAvatarUrl);
   els.detailAuthor.textContent = post.authorName || '名前';
 
   els.detailMoreMenuWrap.innerHTML = '';
@@ -1521,35 +1557,36 @@ function openDetailModal(post) {
   els.detailImageBox.innerHTML = '';
   if (post.images && post.images.length > 0) {
     post.images.forEach((src) => {
+      const safeSrc = toSafeImageUrl(src);
+      if (!safeSrc) return; // 不正なURLの画像は表示しない
       const img = document.createElement('img');
-      img.src = src;
+      img.src = safeSrc;
       img.className = 'modal-thumbnail';
       img.alt = '';
-      img.addEventListener('click', () => openLightbox(src));
+      img.addEventListener('click', () => openLightbox(safeSrc));
       els.detailImageBox.appendChild(img);
     });
-    els.detailImageBox.classList.add('has-image');
-  } else {
-    els.detailImageBox.classList.remove('has-image');
   }
+  // 不正なURLを除外した結果、表示できる画像が無い場合もあるため実際の件数で判定する
+  els.detailImageBox.classList.toggle('has-image', els.detailImageBox.childElementCount > 0);
 
   // 添付ファイル（クリックでダウンロード）
   els.detailFiles.innerHTML = '';
   if (post.files && post.files.length > 0) {
     post.files.forEach((file) => {
+      const safeUrl = toSafeLinkUrl(file && file.url);
+      if (!safeUrl) return; // 不正なURLの添付ファイルはリンクにしない
       const link = document.createElement('a');
       link.className = 'detail-file-link';
-      link.href = file.url;
+      link.href = safeUrl;
       link.download = file.name;
       link.target = '_blank';
-      link.rel = 'noopener';
+      link.rel = 'noopener noreferrer';
       link.textContent = '📄 ' + file.name;
       els.detailFiles.appendChild(link);
     });
-    els.detailFiles.classList.add('has-files');
-  } else {
-    els.detailFiles.classList.remove('has-files');
   }
+  els.detailFiles.classList.toggle('has-files', els.detailFiles.childElementCount > 0);
 
   // 内容
   els.detailDesc.textContent = post.description;
@@ -1774,19 +1811,29 @@ function supabasePathFromUrl(url) {
   return decodeURIComponent(url.slice(idx + marker.length));
 }
 
-/* 投稿削除時、添付されていた画像・ファイルをStorageからベストエフォートで削除する
-   （失敗しても投稿自体の削除は完了しているため、エラーはログに残すのみ） */
+/* 投稿削除時、添付されていた画像・ファイルもStorageから消せるなら消す。
+   削除対象は投稿者本人のフォルダ配下のみ。投稿データに他人のファイルのURLを
+   紛れ込ませて、投稿削除に便乗して消させる、という手口を防ぐ。
+
+   なお、公開キーによる一括削除を防ぐためStorage側で削除を禁止している場合は
+   ここでの削除は失敗する（想定内）。その場合ファイルはStorageに残るため、
+   容量が気になってきたらSupabaseの画面から手動で整理する。 */
 async function deletePostFiles(post) {
   const sb = window._supabase;
-  const urls = [...(post.images || []), ...(post.files || []).map((f) => f.url)];
-  const paths = urls.map(supabasePathFromUrl).filter((p) => p !== null);
+  const ownerPrefix = post.authorUid ? post.authorUid + '/' : null;
+  if (!ownerPrefix) return;
+
+  const urls = [...(post.images || []), ...(post.files || []).map((f) => f && f.url)];
+  const paths = urls
+    .map((url) => (typeof url === 'string' ? supabasePathFromUrl(url) : null))
+    .filter((p) => p !== null && p.startsWith(ownerPrefix));
   if (paths.length === 0) return;
 
   try {
     const { error } = await sb.storage.from(SUPABASE_STORAGE_BUCKET).remove(paths);
-    if (error) console.error('添付ファイルの削除に失敗しました:', error);
+    if (error) console.info('添付ファイルはStorageに残ります:', error.message);
   } catch (err) {
-    console.error('添付ファイルの削除に失敗しました:', err);
+    console.info('添付ファイルはStorageに残ります:', err);
   }
 }
 
@@ -2164,8 +2211,7 @@ function closeMenu() {
 }
 
 function applyMenuProfile() {
-  const url = state.profile.avatarUrl ? 'url(' + state.profile.avatarUrl + ')' : '';
-  els.menuProfileIcon.style.backgroundImage = url;
+  setBackgroundImageSafely(els.menuProfileIcon, state.profile.avatarUrl);
   els.menuProfileName.textContent = state.profile.name || '名前';
   els.menuAuthBtn.textContent = state.currentUser ? 'ログアウト' : 'ログイン';
 }
@@ -2179,9 +2225,8 @@ function closeProfilePanel() {
 }
 
 function applyProfileAvatar() {
-  const url = state.profile.avatarUrl ? 'url(' + state.profile.avatarUrl + ')' : '';
-  els.profileAvatar.style.backgroundImage = url;
-  els.menuProfileIcon.style.backgroundImage = url;
+  setBackgroundImageSafely(els.profileAvatar, state.profile.avatarUrl);
+  setBackgroundImageSafely(els.menuProfileIcon, state.profile.avatarUrl);
   els.menuProfileName.textContent = state.profile.name || '名前';
 }
 
