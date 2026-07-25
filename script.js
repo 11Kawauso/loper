@@ -396,6 +396,7 @@ function init() {
   setupGenericConfirm();
   setupDeadlineEditModal();
   setupFirebase();
+  applyLastLoginHints();
 }
 
 /* =========================================================
@@ -2661,7 +2662,50 @@ function setupLoginPrompt() {
 
 function showLoginPrompt(message) {
   document.querySelector('.login-prompt-message').textContent = message || '投稿するにはログインしてください';
+  applyLastLoginHints();
   document.getElementById('loginPromptOverlay').classList.add('show');
+}
+
+/* =========================================================
+   前回ログインしたプロバイダの記憶（localStorage）
+   ========================================================= */
+const LAST_LOGIN_PROVIDER_KEY = 'loper_lastLoginProvider';
+const LAST_LOGIN_LABELS = {
+  github: 'GitHub',
+  twitter: 'X（旧Twitter）',
+};
+
+function getLastLoginProvider() {
+  try {
+    return localStorage.getItem(LAST_LOGIN_PROVIDER_KEY);
+  } catch (err) {
+    return null;
+  }
+}
+
+function setLastLoginProvider(provider) {
+  try {
+    localStorage.setItem(LAST_LOGIN_PROVIDER_KEY, provider);
+  } catch (err) { /* localStorageが使えない環境では何もしない */ }
+}
+
+/* 前回ログインしたプロバイダのアイコンを水色でハイライトし、案内文を表示する。
+   初回ログイン時（記録が無い場合）は何も表示しない。 */
+function applyLastLoginHints() {
+  const provider = getLastLoginProvider();
+
+  document.querySelectorAll('.oauth-login-btn.github .oauth-icon').forEach((el) => {
+    el.classList.toggle('recent-login', provider === 'github');
+  });
+  document.querySelectorAll('.oauth-login-btn.twitter .oauth-icon').forEach((el) => {
+    el.classList.toggle('recent-login', provider === 'twitter');
+  });
+
+  const hintText = provider ? '前回' + LAST_LOGIN_LABELS[provider] + 'でログインしました。' : '';
+  const hint1 = document.getElementById('loginPromptLastLoginHint');
+  const hint2 = document.getElementById('profileLastLoginHint');
+  if (hint1) hint1.textContent = hintText;
+  if (hint2) hint2.textContent = hintText;
 }
 
 /* ログアウト確認モーダル */
@@ -2785,6 +2829,7 @@ async function loginWithGithub() {
   try {
     const provider = new fb.GithubAuthProvider();
     await fb.signInWithPopup(fb.auth, provider);
+    setLastLoginProvider('github');
   } catch (err) {
     if (err.code !== 'auth/popup-closed-by-user') {
       showToast('ログインに失敗しました');
@@ -2799,6 +2844,7 @@ async function loginWithTwitter() {
   try {
     const provider = new fb.TwitterAuthProvider();
     await fb.signInWithPopup(fb.auth, provider);
+    setLastLoginProvider('twitter');
   } catch (err) {
     if (err.code !== 'auth/popup-closed-by-user') {
       showToast('ログインに失敗しました');
@@ -2878,6 +2924,7 @@ function onFirebaseLogout() {
 
   els.profileLoginSection.style.display = 'flex';
   els.profileContent.style.display = 'none';
+  applyLastLoginHints();
 
   state.profile.name = '名前';
   state.profile.avatarUrl = 'images/ProfileIcon.png';
