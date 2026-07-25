@@ -1738,30 +1738,45 @@ function openEditPostModal(post) {
 }
 
 /* =========================================================
-   投稿の画像・添付ファイル（Firebase Storage）
+   投稿の画像・添付ファイル（Supabase Storage）
+   ※ Firebaseの無料プラン（Spark）ではStorageの利用にカード登録が
+     必要なため、ファイル保存だけSupabase Storageを使っている。
+     認証・投稿データはこれまで通りFirebase（Auth / Firestore）。
    ========================================================= */
+const SUPABASE_STORAGE_BUCKET = 'posts';
 
-/* ファイルをFirebase Storageにアップロードし、ダウンロードURLを返す */
+/* ファイルをSupabase Storageにアップロードし、公開URLを返す */
 async function uploadPostFile(file, uid) {
-  const fb = window._firebase;
-  const path = 'posts/' + uid + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '_' + file.name;
-  const fileRef = fb.ref(fb.storage, path);
-  await fb.uploadBytes(fileRef, file);
-  return fb.getDownloadURL(fileRef);
+  const sb = window._supabase;
+  const path = uid + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '_' + file.name;
+  const { error } = await sb.storage.from(SUPABASE_STORAGE_BUCKET).upload(path, file);
+  if (error) throw error;
+  const { data } = sb.storage.from(SUPABASE_STORAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/* Supabaseの公開URLから、削除に必要なストレージ内パスを取り出す */
+function supabasePathFromUrl(url) {
+  const marker = '/object/public/' + SUPABASE_STORAGE_BUCKET + '/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  return decodeURIComponent(url.slice(idx + marker.length));
 }
 
 /* 投稿削除時、添付されていた画像・ファイルをStorageからベストエフォートで削除する
    （失敗しても投稿自体の削除は完了しているため、エラーはログに残すのみ） */
 async function deletePostFiles(post) {
-  const fb = window._firebase;
+  const sb = window._supabase;
   const urls = [...(post.images || []), ...(post.files || []).map((f) => f.url)];
-  await Promise.all(urls.map(async (url) => {
-    try {
-      await fb.deleteObject(fb.ref(fb.storage, url));
-    } catch (err) {
-      console.error('添付ファイルの削除に失敗しました:', url, err);
-    }
-  }));
+  const paths = urls.map(supabasePathFromUrl).filter((p) => p !== null);
+  if (paths.length === 0) return;
+
+  try {
+    const { error } = await sb.storage.from(SUPABASE_STORAGE_BUCKET).remove(paths);
+    if (error) console.error('添付ファイルの削除に失敗しました:', error);
+  } catch (err) {
+    console.error('添付ファイルの削除に失敗しました:', err);
+  }
 }
 
 /* 現在日時を「yyyy年mm月dd日」形式に変換 */
