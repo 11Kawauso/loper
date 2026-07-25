@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* 投稿：誰でも閲覧できる。
+       作成は本人のUIDで、更新・削除は投稿者本人のみ。
+       ただし「ピン止め（pinnedBy）」だけは、ログイン中の誰でも
+       自分自身のUIDの追加・削除のみ許可する（お気に入り機能のため）。 */
+    match /posts/{postId} {
+      allow read: if true;
+
+      allow create: if request.auth != null
+        && request.resource.data.authorUid == request.auth.uid;
+
+      allow update: if isOwner() || isValidPinToggle();
+
+      allow delete: if isOwner();
+
+      function isOwner() {
+        return request.auth != null && resource.data.authorUid == request.auth.uid;
+      }
+
+      function isValidPinToggle() {
+        let oldPinned = resource.data.pinnedBy;
+        let newPinned = request.resource.data.pinnedBy;
+        let onlyPinnedByChanged = request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinnedBy']);
+        let isAdding = newPinned.size() == oldPinned.size() + 1
+          && newPinned.hasAll(oldPinned)
+          && newPinned.hasOnly(oldPinned.concat([request.auth.uid]));
+        let isRemoving = oldPinned.size() == newPinned.size() + 1
+          && oldPinned.hasAll(newPinned)
+          && oldPinned.hasOnly(newPinned.concat([request.auth.uid]));
+        return request.auth != null && onlyPinnedByChanged && (isAdding || isRemoving);
+      }
+    }
+
+    /* ユーザープロフィール：誰でも閲覧できる。書き込みは本人のみ。 */
+    match /users/{uid} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    /* 通報：ログインユーザーが自分のUIDで作成のみ可能。閲覧・更新・削除は
+       クライアントから行わない（Firebaseコンソールから運営が確認する）。 */
+    match /reports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.reporterUid == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+  }
+}

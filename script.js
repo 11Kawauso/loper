@@ -1,7 +1,6 @@
 /* =========================================================
    loper（ロッパー） メイン画面 スクリプト
-   ※ Firebase連携は未実装のため、ダミーデータで動作確認できる
-     ようにしています。
+   投稿はFirebase（Firestore / Storage）と連携しています。
    ========================================================= */
 
 /* ---------------- カテゴリ定義 ---------------- */
@@ -39,7 +38,9 @@ CATEGORY_TAGS.all = [...new Set([
   ...CATEGORY_TAGS.video,
 ])];
 
-/* ---------------- 投稿のダミーデータ ---------------- */
+/* ---------------- 投稿の初期シードデータ ----------------
+   Firestoreの posts コレクションが空の場合にのみ、1回だけ投入される。
+   （ensureSeedPosts参照） */
 const basePosts = [
   {
     category: 'game',
@@ -173,13 +174,10 @@ const basePosts = [
   },
 ];
 
-/* 初期でピン止めしておく basePosts のインデックス */
-const INITIAL_PINNED_INDEXES = [0, 5];
-
 /* ---------------- 状態管理 ---------------- */
 const state = {
   allPosts: [],          // 読み込み済みの投稿（無限スクロールで増える）
-  nextId: 1,
+  lastDoc: null,          // Firestoreページングの続き位置
   currentCategory: 'all',
   tagBarCategory: 'all',
   activeTags: new Set(),
@@ -188,6 +186,7 @@ const state = {
   searchIncludeBody: false,
   sortOrder: 'default',
   loading: false,
+  loadError: false,
   reachedEnd: false,
   currentUser: null,
   profile: {
@@ -206,12 +205,12 @@ let postExistingImages = [];
 let postExistingFiles = [];
 let editingPostId = null;
 let editingDeadlinePostId = null;
+let mySettingsPosts = []; // 設定画面「自分の投稿」「期限切れ」用に取得した自分の全投稿
 
 const CROP_SIZE = 280;    // トリムコンテナのサイズ（px）
 const CROP_RADIUS = 120;  // トリム円の半径（px）
 const cropState = { scale: 1, minScale: 1, maxScale: 4, tx: 0, ty: 0, dragging: false, lastX: 0, lastY: 0 };
 
-const MAX_POSTS = 60;       // これ以上はロードしない
 const INITIAL_PAGE_SIZE = 12; // 初回表示件数
 const PAGE_SIZE = 16;       // 1回のスクロールで読み込む件数
 const ADS_EVERY = 20;       // 何件ごとに広告を挟むか
@@ -370,7 +369,8 @@ function cacheElements() {
 
 /* ---------------- 初期化 ---------------- */
 function init() {
-  // 最初の投稿を読み込む
+  // 最初の投稿を読み込む（非同期。完了まで「読み込み中…」を表示）
+  renderPosts();
   loadMorePosts(INITIAL_PAGE_SIZE);
 
   renderTagList();
@@ -399,49 +399,106 @@ function init() {
 }
 
 /* =========================================================
-   投稿データ生成
+   投稿データ（Firestore連携）
    ========================================================= */
-function generatePostsBatch(count) {
-  const newPosts = [];
-  for (let i = 0; i < count; i++) {
-    const template = basePosts[(state.nextId - 1) % basePosts.length];
-    const id = state.nextId;
-    // ダミー投稿の投稿日は、実行時点（今日）を基準にした相対日数で計算する。
-    // 固定の絶対日付だと、時間の経過とともに募集期限が過ぎて一覧から消えてしまう。
-    const createdAt = new Date();
-    createdAt.setDate(createdAt.getDate() - (template.daysAgo || 0));
-    newPosts.push({
-      id: id,
-      category: template.category,
-      title: template.title,
-      description: template.description,
-      tags: template.tags.slice(),
-      date: formatDate(createdAt),
-      createdAt: createdAt,
-      deadlineDays: template.deadlineDays,
-      contact: template.contact || '',
-      images: template.images.slice(),
-      pinned: INITIAL_PINNED_INDEXES.includes((id - 1) % basePosts.length) && id <= basePosts.length,
-      authorUid: null,
-    });
-    state.nextId++;
-  }
-  return newPosts;
+
+/* Firestoreのドキュメントをアプリのpostオブジェクトへ変換 */
+function docToPost(docSnap) {
+  const data = docSnap.data();
+  const createdAt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : new Date();
+  return {
+    id: docSnap.id,
+    category: data.category,
+    title: data.title,
+    description: data.description,
+    tags: data.tags || [],
+    date: formatDate(createdAt),
+    createdAt: createdAt,
+    deadlineDays: data.deadlineDays,
+    contact: data.contact || '',
+    images: data.images || [],
+    files: data.files || [],
+    pinnedBy: data.pinnedBy || [],
+    closed: !!data.closed,
+    authorUid: data.authorUid || null,
+    authorName: data.authorName || '名前',
+    authorAvatarUrl: data.authorAvatarUrl || 'images/ProfileIcon.png',
+  };
 }
 
-function loadMorePosts(count = PAGE_SIZE) {
-  if (state.loading || state.reachedEnd) return;
-  state.loading = true;
+/* postsコレクションが空の場合のみ、初期シードデータを1回だけ投入する。
+   複数人がほぼ同時に初回アクセスした場合に二重投入される可能性はあるが、
+   実害が小さいためリトライ等の対策はしていない。 */
+let seedCheckDone = false;
+async function ensureSeedPosts() {
+  if (seedCheckDone) return;
+  seedCheckDone = true;
 
-  const newPosts = generatePostsBatch(count);
-  state.allPosts = state.allPosts.concat(newPosts);
+  const fb = window._firebase;
+  if (!fb) return;
 
-  if (state.allPosts.length >= MAX_POSTS) {
-    state.reachedEnd = true;
+  try {
+    const snap = await fb.getDocs(fb.query(fb.collection(fb.db, 'posts'), fb.limit(1)));
+    if (!snap.empty) return;
+
+    const now = new Date();
+    await Promise.all(basePosts.map((template) => {
+      const createdAt = new Date(now);
+      createdAt.setDate(createdAt.getDate() - (template.daysAgo || 0));
+      return fb.addDoc(fb.collection(fb.db, 'posts'), {
+        category: template.category,
+        title: template.title,
+        description: template.description,
+        tags: template.tags.slice(),
+        contact: template.contact || '',
+        images: [],
+        files: [],
+        deadlineDays: template.deadlineDays,
+        createdAt: fb.Timestamp.fromDate(createdAt),
+        pinnedBy: [],
+        closed: false,
+        authorUid: null,
+        authorName: 'loper運営',
+        authorAvatarUrl: 'images/ProfileIcon.png',
+      });
+    }));
+  } catch (err) {
+    console.error('初期データの投入に失敗しました:', err);
   }
+}
 
-  renderPosts();
-  state.loading = false;
+async function loadMorePosts(count = PAGE_SIZE) {
+  if (state.loading || state.reachedEnd) return;
+  const fb = window._firebase;
+  if (!fb) return;
+
+  state.loading = true;
+  state.loadError = false;
+  try {
+    await ensureSeedPosts();
+
+    const constraints = [fb.orderBy('createdAt', 'desc'), fb.limit(count)];
+    if (state.lastDoc) constraints.push(fb.startAfter(state.lastDoc));
+    const q = fb.query(fb.collection(fb.db, 'posts'), ...constraints);
+    const snap = await fb.getDocs(q);
+
+    const newPosts = snap.docs.map(docToPost);
+    state.allPosts = state.allPosts.concat(newPosts);
+
+    if (snap.docs.length > 0) {
+      state.lastDoc = snap.docs[snap.docs.length - 1];
+    }
+    if (snap.docs.length < count) {
+      state.reachedEnd = true;
+    }
+  } catch (err) {
+    console.error('投稿の読み込みに失敗しました:', err);
+    state.loadError = true;
+    showToast('投稿の読み込みに失敗しました');
+  } finally {
+    state.loading = false;
+    renderPosts();
+  }
 }
 
 /* =========================================================
@@ -455,8 +512,10 @@ function isPostExpired(post) {
   return new Date() > deadline;
 }
 
-function getExpiredPosts() {
-  return state.allPosts.filter(post => isPostExpired(post));
+/* ピン止めは投稿ごとの共有フラグではなく、ログインユーザーごとの
+   「自分がピン止めしたか」で判定する（post.pinnedByにuidの配列を保持） */
+function isPinnedByMe(post) {
+  return !!(state.currentUser && post.pinnedBy && post.pinnedBy.includes(state.currentUser.uid));
 }
 
 /* =========================================================
@@ -475,7 +534,7 @@ function getFilteredPosts() {
       return inTitle || inTags || inBody;
     }
 
-    if (state.showPinnedOnly && !post.pinned) return false;
+    if (state.showPinnedOnly && !isPinnedByMe(post)) return false;
 
     if (!state.showPinnedOnly && state.currentCategory !== 'all' && post.category !== state.currentCategory) {
       return false;
@@ -546,7 +605,14 @@ function renderPosts() {
   if (filtered.length === 0) {
     const msg = document.createElement('div');
     msg.className = 'status-message';
-    msg.textContent = '該当する投稿がありません。';
+    // 初回の読み込み中／読み込み失敗時は「該当する投稿がありません」と誤解させないようにする
+    if (state.loading && state.allPosts.length === 0) {
+      msg.textContent = '読み込み中…';
+    } else if (state.loadError && state.allPosts.length === 0) {
+      msg.textContent = '投稿の読み込みに失敗しました。時間をおいて再度お試しください。';
+    } else {
+      msg.textContent = '該当する投稿がありません。';
+    }
     els.postsGrid.appendChild(msg);
     return;
   }
@@ -574,30 +640,31 @@ function createPostCard(post) {
   card.dataset.id = post.id;
 
   // ピン止めボタン（カード右上）
+  const pinned = isPinnedByMe(post);
   const pinBtn = document.createElement('div');
-  pinBtn.className = 'post-pin-btn' + (post.pinned ? ' pinned' : '');
+  pinBtn.className = 'post-pin-btn' + (pinned ? ' pinned' : '');
   pinBtn.textContent = '📌';
-  pinBtn.title = post.pinned ? 'ピン止めを解除' : 'ピン止めする';
+  pinBtn.title = pinned ? 'ピン止めを解除' : 'ピン止めする';
   pinBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     togglePin(post, pinBtn);
   });
   card.appendChild(pinBtn);
 
-  // アイコン＋名前（自分のアカウント情報を表示）
+  // アイコン＋名前（投稿者の情報を表示）
   const header = document.createElement('div');
   header.className = 'post-header';
 
   const avatar = document.createElement('div');
   avatar.className = 'post-avatar';
-  if (state.profile.avatarUrl) {
-    avatar.style.backgroundImage = 'url(' + state.profile.avatarUrl + ')';
+  if (post.authorAvatarUrl) {
+    avatar.style.backgroundImage = 'url(' + post.authorAvatarUrl + ')';
   }
   header.appendChild(avatar);
 
   const author = document.createElement('span');
   author.className = 'post-author';
-  author.textContent = state.profile.name || '名前';
+  author.textContent = post.authorName || '名前';
   header.appendChild(author);
 
   card.appendChild(header);
@@ -713,11 +780,18 @@ function createPostMoreMenu(post) {
           showLoginPrompt();
           return;
         }
-        showGenericConfirm('この募集を締め切りますか？', () => {
-          post.closed = true;
-          closeDetailModal();
-          renderPosts();
-          showToast('募集を締め切りました');
+        showGenericConfirm('この募集を締め切りますか？', async () => {
+          const fb = window._firebase;
+          try {
+            await fb.updateDoc(fb.doc(fb.db, 'posts', String(post.id)), { closed: true });
+            post.closed = true;
+            closeDetailModal();
+            renderPosts();
+            showToast('募集を締め切りました');
+          } catch (err) {
+            console.error('募集の締め切りに失敗しました:', err);
+            showToast('操作に失敗しました');
+          }
         });
       }));
     }
@@ -729,11 +803,19 @@ function createPostMoreMenu(post) {
         showLoginPrompt();
         return;
       }
-      showGenericConfirm('この投稿を削除しますか？', () => {
-        state.allPosts = state.allPosts.filter((p) => p.id !== post.id);
-        closeDetailModal();
-        renderPosts();
-        showToast('投稿を削除しました');
+      showGenericConfirm('この投稿を削除しますか？', async () => {
+        const fb = window._firebase;
+        try {
+          await fb.deleteDoc(fb.doc(fb.db, 'posts', String(post.id)));
+          deletePostFiles(post); // 添付ファイルの削除は結果を待たずベストエフォートで行う
+          state.allPosts = state.allPosts.filter((p) => p.id !== post.id);
+          closeDetailModal();
+          renderPosts();
+          showToast('投稿を削除しました');
+        } catch (err) {
+          console.error('投稿の削除に失敗しました:', err);
+          showToast('削除に失敗しました');
+        }
       });
     }));
   } else {
@@ -1232,14 +1314,44 @@ function setupPinSection() {
   });
 }
 
-function togglePin(post, btnEl) {
+async function togglePin(post, btnEl) {
   if (!state.currentUser) {
     showLoginPrompt();
     return;
   }
-  post.pinned = !post.pinned;
+  const fb = window._firebase;
+  const uid = state.currentUser.uid;
+  const wasPinned = isPinnedByMe(post);
+  const nowPinned = !wasPinned;
 
-  if (state.showPinnedOnly && !post.pinned) {
+  // 楽観的にUIを先に更新する
+  post.pinnedBy = post.pinnedBy || [];
+  post.pinnedBy = nowPinned
+    ? [...post.pinnedBy, uid]
+    : post.pinnedBy.filter((id) => id !== uid);
+
+  applyPinButtonState(post, btnEl);
+
+  try {
+    await fb.updateDoc(fb.doc(fb.db, 'posts', String(post.id)), {
+      pinnedBy: nowPinned ? fb.arrayUnion(uid) : fb.arrayRemove(uid),
+    });
+  } catch (err) {
+    console.error('ピン止めの更新に失敗しました:', err);
+    // 失敗したら表示を元に戻す
+    post.pinnedBy = wasPinned
+      ? [...post.pinnedBy, uid]
+      : post.pinnedBy.filter((id) => id !== uid);
+    applyPinButtonState(post, btnEl);
+    showToast('ピン止めの更新に失敗しました');
+  }
+}
+
+/* ピンボタン・一覧・詳細画面の表示をpost.pinnedByの現在値に合わせて更新する */
+function applyPinButtonState(post, btnEl) {
+  const pinned = isPinnedByMe(post);
+
+  if (state.showPinnedOnly && !pinned) {
     renderPosts();
     return;
   }
@@ -1248,11 +1360,11 @@ function togglePin(post, btnEl) {
   const card = els.postsGrid.querySelector('.post-card[data-id="' + post.id + '"]');
   const pinBtn = btnEl || (card ? card.querySelector('.post-pin-btn') : null);
   if (pinBtn) {
-    pinBtn.classList.toggle('pinned', post.pinned);
-    pinBtn.title = post.pinned ? 'ピン止めを解除' : 'ピン止めする';
+    pinBtn.classList.toggle('pinned', pinned);
+    pinBtn.title = pinned ? 'ピン止めを解除' : 'ピン止めする';
 
     // ピンを付けるときにアニメーションを表示
-    if (post.pinned) {
+    if (pinned) {
       pinBtn.classList.remove('pin-animate');
       // クラスを再付与するために一度リフローさせる
       void pinBtn.offsetWidth;
@@ -1393,11 +1505,11 @@ function openDetailModal(post) {
   // カテゴリに応じたページ上部の配色（ゲーム=青／アプリ=紫／サイト=茶色／映像=白）
   els.detailPane.className = 'content-pane detail-pane ' + (CATEGORY_BORDER_CLASS[post.category] || '');
 
-  // アイコン・名前（自分のアカウント情報）
-  els.detailAvatar.style.backgroundImage = state.profile.avatarUrl
-    ? 'url(' + state.profile.avatarUrl + ')'
+  // アイコン・名前（投稿者の情報）
+  els.detailAvatar.style.backgroundImage = post.authorAvatarUrl
+    ? 'url(' + post.authorAvatarUrl + ')'
     : '';
-  els.detailAuthor.textContent = state.profile.name || '名前';
+  els.detailAuthor.textContent = post.authorName || '名前';
 
   els.detailMoreMenuWrap.innerHTML = '';
   els.detailMoreMenuWrap.appendChild(createPostMoreMenu(post));
@@ -1426,8 +1538,10 @@ function openDetailModal(post) {
     post.files.forEach((file) => {
       const link = document.createElement('a');
       link.className = 'detail-file-link';
-      link.href = file.dataUrl;
+      link.href = file.url;
       link.download = file.name;
+      link.target = '_blank';
+      link.rel = 'noopener';
       link.textContent = '📄 ' + file.name;
       els.detailFiles.appendChild(link);
     });
@@ -1482,10 +1596,11 @@ function openDetailModal(post) {
 }
 
 function updateDetailPinButton(post) {
-  const label = post.pinned ? 'ピン止めを解除する' : 'ピン止めする';
+  const pinned = isPinnedByMe(post);
+  const label = pinned ? 'ピン止めを解除する' : 'ピン止めする';
   els.detailPinBtn.title = label;
   els.detailPinBtn.setAttribute('aria-label', label);
-  els.detailPinBtn.classList.toggle('pinned', post.pinned);
+  els.detailPinBtn.classList.toggle('pinned', pinned);
 }
 
 function closeDetailModal() {
@@ -1571,6 +1686,7 @@ function clearPostDraft() {
 function resetPostForm() {
   editingPostId = null;
   els.postForm.reset();
+  els.postSubmitBtn.disabled = false;
   postSelectedTags = new Set();
   postSelectedFiles = [];
   postExistingImages = [];
@@ -1619,6 +1735,33 @@ function openEditPostModal(post) {
   els.postDeadlineGroup.style.display = 'none';
 
   els.postModalOverlay.classList.add('show');
+}
+
+/* =========================================================
+   投稿の画像・添付ファイル（Firebase Storage）
+   ========================================================= */
+
+/* ファイルをFirebase Storageにアップロードし、ダウンロードURLを返す */
+async function uploadPostFile(file, uid) {
+  const fb = window._firebase;
+  const path = 'posts/' + uid + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '_' + file.name;
+  const fileRef = fb.ref(fb.storage, path);
+  await fb.uploadBytes(fileRef, file);
+  return fb.getDownloadURL(fileRef);
+}
+
+/* 投稿削除時、添付されていた画像・ファイルをStorageからベストエフォートで削除する
+   （失敗しても投稿自体の削除は完了しているため、エラーはログに残すのみ） */
+async function deletePostFiles(post) {
+  const fb = window._firebase;
+  const urls = [...(post.images || []), ...(post.files || []).map((f) => f.url)];
+  await Promise.all(urls.map(async (url) => {
+    try {
+      await fb.deleteObject(fb.ref(fb.storage, url));
+    } catch (err) {
+      console.error('添付ファイルの削除に失敗しました:', url, err);
+    }
+  }));
 }
 
 /* 現在日時を「yyyy年mm月dd日」形式に変換 */
@@ -1706,8 +1849,13 @@ function setupPostModal() {
     }
   });
 
-  els.postForm.addEventListener('submit', (e) => {
+  els.postForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (!state.currentUser) {
+      showLoginPrompt();
+      return;
+    }
 
     const title = els.postTitleInput.value.trim();
     if (!title) return;
@@ -1720,18 +1868,26 @@ function setupPostModal() {
     const tags = [...postSelectedTags, ...freeTags];
     const description = els.postDescInput.value.trim() || '詳細はまだ記入されていません。';
     const contact = els.postContactInput.value.trim();
+    const isEditing = editingPostId !== null;
 
-    const finishSaving = (newImages, newFiles) => {
+    const finishSaving = async (newImages, newFiles) => {
+      const fb = window._firebase;
       const images = [...postExistingImages, ...newImages].slice(0, 4);
       const files = [...postExistingFiles, ...newFiles].slice(0, 4);
+      const tagsToSave = tags.length > 0 ? tags : ['未設定'];
 
-      if (editingPostId !== null) {
-        const post = state.allPosts.find((p) => p.id === editingPostId);
+      if (isEditing) {
+        const postId = editingPostId;
+        await fb.updateDoc(fb.doc(fb.db, 'posts', String(postId)), {
+          category, title, description, tags: tagsToSave, contact, images, files,
+        });
+
+        const post = state.allPosts.find((p) => p.id === postId);
         if (post) {
           post.category = category;
           post.title = title;
           post.description = description;
-          post.tags = tags.length > 0 ? tags : ['未設定'];
+          post.tags = tagsToSave;
           post.contact = contact;
           post.images = images;
           post.files = files;
@@ -1744,22 +1900,30 @@ function setupPostModal() {
       }
 
       const deadlineDays = Math.min(365, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
+      const docData = {
+        category, title, description, tags: tagsToSave, contact, images, files,
+        deadlineDays,
+        createdAt: fb.serverTimestamp(),
+        pinnedBy: [],
+        closed: false,
+        authorUid: state.currentUser.uid,
+        authorName: state.profile.name || '名前',
+        authorAvatarUrl: state.profile.avatarUrl || 'images/ProfileIcon.png',
+      };
+      const docRef = await fb.addDoc(fb.collection(fb.db, 'posts'), docData);
+
       const newPost = {
-        id: state.nextId,
-        category: category,
-        title: title,
-        description: description,
-        tags: tags.length > 0 ? tags : ['未設定'],
+        id: docRef.id,
+        category, title, description, tags: tagsToSave, contact, images, files,
         date: formatDate(new Date()),
         createdAt: new Date(),
-        deadlineDays: deadlineDays,
-        contact: contact,
-        images: images,
-        files: files,
-        pinned: false,
-        authorUid: state.currentUser ? state.currentUser.uid : null,
+        deadlineDays,
+        pinnedBy: [],
+        closed: false,
+        authorUid: docData.authorUid,
+        authorName: docData.authorName,
+        authorAvatarUrl: docData.authorAvatarUrl,
       };
-      state.nextId++;
 
       state.allPosts.unshift(newPost);
 
@@ -1770,21 +1934,27 @@ function setupPostModal() {
       showToast('投稿を作成しました');
     };
 
-    const readAsDataURL = (file) => new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => resolve(ev.target.result);
-      reader.readAsDataURL(file);
-    });
-
     const remainingSlots = Math.max(0, 4 - postExistingImages.length - postExistingFiles.length);
     const selected = postSelectedFiles.slice(0, remainingSlots);
     const imageFiles = selected.filter((f) => f.type && f.type.startsWith('image/'));
     const otherFiles = selected.filter((f) => !(f.type && f.type.startsWith('image/')));
 
-    Promise.all([
-      Promise.all(imageFiles.map(readAsDataURL)),
-      Promise.all(otherFiles.map((f) => readAsDataURL(f).then((dataUrl) => ({ name: f.name, dataUrl: dataUrl })))),
-    ]).then(([images, files]) => finishSaving(images, files));
+    const uid = state.currentUser.uid;
+    els.postSubmitBtn.disabled = true;
+    els.postSubmitBtn.textContent = isEditing ? '更新中…' : '投稿中…';
+
+    try {
+      const [images, files] = await Promise.all([
+        Promise.all(imageFiles.map((f) => uploadPostFile(f, uid))),
+        Promise.all(otherFiles.map(async (f) => ({ name: f.name, url: await uploadPostFile(f, uid) }))),
+      ]);
+      await finishSaving(images, files);
+    } catch (err) {
+      console.error('投稿の保存に失敗しました:', err);
+      showToast('投稿に失敗しました。もう一度お試しください');
+      els.postSubmitBtn.disabled = false;
+      els.postSubmitBtn.textContent = isEditing ? '更新する' : '投稿する';
+    }
   });
 }
 
@@ -2216,7 +2386,6 @@ function confirmAvatarCrop() {
 
   state.profile.avatarUrl = canvas.toDataURL('image/jpeg', 0.92);
   applyProfileAvatar();
-  renderPosts();
   closeAvatarCrop();
   debouncedSaveProfile();
 }
@@ -2269,7 +2438,6 @@ function setupSettings() {
     state.profile.name = newName;
     els.profileNameInput.textContent = newName;
     els.menuProfileName.textContent = newName;
-    renderPosts();
     debouncedSaveProfile();
     showToast('名前を変更しました');
   });
@@ -2283,24 +2451,46 @@ function setupSettings() {
   });
 }
 
-function openSettings() {
+async function openSettings() {
   els.settingsNameInput.value = state.profile.name;
   els.settingsContactInput.value = state.profile.contact;
   els.expiredPostsList.style.display = 'none';
   document.getElementById('expiredPulldownArrow').classList.remove('open');
   els.myPostsList.style.display = 'none';
   document.getElementById('myPostsPulldownArrow').classList.remove('open');
+  els.settingsOverlay.classList.add('show');
+
+  await loadMySettingsPosts();
   renderExpiredPosts();
   renderMyPosts();
-  els.settingsOverlay.classList.add('show');
 }
 
 function closeSettings() {
   els.settingsOverlay.classList.remove('show');
 }
 
+/* 「自分の投稿」「期限切れ」パネル用に、自分が投稿した全件をFirestoreから直接取得する。
+   一覧のページング状態（state.allPosts）とは独立させ、まだ画面に読み込まれていない
+   自分の投稿も漏れなく表示できるようにする。 */
+async function loadMySettingsPosts() {
+  if (!state.currentUser) {
+    mySettingsPosts = [];
+    return;
+  }
+  const fb = window._firebase;
+  try {
+    // orderByを付けないことでFirestoreの複合インデックス作成を不要にし、並び替えはJS側で行う
+    const q = fb.query(fb.collection(fb.db, 'posts'), fb.where('authorUid', '==', state.currentUser.uid), fb.limit(200));
+    const snap = await fb.getDocs(q);
+    mySettingsPosts = snap.docs.map(docToPost).sort((a, b) => b.createdAt - a.createdAt);
+  } catch (err) {
+    console.error('自分の投稿の取得に失敗しました:', err);
+    mySettingsPosts = state.allPosts.filter((post) => isOwnPost(post));
+  }
+}
+
 function renderExpiredPosts() {
-  const expired = getExpiredPosts();
+  const expired = mySettingsPosts.filter((post) => isPostExpired(post));
   els.expiredPostsList.innerHTML = '';
 
   if (expired.length === 0) {
@@ -2345,7 +2535,7 @@ function renderExpiredPosts() {
 
 /* 自分の投稿一覧（設定画面） */
 function renderMyPosts() {
-  const myPosts = state.allPosts.filter((post) => isOwnPost(post));
+  const myPosts = mySettingsPosts;
   els.myPostsList.innerHTML = '';
 
   if (!state.currentUser) {
@@ -2485,7 +2675,6 @@ function showIconDeleteConfirm() {
     close();
     state.profile.avatarUrl = 'images/ProfileIcon.png';
     applyProfileAvatar();
-    renderPosts();
     debouncedSaveProfile();
   }, { once: true });
   cancel.addEventListener('click', close, { once: true });
@@ -2537,19 +2726,31 @@ function setupDeadlineEditModal() {
     if (e.target === els.deadlineEditOverlay) closeDeadlineEditModal();
   });
 
-  els.deadlineEditSave.addEventListener('click', () => {
+  els.deadlineEditSave.addEventListener('click', async () => {
     const post = state.allPosts.find((p) => p.id === editingDeadlinePostId);
     if (!post) {
       closeDeadlineEditModal();
       return;
     }
     const days = Math.min(365, Math.max(1, parseInt(els.deadlineEditInput.value) || 30));
-    post.createdAt = new Date();
-    post.deadlineDays = days;
-    post.closed = false;
-    closeDeadlineEditModal();
-    renderPosts();
-    showToast('募集期限を変更しました');
+    const fb = window._firebase;
+    try {
+      await fb.updateDoc(fb.doc(fb.db, 'posts', String(post.id)), {
+        createdAt: fb.serverTimestamp(),
+        deadlineDays: days,
+        closed: false,
+      });
+      post.createdAt = new Date();
+      post.date = formatDate(post.createdAt);
+      post.deadlineDays = days;
+      post.closed = false;
+      closeDeadlineEditModal();
+      renderPosts();
+      showToast('募集期限を変更しました');
+    } catch (err) {
+      console.error('募集期限の変更に失敗しました:', err);
+      showToast('変更に失敗しました');
+    }
   });
 }
 

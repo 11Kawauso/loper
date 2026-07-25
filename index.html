@@ -515,7 +515,11 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
   import { getAuth, GithubAuthProvider, TwitterAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+  import {
+    getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc,
+    query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, arrayRemove,
+  } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAp7tJpiTHP27bKIK5orCivTqvzalIZWGw",
@@ -529,11 +533,14 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const storage = getStorage(app);
 
   window._firebase = {
-    auth, db,
+    auth, db, storage,
     GithubAuthProvider, TwitterAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
-    doc, setDoc, getDoc, collection, addDoc,
+    doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc,
+    query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, arrayRemove,
+    ref, uploadBytes, getDownloadURL, deleteObject,
   };
 </script>
 </body>
