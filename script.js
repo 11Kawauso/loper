@@ -1745,10 +1745,20 @@ function openEditPostModal(post) {
    ========================================================= */
 const SUPABASE_STORAGE_BUCKET = 'posts';
 
-/* ファイルをSupabase Storageにアップロードし、公開URLを返す */
+/* Supabase Storageの保存キーに使える拡張子だけを取り出す（日本語・記号等は除外） */
+function getSafeFileExtension(name) {
+  const m = /\.([a-zA-Z0-9]{1,10})$/.exec(name || '');
+  return m ? '.' + m[1].toLowerCase() : '';
+}
+
+/* ファイルをSupabase Storageにアップロードし、公開URLを返す。
+   保存キーには元のファイル名を含めない（日本語や全角スペースが入っていると
+   Supabase側で「Invalid key」エラーになるため）。元のファイル名は
+   Firestore側のfiles[].nameに保存し、表示・ダウンロード名に使う。 */
 async function uploadPostFile(file, uid) {
   const sb = window._supabase;
-  const path = uid + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '_' + file.name;
+  const ext = getSafeFileExtension(file.name);
+  const path = uid + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + ext;
   const { error } = await sb.storage.from(SUPABASE_STORAGE_BUCKET).upload(path, file);
   if (error) throw error;
   const { data } = sb.storage.from(SUPABASE_STORAGE_BUCKET).getPublicUrl(path);
