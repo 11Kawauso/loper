@@ -238,7 +238,8 @@ function cacheElements() {
   els.categoryPulldown = document.getElementById('categoryPulldown');
   els.tagList = document.getElementById('tagList');
   els.tagPanel = document.getElementById('tagPanel');
-  els.tagScrollHint = document.getElementById('tagScrollHint');
+  els.tagScrollHintLeft = document.getElementById('tagScrollHintLeft');
+  els.tagScrollHintRight = document.getElementById('tagScrollHintRight');
 
   els.sidebarCategoryItems = document.querySelectorAll('.category-list-section .category-item');
   els.pulldownItems = document.querySelectorAll('.pulldown-item');
@@ -505,6 +506,16 @@ function renderTagList() {
     }
     els.tagList.appendChild(item);
   });
+
+  updateTagScrollHints();
+}
+
+/* タグバーが左右にスクロールできるかどうかに応じて、端の矢印の表示を切り替える */
+function updateTagScrollHints() {
+  const el = els.tagList;
+  const maxScroll = el.scrollWidth - el.clientWidth;
+  els.tagScrollHintLeft.classList.toggle('show', el.scrollLeft > 1);
+  els.tagScrollHintRight.classList.toggle('show', el.scrollLeft < maxScroll - 1);
 }
 
 /* 選んだカテゴリ名をクリックしたときに、そのカテゴリの全タグを
@@ -1047,16 +1058,25 @@ function setupTagListEvents() {
   els.tagList.addEventListener('click', handleTagClick);
   els.tagPanel.addEventListener('click', handleTagClick);
 
-  // 右端の矢印クリックでタグバーを右にスクロール
-  els.tagScrollHint.addEventListener('click', () => {
-    els.tagList.scrollLeft += 160;
+  // 左右端の矢印クリックでタグバーをスクロール
+  els.tagScrollHintLeft.addEventListener('click', () => {
+    els.tagList.scrollLeft -= 160;
+    updateTagScrollHints();
   });
+  els.tagScrollHintRight.addEventListener('click', () => {
+    els.tagList.scrollLeft += 160;
+    updateTagScrollHints();
+  });
+
+  // スクロール位置が変わるたびに矢印の表示・非表示を更新
+  els.tagList.addEventListener('scroll', updateTagScrollHints);
 
   // マウスホイールで横スクロール
   els.tagList.addEventListener('wheel', (e) => {
     if (e.deltaY !== 0) {
       e.preventDefault();
       els.tagList.scrollLeft += e.deltaY;
+      updateTagScrollHints();
     }
   }, { passive: false });
 
@@ -1080,6 +1100,7 @@ function setupTagListEvents() {
     const dx = e.clientX - startX;
     if (Math.abs(dx) > 4) hasDragged = true;
     els.tagList.scrollLeft = scrollStart - dx;
+    updateTagScrollHints();
   });
 
   window.addEventListener('mouseup', () => {
@@ -1096,6 +1117,9 @@ function setupTagListEvents() {
       hasDragged = false;
     }
   }, true);
+
+  // 画面幅が変わってスクロール可否が変わる場合にも矢印を更新
+  window.addEventListener('resize', updateTagScrollHints);
 }
 
 /* =========================================================

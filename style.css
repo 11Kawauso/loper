@@ -664,7 +664,8 @@ button {
   color: #FFFFFF;
 }
 
-/* タグバー右端の「右にスクロールできる」ヒント矢印 */
+/* タグバーの左右端に出す「スクロールできる」ヒント矢印。
+   スクロール可能な方向がある時だけJSで表示する（初期状態はdisplay:none）。 */
 .tag-scroll-hint {
   flex-shrink: 0;
   width: 28px;
@@ -674,11 +675,15 @@ button {
   color: var(--text-dark);
   font-size: 16px;
   line-height: 1;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: background 0.15s;
+}
+
+.tag-scroll-hint.show {
+  display: flex;
 }
 
 .tag-scroll-hint:hover {
