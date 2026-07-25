@@ -238,6 +238,7 @@ function cacheElements() {
   els.categoryPulldown = document.getElementById('categoryPulldown');
   els.tagList = document.getElementById('tagList');
   els.tagPanel = document.getElementById('tagPanel');
+  els.tagScrollHint = document.getElementById('tagScrollHint');
 
   els.sidebarCategoryItems = document.querySelectorAll('.category-list-section .category-item');
   els.pulldownItems = document.querySelectorAll('.pulldown-item');
@@ -1045,6 +1046,11 @@ function setupTagListEvents() {
 
   els.tagList.addEventListener('click', handleTagClick);
   els.tagPanel.addEventListener('click', handleTagClick);
+
+  // 右端の矢印クリックでタグバーを右にスクロール
+  els.tagScrollHint.addEventListener('click', () => {
+    els.tagList.scrollLeft += 160;
+  });
 
   // マウスホイールで横スクロール
   els.tagList.addEventListener('wheel', (e) => {

@@ -664,6 +664,27 @@ button {
   color: #FFFFFF;
 }
 
+/* タグバー右端の「右にスクロールできる」ヒント矢印 */
+.tag-scroll-hint {
+  flex-shrink: 0;
+  width: 28px;
+  height: 100%;
+  border: none;
+  background: rgba(255, 255, 255, 0.35);
+  color: var(--text-dark);
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tag-scroll-hint:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+
 /* タグ一覧パネル（カテゴリ名クリックでスクロール無しに全タグを表示） */
 .tag-panel {
   display: none;
