@@ -830,12 +830,22 @@ button {
   font-weight: bold;
   flex-shrink: 0;
   line-height: 1;
-  visibility: hidden;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.category-item-arrow.left {
+  transform: translateX(-14px);
+}
+
+.category-item-arrow.right {
+  transform: translateX(14px);
 }
 
 .category-item.active .category-item-arrow {
-  visibility: visible;
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .category-item .category-item-label {
