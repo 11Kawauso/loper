@@ -1102,6 +1102,16 @@ button {
   color: var(--text-dark);
 }
 
+/* 投稿者アイコン・名前クリックでプロフィールを開けることを示す */
+.post-avatar.clickable,
+.post-author.clickable {
+  cursor: pointer;
+}
+
+.post-author.clickable:hover {
+  text-decoration: underline;
+}
+
 .post-title {
   font-size: 17px;
   font-weight: bold;
@@ -1944,6 +1954,70 @@ button {
 
 .profile-link-remove-btn:hover {
   background: rgba(0,0,0,0.18);
+}
+
+/* ================= プロフィール閲覧（他ユーザー・閲覧専用） ================= */
+.public-profile-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.public-profile-content::-webkit-scrollbar { display: none; }
+
+.public-profile-avatar {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+.public-profile-bio {
+  min-height: 100px;
+  border-radius: 16px;
+  background: var(--profile-field-bg);
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-dark);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.public-profile-bio:empty::before {
+  content: '自己紹介はまだありません';
+  opacity: 0.5;
+}
+
+.public-profile-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.public-profile-link {
+  display: block;
+  border-radius: 20px;
+  background: var(--profile-field-bg);
+  padding: 12px 18px;
+  font-size: 13px;
+  color: var(--tag-pill-text);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-profile-link:hover {
+  text-decoration: underline;
 }
 
 .profile-add-link-btn {

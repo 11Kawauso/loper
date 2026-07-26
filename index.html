@@ -513,6 +513,24 @@
   </div>
 </div>
 
+<!-- 投稿者のプロフィール閲覧（他ユーザー・閲覧専用） -->
+<div class="profile-overlay" id="publicProfileOverlay">
+  <div class="profile-panel" id="publicProfilePanel">
+    <div class="profile-panel-header">
+      <span></span>
+      <button class="profile-icon-btn" id="publicProfileCloseBtn" aria-label="閉じる">×</button>
+    </div>
+
+    <div class="public-profile-content">
+      <div class="public-profile-avatar" id="publicProfileAvatar"></div>
+      <div class="profile-name-display" id="publicProfileName">名前</div>
+      <div class="profile-contact-display" id="publicProfileContact"></div>
+      <div class="public-profile-bio" id="publicProfileBio"></div>
+      <div class="public-profile-links" id="publicProfileLinks"></div>
+    </div>
+  </div>
+</div>
+
 <script src="script.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";

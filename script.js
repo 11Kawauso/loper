@@ -392,6 +392,14 @@ function cacheElements() {
   els.twitterLoginBtn = document.getElementById('twitterLoginBtn');
   els.profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
+  els.publicProfileOverlay = document.getElementById('publicProfileOverlay');
+  els.publicProfileCloseBtn = document.getElementById('publicProfileCloseBtn');
+  els.publicProfileAvatar = document.getElementById('publicProfileAvatar');
+  els.publicProfileName = document.getElementById('publicProfileName');
+  els.publicProfileContact = document.getElementById('publicProfileContact');
+  els.publicProfileBio = document.getElementById('publicProfileBio');
+  els.publicProfileLinks = document.getElementById('publicProfileLinks');
+
   els.avatarCropOverlay = document.getElementById('avatarCropOverlay');
   els.avatarCropContainer = document.getElementById('avatarCropContainer');
   els.avatarCropImage = document.getElementById('avatarCropImage');
@@ -421,6 +429,7 @@ function init() {
   setupProfileIcon();
   setupAvatarCrop();
   setupProfilePanel();
+  setupPublicProfile();
   applyProfileAvatar();
   setupDetailModal();
   setupPostModal();
@@ -709,18 +718,27 @@ function createPostCard(post) {
   });
   card.appendChild(pinBtn);
 
-  // アイコン＋名前（投稿者の情報を表示）
+  // アイコン＋名前（投稿者の情報を表示。クリックでプロフィールを開く）
   const header = document.createElement('div');
   header.className = 'post-header';
 
+  const openAuthorProfile = (e) => {
+    e.stopPropagation();
+    openPublicProfile(post.authorUid, { name: post.authorName, avatarUrl: post.authorAvatarUrl });
+  };
+
   const avatar = document.createElement('div');
   avatar.className = 'post-avatar';
+  if (post.authorUid) avatar.classList.add('clickable');
   setBackgroundImageSafely(avatar, post.authorAvatarUrl);
+  avatar.addEventListener('click', openAuthorProfile);
   header.appendChild(avatar);
 
   const author = document.createElement('span');
   author.className = 'post-author';
+  if (post.authorUid) author.classList.add('clickable');
   author.textContent = post.authorName || '名前';
+  author.addEventListener('click', openAuthorProfile);
   header.appendChild(author);
 
   card.appendChild(header);
@@ -1567,9 +1585,16 @@ function openDetailModal(post) {
   // カテゴリに応じたページ上部の配色（ゲーム=青／アプリ=紫／サイト=茶色／映像=白）
   els.detailPane.className = 'content-pane detail-pane ' + (CATEGORY_BORDER_CLASS[post.category] || '');
 
-  // アイコン・名前（投稿者の情報）
+  // アイコン・名前（投稿者の情報。クリックでプロフィールを開く）
   setBackgroundImageSafely(els.detailAvatar, post.authorAvatarUrl);
   els.detailAuthor.textContent = post.authorName || '名前';
+  const openAuthorProfile = () => {
+    openPublicProfile(post.authorUid, { name: post.authorName, avatarUrl: post.authorAvatarUrl });
+  };
+  els.detailAvatar.onclick = post.authorUid ? openAuthorProfile : null;
+  els.detailAuthor.onclick = post.authorUid ? openAuthorProfile : null;
+  els.detailAvatar.classList.toggle('clickable', !!post.authorUid);
+  els.detailAuthor.classList.toggle('clickable', !!post.authorUid);
 
   els.detailMoreMenuWrap.innerHTML = '';
   els.detailMoreMenuWrap.appendChild(createPostMoreMenu(post));
@@ -2251,6 +2276,67 @@ function applyProfileAvatar() {
   setBackgroundImageSafely(els.profileAvatar, state.profile.avatarUrl);
   setBackgroundImageSafely(els.menuProfileIcon, state.profile.avatarUrl);
   els.menuProfileName.textContent = state.profile.name || '名前';
+}
+
+/* =========================================================
+   投稿者のプロフィール閲覧（他ユーザー・閲覧専用）
+   ========================================================= */
+function setupPublicProfile() {
+  els.publicProfileCloseBtn.addEventListener('click', closePublicProfile);
+  els.publicProfileOverlay.addEventListener('click', (e) => {
+    if (e.target === els.publicProfileOverlay) closePublicProfile();
+  });
+}
+
+/* uidの投稿者プロフィールを開く。fallbackには投稿に複製されている
+   名前・アイコンを渡すことで、Firestoreの応答を待たずに先に表示できる。 */
+async function openPublicProfile(uid, fallback) {
+  if (!uid) return; // 運営名義の投稿など、投稿者が存在しない場合は開かない
+
+  els.publicProfileOverlay.classList.add('show');
+  renderPublicProfile({
+    name: fallback && fallback.name,
+    avatarUrl: fallback && fallback.avatarUrl,
+    bio: '',
+    contact: '',
+    links: [],
+  });
+
+  const fb = window._firebase;
+  if (!fb) return;
+  try {
+    const snap = await fb.getDoc(fb.doc(fb.db, 'publicProfiles', uid));
+    if (snap.exists() && els.publicProfileOverlay.classList.contains('show')) {
+      renderPublicProfile(snap.data());
+    }
+  } catch (err) {
+    console.error('プロフィールの取得に失敗しました:', err);
+  }
+}
+
+function renderPublicProfile(data) {
+  setBackgroundImageSafely(els.publicProfileAvatar, data.avatarUrl);
+  els.publicProfileName.textContent = truncateName(data.name) || '名前';
+  els.publicProfileContact.textContent = data.contact || '';
+
+  els.publicProfileBio.textContent = data.bio || '';
+
+  els.publicProfileLinks.innerHTML = '';
+  (data.links || []).forEach((url) => {
+    const safe = toSafeLinkUrl(url);
+    if (!safe) return;
+    const a = document.createElement('a');
+    a.className = 'public-profile-link';
+    a.href = safe;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = safe;
+    els.publicProfileLinks.appendChild(a);
+  });
+}
+
+function closePublicProfile() {
+  els.publicProfileOverlay.classList.remove('show');
 }
 
 function setupProfilePanel() {
@@ -2971,6 +3057,7 @@ async function onFirebaseLogin(user) {
         email: user.email,
         createdAt: new Date().toISOString(),
       });
+      await savePublicProfileToFirestore();
     }
   } catch (err) {
     console.error('Firestore load error:', err);
@@ -3031,7 +3118,28 @@ async function saveProfileToFirestore() {
       links: state.profile.links.filter(l => l.trim() !== ''),
       updatedAt: new Date().toISOString(),
     }, { merge: true });
+    await savePublicProfileToFirestore();
   } catch (err) {
     console.error('Firestore save error:', err);
+  }
+}
+
+/* usersのうち公開してよい項目だけを、他人が読める publicProfiles にも複製保存する。
+   投稿者アイコンやユーザー名クリックから開くプロフィール閲覧画面はここを参照する。 */
+async function savePublicProfileToFirestore() {
+  const fb = window._firebase;
+  if (!fb || !state.currentUser) return;
+
+  try {
+    const publicRef = fb.doc(fb.db, 'publicProfiles', state.currentUser.uid);
+    await fb.setDoc(publicRef, {
+      name: state.profile.name || '名前',
+      avatarUrl: state.profile.avatarUrl || 'images/ProfileIcon.png',
+      bio: state.profile.bio || '',
+      contact: state.profile.contact || '',
+      links: state.profile.links.filter(l => l.trim() !== ''),
+    });
+  } catch (err) {
+    console.error('公開プロフィールの保存に失敗しました:', err);
   }
 }
