@@ -476,10 +476,16 @@ async function createTestPosts(count = 20) {
   const fb = window._firebase;
   for (let i = 0; i < count; i++) {
     const template = basePosts[i % basePosts.length];
+    // タイトルは30文字以内という制限があるため、接頭辞・番号を付けても
+    // 収まるように元のタイトルを必要な分だけ切り詰める
+    const prefix = '【テスト】';
+    const suffix = '（' + (i + 1) + '）';
+    const maxBodyLen = Math.max(0, 30 - prefix.length - suffix.length);
+    const title = prefix + template.title.slice(0, maxBodyLen) + suffix;
     try {
       await fb.addDoc(fb.collection(fb.db, 'posts'), {
         category: template.category,
-        title: '【テスト】' + template.title + '（' + (i + 1) + '）',
+        title: title,
         description: template.description,
         tags: template.tags.slice(),
         contact: '',
