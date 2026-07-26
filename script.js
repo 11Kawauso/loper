@@ -204,7 +204,8 @@ let postExistingImages = [];
 let postExistingFiles = [];
 let editingPostId = null;
 let editingDeadlinePostId = null;
-let mySettingsPosts = []; // 設定画面「自分の投稿」「期限切れ」用に取得した自分の全投稿
+let mySettingsPosts = [];        // プロフィール画面「投稿済み募集」「期限切れ募集」用に取得した自分の全投稿
+let mySettingsPostsLoaded = false; // 上記を今回のプロフィール画面表示中に取得済みか
 
 const CROP_SIZE = 280;    // トリムコンテナのサイズ（px）
 const CROP_RADIUS = 120;  // トリム円の半径（px）
@@ -363,8 +364,6 @@ function cacheElements() {
   els.deadlineEditInput = document.getElementById('deadlineEditInput');
   els.deadlineEditSave = document.getElementById('deadlineEditSave');
 
-  els.settingsOverlay = document.getElementById('settingsOverlay');
-  els.settingsCloseBtn = document.getElementById('settingsCloseBtn');
   els.settingsNameInput = document.getElementById('settingsNameInput');
   els.settingsNameSave = document.getElementById('settingsNameSave');
   els.settingsContactInput = document.getElementById('settingsContactInput');
@@ -377,7 +376,9 @@ function cacheElements() {
   els.profileOverlay = document.getElementById('profileOverlay');
   els.profilePanel = document.getElementById('profilePanel');
   els.profileCloseBtn = document.getElementById('profileCloseBtn');
-  els.profileSettingsBtn = document.getElementById('profileSettingsBtn');
+  els.profileNav = document.getElementById('profileNav');
+  els.profileNavItems = document.querySelectorAll('.profile-nav-item');
+  els.profileTabPanels = document.querySelectorAll('.profile-tab-panel');
   els.profileAvatar = document.getElementById('profileAvatar');
   els.profileAvatarInput = document.getElementById('profileAvatarInput');
   els.profileAvatarDeleteBtn = document.getElementById('profileAvatarDeleteBtn');
@@ -2265,11 +2266,42 @@ function applyMenuProfile() {
 }
 
 function openProfilePanel() {
+  // 開くたびに「プロフィール」タブから始め、投稿一覧は再取得させる
+  mySettingsPostsLoaded = false;
+  activateProfileTab('profile');
   els.profileOverlay.classList.add('show');
 }
 
 function closeProfilePanel() {
   els.profileOverlay.classList.remove('show');
+}
+
+/* 左メニューで選ばれたタブの内容だけを表示する。
+   投稿一覧のタブは、開いたタイミングで初回だけFirestoreから取得する。 */
+async function activateProfileTab(tab) {
+  els.profileNavItems.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  els.profileTabPanels.forEach((panel) => {
+    panel.classList.toggle('active', panel.dataset.tabPanel === tab);
+  });
+
+  if (tab === 'settings') {
+    els.settingsNameInput.value = state.profile.name;
+    els.settingsContactInput.value = state.profile.contact;
+    return;
+  }
+
+  if (tab === 'myposts' || tab === 'expired') {
+    if (!mySettingsPostsLoaded) {
+      els.myPostsList.innerHTML = '<div class="expired-posts-empty">読み込み中…</div>';
+      els.expiredPostsList.innerHTML = '<div class="expired-posts-empty">読み込み中…</div>';
+      await loadMySettingsPosts();
+      mySettingsPostsLoaded = true;
+    }
+    renderMyPosts();
+    renderExpiredPosts();
+  }
 }
 
 function applyProfileAvatar() {
@@ -2350,12 +2382,9 @@ function setupProfilePanel() {
     if (e.target === els.profileOverlay) closeProfilePanel();
   });
 
-  els.profileSettingsBtn.addEventListener('click', () => {
-    if (!state.currentUser) {
-      showLoginPrompt();
-      return;
-    }
-    openSettings();
+  // 左メニューでのタブ切り替え
+  els.profileNavItems.forEach((btn) => {
+    btn.addEventListener('click', () => activateProfileTab(btn.dataset.tab));
   });
 
   // アイコンクリックでファイル選択 → トリムモーダルへ
@@ -2588,30 +2617,9 @@ function showToast(message) {
    Firebase：認証 & Firestore
    ========================================================= */
 /* =========================================================
-   設定画面
+   設定（プロフィール画面の「設定」タブ）
    ========================================================= */
 function setupSettings() {
-  els.settingsCloseBtn.addEventListener('click', closeSettings);
-  els.settingsOverlay.addEventListener('click', (e) => {
-    if (e.target === els.settingsOverlay) closeSettings();
-  });
-
-  const expiredHeader = document.getElementById('expiredPulldownHeader');
-  const expiredArrow = document.getElementById('expiredPulldownArrow');
-  expiredHeader.addEventListener('click', () => {
-    const isOpen = els.expiredPostsList.style.display !== 'none';
-    els.expiredPostsList.style.display = isOpen ? 'none' : 'flex';
-    expiredArrow.classList.toggle('open', !isOpen);
-  });
-
-  const myPostsHeader = document.getElementById('myPostsPulldownHeader');
-  const myPostsArrow = document.getElementById('myPostsPulldownArrow');
-  myPostsHeader.addEventListener('click', () => {
-    const isOpen = els.myPostsList.style.display !== 'none';
-    els.myPostsList.style.display = isOpen ? 'none' : 'flex';
-    myPostsArrow.classList.toggle('open', !isOpen);
-  });
-
   els.settingsNameSave.addEventListener('click', () => {
     const newName = els.settingsNameInput.value.trim();
     if (!newName) return;
@@ -2631,25 +2639,7 @@ function setupSettings() {
   });
 }
 
-async function openSettings() {
-  els.settingsNameInput.value = state.profile.name;
-  els.settingsContactInput.value = state.profile.contact;
-  els.expiredPostsList.style.display = 'none';
-  document.getElementById('expiredPulldownArrow').classList.remove('open');
-  els.myPostsList.style.display = 'none';
-  document.getElementById('myPostsPulldownArrow').classList.remove('open');
-  els.settingsOverlay.classList.add('show');
-
-  await loadMySettingsPosts();
-  renderExpiredPosts();
-  renderMyPosts();
-}
-
-function closeSettings() {
-  els.settingsOverlay.classList.remove('show');
-}
-
-/* 「自分の投稿」「期限切れ」パネル用に、自分が投稿した全件をFirestoreから直接取得する。
+/* 「投稿済み募集」「期限切れ募集」タブ用に、自分が投稿した全件をFirestoreから直接取得する。
    一覧のページング状態（state.allPosts）とは独立させ、まだ画面に読み込まれていない
    自分の投稿も漏れなく表示できるようにする。 */
 async function loadMySettingsPosts() {
@@ -2685,7 +2675,7 @@ function renderExpiredPosts() {
     const item = document.createElement('div');
     item.className = 'expired-post-item';
     item.addEventListener('click', () => {
-      closeSettings();
+      closeProfilePanel();
       openDetailModal(post);
     });
 
@@ -2738,7 +2728,7 @@ function renderMyPosts() {
     const item = document.createElement('div');
     item.className = 'expired-post-item';
     item.addEventListener('click', () => {
-      closeSettings();
+      closeProfilePanel();
       openDetailModal(post);
     });
 
@@ -3023,6 +3013,7 @@ async function onFirebaseLogin(user) {
 
   els.profileLoginSection.style.display = 'none';
   els.profileContent.style.display = 'flex';
+  els.profileNav.style.display = 'flex';
 
   const fb = window._firebase;
   const userRef = fb.doc(fb.db, 'users', user.uid);
@@ -3079,6 +3070,7 @@ function onFirebaseLogout() {
 
   els.profileLoginSection.style.display = 'flex';
   els.profileContent.style.display = 'none';
+  els.profileNav.style.display = 'none';
   applyLastLoginHints();
 
   state.profile.name = '名前';

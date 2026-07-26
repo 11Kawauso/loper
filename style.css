@@ -1775,6 +1775,156 @@ button {
   filter: brightness(0.93);
 }
 
+/* ================= プロフィール画面（自分・全画面） =================
+   左1/4がメニュー、右3/4が選択された内容。
+   （他ユーザーのプロフィール閲覧は下の .profile-overlay / .profile-panel を使う） */
+.profile-screen-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+  z-index: 1500;
+}
+
+.profile-screen-overlay.show {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.18s ease;
+}
+
+.profile-screen {
+  position: absolute;
+  inset: 0;
+  background: var(--profile-bg);
+  display: flex;
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+}
+
+.profile-screen-overlay.show .profile-screen {
+  transform: translateX(0);
+}
+
+/* 左1/4：メニュー */
+.profile-nav {
+  width: 25%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 24px 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  overflow-y: auto;
+}
+
+.profile-nav-item {
+  width: 100%;
+  text-align: left;
+  padding: 16px 26px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.profile-nav-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.profile-nav-item.active {
+  background: rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+/* 右3/4：選択された内容 */
+.profile-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 32px 32px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.profile-body::-webkit-scrollbar { display: none; }
+
+.profile-tab-panel {
+  display: none;
+}
+
+.profile-tab-panel.active {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.profile-tab-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+/* 設定・一覧は白いモーダルから移設したため、背景に合わせて文字色を調整する */
+.profile-body .profile-panel-header {
+  justify-content: flex-end;
+}
+
+.profile-screen .settings-section {
+  margin-bottom: 0;
+}
+
+.profile-screen .settings-section-title {
+  color: #FFFFFF;
+}
+
+.profile-screen .expired-posts-empty {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* 狭い画面ではメニューを上部の横並びに切り替える */
+@media (max-width: 700px) {
+  .profile-screen {
+    flex-direction: column;
+  }
+
+  .profile-nav {
+    width: 100%;
+    flex-direction: row;
+    gap: 6px;
+    padding: 10px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .profile-nav-item {
+    width: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .profile-body {
+    padding: 16px 18px 24px;
+  }
+}
+
 /* ================= プロフィール画面 ================= */
 .profile-overlay {
   position: fixed;
@@ -2366,20 +2516,6 @@ button {
 }
 
 /* ================= 設定画面 ================= */
-.settings-panel {
-  background: #fff;
-  border-radius: 18px;
-  width: 90%;
-  max-width: 560px;
-  max-height: 85vh;
-  overflow-y: auto;
-  scrollbar-width: none;
-  padding: 28px;
-  position: relative;
-}
-
-.settings-panel::-webkit-scrollbar { display: none; }
-
 .settings-section {
   margin-bottom: 28px;
 }
@@ -2389,30 +2525,6 @@ button {
   font-weight: bold;
   color: var(--text-dark);
   margin: 0;
-}
-
-.settings-pulldown-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--content-bg);
-  cursor: pointer;
-  user-select: none;
-}
-
-.settings-pulldown-header:hover {
-  opacity: 0.75;
-}
-
-.settings-pulldown-arrow {
-  font-size: 11px;
-  color: #7A9CA0;
-  transition: transform 0.2s;
-}
-
-.settings-pulldown-arrow.open {
-  transform: rotate(180deg);
 }
 
 .settings-section-title + .settings-name-row {

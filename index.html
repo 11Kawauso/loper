@@ -355,46 +355,6 @@
   </div>
 </div>
 
-<!-- 設定画面 -->
-<div class="modal-overlay" id="settingsOverlay">
-  <div class="settings-panel">
-    <button class="modal-close" id="settingsCloseBtn">×</button>
-    <h2 class="modal-title">設定</h2>
-
-    <div class="settings-section">
-      <h3 class="settings-section-title">名前を変更</h3>
-      <div class="settings-name-row">
-        <input type="text" class="settings-name-input" id="settingsNameInput" maxlength="20" placeholder="名前を入力">
-        <button class="settings-name-save" id="settingsNameSave" type="button">保存</button>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <h3 class="settings-section-title">連絡先を変更</h3>
-      <div class="settings-name-row">
-        <input type="text" class="settings-name-input" id="settingsContactInput" maxlength="50" placeholder="連絡先を入力">
-        <button class="settings-name-save" id="settingsContactSave" type="button">保存</button>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-pulldown-header" id="expiredPulldownHeader">
-        <h3 class="settings-section-title">期限切れ募集</h3>
-        <span class="settings-pulldown-arrow" id="expiredPulldownArrow">▽</span>
-      </div>
-      <div class="expired-posts-list" id="expiredPostsList" style="display:none;"></div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-pulldown-header" id="myPostsPulldownHeader">
-        <h3 class="settings-section-title">自分の投稿</h3>
-        <span class="settings-pulldown-arrow" id="myPostsPulldownArrow">▽</span>
-      </div>
-      <div class="expired-posts-list" id="myPostsList" style="display:none;"></div>
-    </div>
-  </div>
-</div>
-
 <!-- アイコン削除確認モーダル -->
 <div class="confirm-overlay" id="iconDeleteConfirmOverlay">
   <div class="confirm-modal">
@@ -465,11 +425,21 @@
   </div>
 </div>
 
-<!-- プロフィール画面（画面右からスライド表示） -->
-<div class="profile-overlay" id="profileOverlay">
-  <div class="profile-panel" id="profilePanel">
+<!-- プロフィール画面（全画面。左1/4がメニュー、右3/4が内容） -->
+<div class="profile-screen-overlay" id="profileOverlay">
+  <div class="profile-screen" id="profilePanel">
+
+    <!-- 左1/4：メニュー -->
+    <nav class="profile-nav" id="profileNav" style="display:none;">
+      <button class="profile-nav-item active" type="button" data-tab="profile">プロフィール</button>
+      <button class="profile-nav-item" type="button" data-tab="settings">設定</button>
+      <button class="profile-nav-item" type="button" data-tab="myposts">投稿済み募集</button>
+      <button class="profile-nav-item" type="button" data-tab="expired">期限切れ募集</button>
+    </nav>
+
+    <!-- 右3/4：選択された内容 -->
+    <div class="profile-body">
     <div class="profile-panel-header">
-      <button class="profile-icon-btn" id="profileSettingsBtn" aria-label="設定">⚙</button>
       <button class="profile-icon-btn" id="profileCloseBtn" aria-label="メニュー画面へ戻る">×</button>
     </div>
 
@@ -494,21 +464,60 @@
 
     <!-- ログイン後 -->
     <div class="profile-content" id="profileContent" style="display:none;">
-      <div class="profile-avatar-wrap">
-        <div class="profile-avatar" id="profileAvatar"></div>
-        <button type="button" class="profile-avatar-delete-btn" id="profileAvatarDeleteBtn" title="アイコンを削除">×</button>
-        <input type="file" id="profileAvatarInput" accept="image/*" class="visually-hidden">
+
+      <!-- プロフィール -->
+      <div class="profile-tab-panel active" data-tab-panel="profile">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" id="profileAvatar"></div>
+          <button type="button" class="profile-avatar-delete-btn" id="profileAvatarDeleteBtn" title="アイコンを削除">×</button>
+          <input type="file" id="profileAvatarInput" accept="image/*" class="visually-hidden">
+        </div>
+
+        <div class="profile-name-display" id="profileNameInput">名前</div>
+        <div class="profile-contact-display" id="profileContactDisplay"></div>
+
+        <textarea class="profile-bio" id="profileBio" placeholder="自己紹介や説明文を入力してください"></textarea>
+
+        <div class="profile-links" id="profileLinks"></div>
+        <button class="profile-add-link-btn" id="profileAddLinkBtn" type="button">＋ リンクを追加</button>
+
+        <button class="profile-logout-btn" id="profileLogoutBtn" type="button">ログアウト</button>
       </div>
 
-      <div class="profile-name-display" id="profileNameInput">名前</div>
-      <div class="profile-contact-display" id="profileContactDisplay"></div>
+      <!-- 設定 -->
+      <div class="profile-tab-panel" data-tab-panel="settings">
+        <h2 class="profile-tab-title">設定</h2>
 
-      <textarea class="profile-bio" id="profileBio" placeholder="自己紹介や説明文を入力してください"></textarea>
+        <div class="settings-section">
+          <h3 class="settings-section-title">名前を変更</h3>
+          <div class="settings-name-row">
+            <input type="text" class="settings-name-input" id="settingsNameInput" maxlength="20" placeholder="名前を入力">
+            <button class="settings-name-save" id="settingsNameSave" type="button">保存</button>
+          </div>
+        </div>
 
-      <div class="profile-links" id="profileLinks"></div>
-      <button class="profile-add-link-btn" id="profileAddLinkBtn" type="button">＋ リンクを追加</button>
+        <div class="settings-section">
+          <h3 class="settings-section-title">連絡先を変更</h3>
+          <div class="settings-name-row">
+            <input type="text" class="settings-name-input" id="settingsContactInput" maxlength="50" placeholder="連絡先を入力">
+            <button class="settings-name-save" id="settingsContactSave" type="button">保存</button>
+          </div>
+        </div>
+      </div>
 
-      <button class="profile-logout-btn" id="profileLogoutBtn" type="button">ログアウト</button>
+      <!-- 投稿済み募集 -->
+      <div class="profile-tab-panel" data-tab-panel="myposts">
+        <h2 class="profile-tab-title">投稿済み募集</h2>
+        <div class="expired-posts-list" id="myPostsList"></div>
+      </div>
+
+      <!-- 期限切れ募集 -->
+      <div class="profile-tab-panel" data-tab-panel="expired">
+        <h2 class="profile-tab-title">期限切れ募集</h2>
+        <div class="expired-posts-list" id="expiredPostsList"></div>
+      </div>
+    </div>
+
     </div>
   </div>
 </div>
