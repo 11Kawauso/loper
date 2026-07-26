@@ -7,7 +7,10 @@
 - プロフィール画面からログイン可能。
 
 ## 広告追加しました
-- loperのURLを変えたら、忍者admaxの広告URLも変えること。
+- 広告(admaxタグ)は別リポジトリ https://github.com/11Kawauso/loper-ads （公開URL: https://11kawauso.github.io/loper-ads/ ）のad.htmlに置いてあり、script.jsのcreateAdCard()からiframeで読み込んでいる。
+  同一ドメインにしないのはセキュリティのため（別ドメインだからsandboxにallow-same-originを付けても安全）。
+- loperのURLを変えたら、忍者admax管理画面のURL登録を変えること。
+- loper-ads側のURL・リポジトリ名を変えたら、script.jsのcreateAdCard()内のiframe.srcも変えること。
 
 ## ゲーム制作予定
 - Unity

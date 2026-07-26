@@ -952,12 +952,12 @@ function createAdCard() {
   iframe.frameBorder = '0';
   iframe.scrolling = 'no';
   iframe.style.maxWidth = '100%';
-  // allow-same-origin は付けない。付けると広告配信元のスクリプトが
-  // このサイトと同一オリジンとして扱われ、ログイン情報などに
-  // アクセスできてしまうため。
-  iframe.sandbox = 'allow-scripts allow-popups allow-popups-to-escape-sandbox';
-  iframe.referrerPolicy = 'no-referrer';
-  iframe.src = 'ad.html';
+  // 広告(ad.html)はloper本体とは別ドメイン（loper-ads）に置いている。
+  // allow-same-originを付けても、それは広告用ドメイン自身の
+  // Cookie等にアクセスできるだけで、loper本体のログイン情報などには
+  // 一切触れられない。別ドメインに分離しているからこそ安全に付けられる。
+  iframe.sandbox = 'allow-scripts allow-popups allow-popups-to-escape-sandbox allow-same-origin';
+  iframe.src = 'https://11kawauso.github.io/loper-ads/ad.html';
 
   ad.appendChild(label);
   ad.appendChild(iframe);
