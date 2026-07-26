@@ -588,12 +588,19 @@ button {
   border-radius: 0 0 10px 10px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
   z-index: 200;
-  display: none;
   overflow: hidden;
+  /* 閉じている間は上に少し寄せて透明にしておき、開くときに上から降りてくるようにする */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out, visibility 0s linear 0.25s;
 }
 
 .category-pulldown.open {
-  display: block;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
 }
 
 .pulldown-item {
@@ -692,21 +699,27 @@ button {
 
 /* タグ一覧パネル（カテゴリ名クリックでスクロール無しに全タグを表示） */
 .tag-panel {
-  display: none;
-  background: var(--tagbar-bg);
-  border-top: 1px solid rgba(255, 255, 255, 0.5);
-  padding: 18px 28px;
-  flex-shrink: 0;
-  /* タグが多くても投稿一覧を潰さないよう、高さを制限してスクロールさせる */
-  max-height: 45vh;
-  overflow-y: auto;
-}
-
-.tag-panel.open {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 12px 20px;
   align-content: start;
+  background: var(--tagbar-bg);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+  overflow: hidden;
+  /* 閉じている間は高さ0・透明にしておき、開くときに上から降りてくるように広がる */
+  max-height: 0;
+  opacity: 0;
+  padding: 0 28px;
+  transition: max-height 0.3s ease-out, opacity 0.25s ease-out, padding 0.3s ease-out;
+}
+
+.tag-panel.open {
+  /* タグが多くても投稿一覧を潰さないよう、高さを制限してスクロールさせる */
+  max-height: 45vh;
+  opacity: 1;
+  padding: 18px 28px;
+  overflow-y: auto;
 }
 
 .tag-panel::-webkit-scrollbar {
