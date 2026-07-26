@@ -1839,9 +1839,10 @@ button {
 
 .profile-avatar-delete-btn {
   position: absolute;
-  left: calc(50% + 48px);
-  top: 50%;
-  transform: translateY(-50%);
+  /* アイコン（半径44px）の円周に沿って右上にくっつける */
+  left: calc(50% + 31px);
+  top: 13px;
+  transform: translate(-50%, -50%);
   width: 32px;
   height: 32px;
   border: none;
