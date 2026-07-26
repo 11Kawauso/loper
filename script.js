@@ -38,9 +38,8 @@ CATEGORY_TAGS.all = [...new Set([
   ...CATEGORY_TAGS.video,
 ])];
 
-/* ---------------- 投稿の初期シードデータ ----------------
-   Firestoreの posts コレクションが空の場合にのみ、1回だけ投入される。
-   （ensureSeedPosts参照） */
+/* ---------------- テスト投稿のテンプレート ----------------
+   createTestPosts()（開発・動作確認用）から参照される。 */
 const basePosts = [
   {
     category: 'game',
@@ -461,46 +460,66 @@ function docToPost(docSnap) {
   };
 }
 
-/* postsコレクションが空の場合のみ、初期シードデータを1回だけ投入する。
-   複数人がほぼ同時に初回アクセスした場合に二重投入される可能性はあるが、
-   実害が小さいためリトライ等の対策はしていない。 */
-let seedCheckDone = false;
-async function ensureSeedPosts() {
-  if (seedCheckDone) return;
-  seedCheckDone = true;
-
+/* =========================================================
+   開発・動作確認用のダミー投稿作成（本番の自動実行はしない）
+   ブラウザのコンソールから、実際にログインした状態で以下のように呼び出す。
+     createTestPosts(20)   … ログイン中のアカウント名義でテスト投稿を20件作成
+     deleteTestPosts()     … 上記で作った「【テスト】」投稿をまとめて削除
+   投稿は必ずログイン中の本人名義になる（Firestoreのルール上、
+   投稿者なしでの作成は許可していないため）。
+   ========================================================= */
+async function createTestPosts(count = 20) {
+  if (!state.currentUser) {
+    console.warn('先にログインしてから実行してください。');
+    return;
+  }
   const fb = window._firebase;
-  if (!fb) return;
-
-  try {
-    const snap = await fb.getDocs(fb.query(fb.collection(fb.db, 'posts'), fb.limit(1)));
-    if (!snap.empty) return;
-
-    const now = new Date();
-    await Promise.all(basePosts.map((template) => {
-      const createdAt = new Date(now);
-      createdAt.setDate(createdAt.getDate() - (template.daysAgo || 0));
-      return fb.addDoc(fb.collection(fb.db, 'posts'), {
+  for (let i = 0; i < count; i++) {
+    const template = basePosts[i % basePosts.length];
+    try {
+      await fb.addDoc(fb.collection(fb.db, 'posts'), {
         category: template.category,
-        title: template.title,
+        title: '【テスト】' + template.title + '（' + (i + 1) + '）',
         description: template.description,
         tags: template.tags.slice(),
-        contact: template.contact || '',
+        contact: '',
         images: [],
         files: [],
         deadlineDays: template.deadlineDays,
-        createdAt: fb.Timestamp.fromDate(createdAt),
+        createdAt: fb.serverTimestamp(),
         pinnedBy: [],
         closed: false,
-        authorUid: null,
-        authorName: 'loper運営',
-        authorAvatarUrl: 'images/ProfileIcon.png',
+        authorUid: state.currentUser.uid,
+        authorName: state.profile.name || '名前',
+        authorAvatarUrl: state.profile.avatarUrl || 'images/ProfileIcon.png',
       });
-    }));
-  } catch (err) {
-    console.error('初期データの投入に失敗しました:', err);
+    } catch (err) {
+      console.error((i + 1) + '件目の作成に失敗しました:', err);
+      break;
+    }
   }
+  console.log('テスト投稿の作成が完了しました。ページを再読み込みして確認してください。');
 }
+window.createTestPosts = createTestPosts;
+
+async function deleteTestPosts() {
+  if (!state.currentUser) {
+    console.warn('先にログインしてから実行してください。');
+    return;
+  }
+  const fb = window._firebase;
+  const snap = await fb.getDocs(fb.query(fb.collection(fb.db, 'posts'), fb.where('authorUid', '==', state.currentUser.uid)));
+  const targets = snap.docs.filter((d) => (d.data().title || '').startsWith('【テスト】'));
+  for (const d of targets) {
+    try {
+      await fb.deleteDoc(fb.doc(fb.db, 'posts', d.id));
+    } catch (err) {
+      console.error(d.id + 'の削除に失敗しました:', err);
+    }
+  }
+  console.log(targets.length + '件のテスト投稿を削除しました。ページを再読み込みして確認してください。');
+}
+window.deleteTestPosts = deleteTestPosts;
 
 async function loadMorePosts(count = PAGE_SIZE) {
   if (state.loading || state.reachedEnd) return;
@@ -510,8 +529,6 @@ async function loadMorePosts(count = PAGE_SIZE) {
   state.loading = true;
   state.loadError = false;
   try {
-    await ensureSeedPosts();
-
     const constraints = [fb.orderBy('createdAt', 'desc'), fb.limit(count)];
     if (state.lastDoc) constraints.push(fb.startAfter(state.lastDoc));
     const q = fb.query(fb.collection(fb.db, 'posts'), ...constraints);
