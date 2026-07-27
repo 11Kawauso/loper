@@ -1856,6 +1856,16 @@ button {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.profile-nav-badge {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #FF6B6B;
+  vertical-align: middle;
+}
+
 .profile-nav-item.active {
   background: rgba(255, 255, 255, 0.22);
   color: #FFFFFF;
@@ -1908,6 +1918,39 @@ button {
 
 .profile-screen .expired-posts-empty {
   color: rgba(255, 255, 255, 0.75);
+}
+
+.settings-section-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.settings-section-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 8px 0 16px;
+}
+
+.settings-danger-btn {
+  align-self: flex-start;
+  padding: 0 20px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 21px;
+  background: rgba(220, 70, 70, 0.25);
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.settings-danger-btn:hover {
+  background: rgba(220, 70, 70, 0.45);
 }
 
 /* 狭い画面ではメニューを上部の横並びに切り替える */
@@ -2267,6 +2310,25 @@ button {
   text-decoration: underline;
 }
 
+.public-profile-message-btn {
+  width: 100%;
+  height: 46px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 23px;
+  background: var(--header-bg);
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.public-profile-message-btn:hover {
+  filter: brightness(1.08);
+}
+
 .profile-add-link-btn {
   align-self: flex-start;
   margin-top: 4px;
@@ -2402,6 +2464,34 @@ button {
   color: #7A9CA0;
   margin: -6px 0 16px;
   line-height: 1.6;
+}
+
+.message-compose-modal {
+  background: #fff;
+  border-radius: 18px;
+  width: 90%;
+  max-width: 480px;
+  padding: 28px;
+  position: relative;
+}
+
+.message-compose-input {
+  width: 100%;
+  min-height: 140px;
+  border: 1px solid #CFDEDD;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-dark);
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  margin-bottom: 16px;
+}
+
+.message-compose-input:focus {
+  border-color: var(--card-border);
 }
 
 .login-prompt-modal {
@@ -2618,6 +2708,66 @@ button {
   padding: 24px;
   color: #7A9CA0;
   font-size: 14px;
+}
+
+.message-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--content-bg);
+  border-radius: 10px;
+}
+
+.message-item.unread {
+  background: #D0EAE8;
+}
+
+.message-item-avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  background-size: cover;
+  background-position: center;
+}
+
+.message-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.message-item-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.message-item-name {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-item-unread-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #FF6B6B;
+}
+
+.message-item-body {
+  font-size: 13px;
+  color: var(--text-dark);
+  line-height: 1.6;
+  margin-top: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* ================= 文字数カウンター ================= */

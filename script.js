@@ -207,6 +207,11 @@ let editingDeadlinePostId = null;
 let mySettingsPosts = [];        // プロフィール画面「投稿済み募集」「期限切れ募集」用に取得した自分の全投稿
 let mySettingsPostsLoaded = false; // 上記を今回のプロフィール画面表示中に取得済みか
 
+let inboxMessages = [];          // プロフィール画面「メッセージ」タブ用の受信メッセージ
+let messagesLoaded = false;      // 上記を今回のプロフィール画面表示中に取得済みか
+let publicProfileTargetUid = null;   // 現在開いている他ユーザープロフィールのuid（メッセージ送信先）
+let publicProfileTargetName = '';    // 同上・表示名
+
 const CROP_SIZE = 280;    // トリムコンテナのサイズ（px）
 const CROP_RADIUS = 120;  // トリム円の半径（px）
 const cropState = { scale: 1, minScale: 1, maxScale: 4, tx: 0, ty: 0, dragging: false, lastX: 0, lastY: 0 };
@@ -391,6 +396,7 @@ function cacheElements() {
   els.githubLoginBtn = document.getElementById('githubLoginBtn');
   els.twitterLoginBtn = document.getElementById('twitterLoginBtn');
   els.profileLogoutBtn = document.getElementById('profileLogoutBtn');
+  els.deleteAccountBtn = document.getElementById('deleteAccountBtn');
 
   els.publicProfileOverlay = document.getElementById('publicProfileOverlay');
   els.publicProfileCloseBtn = document.getElementById('publicProfileCloseBtn');
@@ -399,6 +405,15 @@ function cacheElements() {
   els.publicProfileContact = document.getElementById('publicProfileContact');
   els.publicProfileBio = document.getElementById('publicProfileBio');
   els.publicProfileLinks = document.getElementById('publicProfileLinks');
+  els.publicProfileMessageBtn = document.getElementById('publicProfileMessageBtn');
+
+  els.messagesUnreadBadge = document.getElementById('messagesUnreadBadge');
+  els.messagesList = document.getElementById('messagesList');
+  els.messageComposeOverlay = document.getElementById('messageComposeOverlay');
+  els.messageComposeClose = document.getElementById('messageComposeClose');
+  els.messageComposeTitle = document.getElementById('messageComposeTitle');
+  els.messageComposeInput = document.getElementById('messageComposeInput');
+  els.messageComposeSend = document.getElementById('messageComposeSend');
 
   els.avatarCropOverlay = document.getElementById('avatarCropOverlay');
   els.avatarCropContainer = document.getElementById('avatarCropContainer');
@@ -430,6 +445,7 @@ function init() {
   setupAvatarCrop();
   setupProfilePanel();
   setupPublicProfile();
+  setupMessageCompose();
   applyProfileAvatar();
   setupDetailModal();
   setupPostModal();
@@ -2264,9 +2280,11 @@ function applyMenuProfile() {
 }
 
 function openProfilePanel() {
-  // 開くたびに「プロフィール」タブから始め、投稿一覧は再取得させる
+  // 開くたびに「プロフィール」タブから始め、投稿一覧・メッセージは再取得させる
   mySettingsPostsLoaded = false;
+  messagesLoaded = false;
   activateProfileTab('profile');
+  checkUnreadMessages();
   els.profileOverlay.classList.add('show');
 }
 
@@ -2294,6 +2312,16 @@ async function activateProfileTab(tab) {
     renderMyPosts();
     renderExpiredPosts();
   }
+
+  if (tab === 'messages') {
+    if (!messagesLoaded) {
+      els.messagesList.innerHTML = '<div class="expired-posts-empty">読み込み中…</div>';
+      await loadInboxMessages();
+      messagesLoaded = true;
+    }
+    renderInboxMessages();
+    markInboxMessagesRead();
+  }
 }
 
 function applyProfileAvatar() {
@@ -2311,12 +2339,24 @@ function setupPublicProfile() {
   els.publicProfileOverlay.addEventListener('click', (e) => {
     if (e.target === els.publicProfileOverlay) closePublicProfile();
   });
+
+  els.publicProfileMessageBtn.addEventListener('click', () => {
+    if (!state.currentUser) {
+      showLoginPrompt('メッセージを送るにはログインしてください');
+      return;
+    }
+    openMessageCompose(publicProfileTargetUid, publicProfileTargetName);
+  });
 }
 
 /* uidの投稿者プロフィールを開く。fallbackには投稿に複製されている
    名前・アイコンを渡すことで、Firestoreの応答を待たずに先に表示できる。 */
 async function openPublicProfile(uid, fallback) {
   if (!uid) return; // 運営名義の投稿など、投稿者が存在しない場合は開かない
+
+  publicProfileTargetUid = uid;
+  const isOwnProfile = state.currentUser && uid === state.currentUser.uid;
+  els.publicProfileMessageBtn.style.display = isOwnProfile ? 'none' : '';
 
   els.publicProfileOverlay.classList.add('show');
   renderPublicProfile({
@@ -2341,7 +2381,8 @@ async function openPublicProfile(uid, fallback) {
 
 function renderPublicProfile(data) {
   setBackgroundImageSafely(els.publicProfileAvatar, data.avatarUrl);
-  els.publicProfileName.textContent = truncateName(data.name) || '名前';
+  publicProfileTargetName = truncateName(data.name) || '名前';
+  els.publicProfileName.textContent = publicProfileTargetName;
   els.publicProfileContact.textContent = data.contact || '';
 
   els.publicProfileBio.textContent = data.bio || '';
@@ -2358,6 +2399,162 @@ function renderPublicProfile(data) {
     a.textContent = safe;
     els.publicProfileLinks.appendChild(a);
   });
+}
+
+/* =========================================================
+   メッセージ（一方通行・ユーザー間のやり取り）
+   ========================================================= */
+function setupMessageCompose() {
+  els.messageComposeClose.addEventListener('click', closeMessageCompose);
+  els.messageComposeOverlay.addEventListener('click', (e) => {
+    if (e.target === els.messageComposeOverlay) closeMessageCompose();
+  });
+  els.messageComposeSend.addEventListener('click', sendMessage);
+}
+
+function openMessageCompose(toUid, toName) {
+  if (!toUid) return;
+  els.messageComposeInput.value = '';
+  els.messageComposeTitle.textContent = (toName || '名前') + 'さんにメッセージを送る';
+  els.messageComposeOverlay.classList.add('show');
+}
+
+function closeMessageCompose() {
+  els.messageComposeOverlay.classList.remove('show');
+}
+
+async function sendMessage() {
+  const fb = window._firebase;
+  if (!fb || !state.currentUser || !publicProfileTargetUid) return;
+
+  const body = els.messageComposeInput.value.trim();
+  if (!body) return;
+
+  els.messageComposeSend.disabled = true;
+  try {
+    await fb.addDoc(fb.collection(fb.db, 'messages'), {
+      fromUid: state.currentUser.uid,
+      fromName: state.profile.name || '名前',
+      fromAvatarUrl: state.profile.avatarUrl || 'images/ProfileIcon.png',
+      toUid: publicProfileTargetUid,
+      body,
+      read: false,
+      createdAt: fb.serverTimestamp(),
+    });
+    showToast('メッセージを送信しました');
+    closeMessageCompose();
+  } catch (err) {
+    console.error('メッセージの送信に失敗しました:', err);
+    showToast('送信に失敗しました');
+  } finally {
+    els.messageComposeSend.disabled = false;
+  }
+}
+
+/* 受信メッセージ一覧を取得する（プロフィール画面「メッセージ」タブ表示時） */
+async function loadInboxMessages() {
+  if (!state.currentUser) {
+    inboxMessages = [];
+    return;
+  }
+  const fb = window._firebase;
+  try {
+    const q = fb.query(fb.collection(fb.db, 'messages'), fb.where('toUid', '==', state.currentUser.uid), fb.limit(200));
+    const snap = await fb.getDocs(q);
+    inboxMessages = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt ? b.createdAt.toMillis() : 0) - (a.createdAt ? a.createdAt.toMillis() : 0));
+  } catch (err) {
+    console.error('メッセージの取得に失敗しました:', err);
+    inboxMessages = [];
+  }
+}
+
+function renderInboxMessages() {
+  els.messagesList.innerHTML = '';
+
+  if (inboxMessages.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'expired-posts-empty';
+    empty.textContent = 'メッセージはまだありません';
+    els.messagesList.appendChild(empty);
+    return;
+  }
+
+  inboxMessages.forEach((msg) => {
+    const item = document.createElement('div');
+    item.className = 'message-item' + (msg.read ? '' : ' unread');
+
+    const avatar = document.createElement('div');
+    avatar.className = 'message-item-avatar';
+    setBackgroundImageSafely(avatar, msg.fromAvatarUrl);
+
+    const info = document.createElement('div');
+    info.className = 'message-item-info';
+
+    const head = document.createElement('div');
+    head.className = 'message-item-head';
+
+    const name = document.createElement('span');
+    name.className = 'message-item-name';
+    name.textContent = truncateName(msg.fromName) || '名前';
+    head.appendChild(name);
+
+    if (!msg.read) {
+      const dot = document.createElement('span');
+      dot.className = 'message-item-unread-dot';
+      head.appendChild(dot);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'message-item-body';
+    body.textContent = msg.body || '';
+
+    info.appendChild(head);
+    info.appendChild(body);
+    item.appendChild(avatar);
+    item.appendChild(info);
+    els.messagesList.appendChild(item);
+  });
+}
+
+/* メッセージタブを開いたタイミングで、未読メッセージをまとめて既読にする */
+async function markInboxMessagesRead() {
+  const fb = window._firebase;
+  const unread = inboxMessages.filter((m) => !m.read);
+  if (!fb || unread.length === 0) return;
+
+  unread.forEach((m) => { m.read = true; });
+  els.messagesUnreadBadge.style.display = 'none';
+
+  for (const m of unread) {
+    try {
+      await fb.updateDoc(fb.doc(fb.db, 'messages', m.id), { read: true });
+    } catch (err) {
+      console.error('既読への更新に失敗しました:', err);
+    }
+  }
+}
+
+/* プロフィール画面を開いたタイミングで、未読メッセージの有無だけ軽く確認する */
+async function checkUnreadMessages() {
+  if (!state.currentUser) {
+    els.messagesUnreadBadge.style.display = 'none';
+    return;
+  }
+  const fb = window._firebase;
+  try {
+    const q = fb.query(
+      fb.collection(fb.db, 'messages'),
+      fb.where('toUid', '==', state.currentUser.uid),
+      fb.where('read', '==', false),
+      fb.limit(1)
+    );
+    const snap = await fb.getDocs(q);
+    els.messagesUnreadBadge.style.display = snap.empty ? 'none' : '';
+  } catch (err) {
+    console.error('未読メッセージの確認に失敗しました:', err);
+  }
 }
 
 function closePublicProfile() {
@@ -2426,6 +2623,14 @@ function setupProfilePanel() {
     if (state.profile.links.length >= 10) return;
     state.profile.links.push('');
     renderProfileLinks();
+  });
+
+  // アカウント削除
+  els.deleteAccountBtn.addEventListener('click', () => {
+    showGenericConfirm(
+      'アカウントを削除しますか？プロフィールと投稿したすべての募集が完全に削除されます。この操作は取り消せません。',
+      deleteAccountFirebase
+    );
   });
 }
 
@@ -3003,6 +3208,38 @@ async function loginWithTwitter() {
   }
 }
 
+/* アカウント削除：投稿とその添付ファイル、プロフィールデータ、認証アカウントの順に消す。
+   認証アカウントを最後に消すのは、途中で失敗してもユーザーがログインしたまま
+   データにアクセスできる状態を保つため。 */
+async function deleteAccountFirebase() {
+  const fb = window._firebase;
+  if (!fb || !state.currentUser) return;
+  const user = state.currentUser;
+  const uid = user.uid;
+
+  try {
+    const snap = await fb.getDocs(fb.query(fb.collection(fb.db, 'posts'), fb.where('authorUid', '==', uid)));
+    for (const d of snap.docs) {
+      const post = { id: d.id, ...d.data() };
+      await deletePostFiles(post);
+      await fb.deleteDoc(fb.doc(fb.db, 'posts', d.id));
+    }
+
+    await fb.deleteDoc(fb.doc(fb.db, 'users', uid));
+    await fb.deleteDoc(fb.doc(fb.db, 'publicProfiles', uid));
+
+    await fb.deleteUser(user);
+    showToast('アカウントを削除しました');
+  } catch (err) {
+    if (err.code === 'auth/requires-recent-login') {
+      showToast('セキュリティのため、再度ログインしてからもう一度お試しください');
+    } else {
+      console.error('アカウント削除に失敗しました:', err);
+      showToast('アカウントの削除に失敗しました');
+    }
+  }
+}
+
 async function logoutFirebase() {
   const fb = window._firebase;
   if (!fb) return;
@@ -3093,6 +3330,10 @@ function onFirebaseLogout() {
   renderProfileLinks();
   renderPosts();
   closeDetailModal();
+
+  inboxMessages = [];
+  messagesLoaded = false;
+  els.messagesUnreadBadge.style.display = 'none';
 }
 
 let saveProfileTimer = null;

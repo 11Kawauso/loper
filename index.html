@@ -367,6 +367,16 @@
   </div>
 </div>
 
+<!-- メッセージ送信モーダル -->
+<div class="modal-overlay" id="messageComposeOverlay">
+  <div class="message-compose-modal">
+    <button class="modal-close" id="messageComposeClose">×</button>
+    <h2 class="modal-title" id="messageComposeTitle">メッセージを送る</h2>
+    <textarea class="message-compose-input" id="messageComposeInput" maxlength="1000" placeholder="メッセージを入力してください"></textarea>
+    <button class="form-submit" id="messageComposeSend" type="button">送信する</button>
+  </div>
+</div>
+
 <!-- トースト -->
 <div class="toast" id="toast"></div>
 
@@ -433,6 +443,7 @@
     <nav class="profile-nav" id="profileNav" style="display:none;">
       <div class="profile-nav-icon" id="profileNavIcon"></div>
       <button class="profile-nav-item active" type="button" data-tab="profile">プロフィール</button>
+      <button class="profile-nav-item" type="button" data-tab="messages">メッセージ<span class="profile-nav-badge" id="messagesUnreadBadge" style="display:none;"></span></button>
       <button class="profile-nav-item" type="button" data-tab="settings">設定</button>
       <button class="profile-nav-item" type="button" data-tab="myposts">投稿済み募集</button>
       <button class="profile-nav-item" type="button" data-tab="expired">期限切れ募集</button>
@@ -491,9 +502,21 @@
         <button class="profile-add-link-btn" id="profileAddLinkBtn" type="button">＋ リンクを追加</button>
       </div>
 
+      <!-- メッセージ -->
+      <div class="profile-tab-panel" data-tab-panel="messages">
+        <h2 class="profile-tab-title">メッセージ</h2>
+        <div class="expired-posts-list" id="messagesList"></div>
+      </div>
+
       <!-- 設定 -->
       <div class="profile-tab-panel" data-tab-panel="settings">
         <h2 class="profile-tab-title">設定</h2>
+
+        <div class="settings-section">
+          <h3 class="settings-section-title">アカウント削除</h3>
+          <p class="settings-section-desc">アカウントを削除すると、プロフィールと投稿したすべての募集が完全に削除されます。この操作は取り消せません。</p>
+          <button class="settings-danger-btn" id="deleteAccountBtn" type="button">アカウントを削除する</button>
+        </div>
       </div>
 
       <!-- 投稿済み募集 -->
@@ -527,6 +550,7 @@
       <div class="profile-contact-display" id="publicProfileContact"></div>
       <div class="public-profile-bio" id="publicProfileBio"></div>
       <div class="public-profile-links" id="publicProfileLinks"></div>
+      <button class="public-profile-message-btn" id="publicProfileMessageBtn" type="button">メッセージを送る</button>
     </div>
   </div>
 </div>
@@ -534,7 +558,7 @@
 <script src="script.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-  import { getAuth, GithubAuthProvider, TwitterAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+  import { getAuth, GithubAuthProvider, TwitterAuthProvider, signInWithPopup, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
   import {
     getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc,
     query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, arrayRemove,
@@ -556,7 +580,7 @@
 
   window._firebase = {
     auth, db,
-    GithubAuthProvider, TwitterAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+    GithubAuthProvider, TwitterAuthProvider, signInWithPopup, signOut, onAuthStateChanged, deleteUser,
     doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc,
     query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, arrayRemove,
   };
