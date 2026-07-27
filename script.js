@@ -377,7 +377,7 @@ function cacheElements() {
   els.profilePanel = document.getElementById('profilePanel');
   els.profileCloseBtn = document.getElementById('profileCloseBtn');
   els.profileNav = document.getElementById('profileNav');
-  els.profileNavItems = document.querySelectorAll('.profile-nav-item');
+  els.profileNavItems = document.querySelectorAll('.profile-nav-item[data-tab]');
   els.profileTabPanels = document.querySelectorAll('.profile-tab-panel');
   els.profileAvatar = document.getElementById('profileAvatar');
   els.profileAvatarInput = document.getElementById('profileAvatarInput');

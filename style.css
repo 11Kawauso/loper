@@ -1850,6 +1850,10 @@ button {
   font-weight: bold;
 }
 
+.profile-nav-logout {
+  margin-top: auto;
+}
+
 /* 右3/4：選択された内容 */
 .profile-body {
   flex: 1;
@@ -1926,6 +1930,11 @@ button {
     padding: 10px 14px;
     border-radius: 8px;
     font-size: 14px;
+  }
+
+  .profile-nav-logout {
+    margin-top: 0;
+    margin-left: auto;
   }
 
   .profile-body {
@@ -2320,24 +2329,6 @@ button {
   flex-direction: column;
   gap: 18px;
   flex: 1;
-}
-
-.profile-logout-btn {
-  width: 100%;
-  height: 42px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-radius: 21px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 14px;
-  font-family: inherit;
-  cursor: pointer;
-  margin-top: auto;
-  transition: background 0.15s;
-}
-
-.profile-logout-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
 }
 
 /* ================= ログイン促進モーダル ================= */
