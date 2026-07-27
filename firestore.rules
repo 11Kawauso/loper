@@ -45,7 +45,9 @@ service cloud.firestore {
           && d.authorName is string && d.authorName.size() <= 20
           && d.authorAvatarUrl is string && d.authorAvatarUrl.size() <= 400000
           && d.pinnedBy is list
-          && d.closed is bool;
+          && d.closed is bool
+          // editedは後から追加した項目のため、まだ持っていない既存の投稿も許容する
+          && (!('edited' in d) || d.edited is bool);
       }
 
       /* 投稿者本人による更新でも、投稿の所有権（authorUid）は書き換えさせない。

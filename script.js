@@ -486,6 +486,7 @@ function docToPost(docSnap) {
     files: data.files || [],
     pinnedBy: data.pinnedBy || [],
     closed: !!data.closed,
+    edited: !!data.edited,
     authorUid: data.authorUid || null,
     authorName: data.authorName || '名前',
     authorAvatarUrl: data.authorAvatarUrl || 'images/ProfileIcon.png',
@@ -738,6 +739,15 @@ function fillPostsIfNeeded() {
   }
 }
 
+/* 投稿後に編集された投稿には、タイトルの横に「編集済み」を添える */
+function appendEditedBadge(titleEl, post) {
+  if (!post.edited) return;
+  const badge = document.createElement('span');
+  badge.className = 'post-edited-badge';
+  badge.textContent = '編集済み';
+  titleEl.appendChild(badge);
+}
+
 function createPostCard(post) {
   const card = document.createElement('div');
   card.className = 'post-card ' + (CATEGORY_BORDER_CLASS[post.category] || '');
@@ -784,6 +794,7 @@ function createPostCard(post) {
   const title = document.createElement('h3');
   title.className = 'post-title';
   title.textContent = post.title;
+  appendEditedBadge(title, post);
   card.appendChild(title);
 
   // 内容（テキストのみ。画像は詳細モーダルで表示）
@@ -1637,6 +1648,7 @@ function openDetailModal(post) {
   els.detailMoreMenuWrap.appendChild(createPostMoreMenu(post));
 
   els.detailTitle.textContent = post.title;
+  appendEditedBadge(els.detailTitle, post);
 
   // 画像（サムネイル一覧。クリックでライトボックス）
   els.detailImageBox.innerHTML = '';
@@ -2038,10 +2050,13 @@ function setupPostModal() {
         const postId = editingPostId;
         await fb.updateDoc(fb.doc(fb.db, 'posts', String(postId)), {
           category, title, description, tags: tagsToSave, contact, images, files,
+          edited: true,
         });
 
-        const post = state.allPosts.find((p) => p.id === postId);
-        if (post) {
+        // 一覧・プロフィール画面の双方が同じ投稿を保持しているため、両方に反映する
+        [state.allPosts, mySettingsPosts].forEach((list) => {
+          const post = list.find((p) => p.id === postId);
+          if (!post) return;
           post.category = category;
           post.title = title;
           post.description = description;
@@ -2049,9 +2064,12 @@ function setupPostModal() {
           post.contact = contact;
           post.images = images;
           post.files = files;
-        }
+          post.edited = true;
+        });
         editingPostId = null;
         renderPosts();
+        renderMyPosts();
+        renderExpiredPosts();
         closePostModal();
         showToast('投稿を更新しました');
         return;
@@ -2064,6 +2082,7 @@ function setupPostModal() {
         createdAt: fb.serverTimestamp(),
         pinnedBy: [],
         closed: false,
+        edited: false,
         authorUid: state.currentUser.uid,
         authorName: state.profile.name || '名前',
         authorAvatarUrl: state.profile.avatarUrl || 'images/ProfileIcon.png',
@@ -2078,6 +2097,7 @@ function setupPostModal() {
         deadlineDays,
         pinnedBy: [],
         closed: false,
+        edited: false,
         authorUid: docData.authorUid,
         authorName: docData.authorName,
         authorAvatarUrl: docData.authorAvatarUrl,
@@ -2952,6 +2972,7 @@ function renderExpiredPosts() {
     const title = document.createElement('div');
     title.className = 'expired-post-title';
     title.textContent = post.title;
+    appendEditedBadge(title, post);
 
     const meta = document.createElement('div');
     meta.className = 'expired-post-meta';
@@ -3094,6 +3115,20 @@ function createMyPostDetail(post) {
   }
 
   card.appendChild(footer);
+
+  // 編集ボタン。プロフィール画面を閉じて、メイン画面側の投稿編集フォームへ移る
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'my-post-edit-btn';
+  editBtn.textContent = '編集する';
+  editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeProfilePanel();
+    closeDetailModal();
+    openEditPostModal(post);
+  });
+  card.appendChild(editBtn);
+
   wrap.appendChild(card);
   return wrap;
 }
@@ -3144,6 +3179,7 @@ function renderMyPosts() {
     const title = document.createElement('div');
     title.className = 'expired-post-title';
     title.textContent = post.title;
+    appendEditedBadge(title, post);
 
     const meta = document.createElement('div');
     meta.className = 'expired-post-meta';

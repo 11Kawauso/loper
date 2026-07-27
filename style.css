@@ -1185,6 +1185,20 @@ button {
   word-break: break-word;
 }
 
+/* 投稿後に編集された投稿の目印（タイトルの横に添える） */
+.post-edited-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 9px;
+  background: var(--tag-pill-bg);
+  color: var(--tag-pill-text);
+  font-size: 11px;
+  font-weight: normal;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
 /* 内容（投稿の本文）枠 */
 .post-content-box {
   border: 2px solid var(--content-box-border);
@@ -2857,6 +2871,25 @@ button {
 .my-post-detail-card:hover {
   transform: none;
   box-shadow: none;
+}
+
+.my-post-edit-btn {
+  align-self: flex-start;
+  padding: 0 18px;
+  height: 36px;
+  border: none;
+  border-radius: 18px;
+  background: var(--header-bg);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.my-post-edit-btn:hover {
+  filter: brightness(1.08);
 }
 
 .expired-posts-empty {
