@@ -1827,6 +1827,18 @@ button {
   overflow-y: auto;
 }
 
+.profile-nav-icon {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  align-self: center;
+  margin-bottom: 16px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  background-size: cover;
+  background-position: center;
+}
+
 .profile-nav-item {
   width: 100%;
   text-align: left;
@@ -1927,6 +1939,10 @@ button {
   .profile-nav-logout {
     margin-top: 0;
     margin-left: auto;
+  }
+
+  .profile-nav-icon {
+    display: none;
   }
 
   .profile-body {

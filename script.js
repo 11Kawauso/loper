@@ -374,6 +374,7 @@ function cacheElements() {
   els.profileCloseBtn = document.getElementById('profileCloseBtn');
   els.profileNav = document.getElementById('profileNav');
   els.profileNavItems = document.querySelectorAll('.profile-nav-item[data-tab]');
+  els.profileNavIcon = document.getElementById('profileNavIcon');
   els.profileTabPanels = document.querySelectorAll('.profile-tab-panel');
   els.profileAvatar = document.getElementById('profileAvatar');
   els.profileAvatarInput = document.getElementById('profileAvatarInput');
@@ -2298,6 +2299,7 @@ async function activateProfileTab(tab) {
 function applyProfileAvatar() {
   setBackgroundImageSafely(els.profileAvatar, state.profile.avatarUrl);
   setBackgroundImageSafely(els.menuProfileIcon, state.profile.avatarUrl);
+  setBackgroundImageSafely(els.profileNavIcon, state.profile.avatarUrl);
   els.menuProfileName.textContent = state.profile.name || '名前';
 }
 
