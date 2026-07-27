@@ -2642,6 +2642,7 @@ function saveProfileNameEdit() {
     els.profileNameInput.textContent = newName;
     els.menuProfileName.textContent = newName;
     debouncedSaveProfile();
+    syncProfileToPosts();
     showToast('名前を変更しました');
   }
   els.profileNameInput.parentElement.classList.remove('editing');
@@ -2831,6 +2832,7 @@ function confirmAvatarCrop() {
   applyProfileAvatar();
   closeAvatarCrop();
   debouncedSaveProfile();
+  syncProfileToPosts();
 }
 
 /* =========================================================
@@ -3100,6 +3102,7 @@ function showIconDeleteConfirm() {
     state.profile.avatarUrl = 'images/ProfileIcon.png';
     applyProfileAvatar();
     debouncedSaveProfile();
+    syncProfileToPosts();
   }, { once: true });
   cancel.addEventListener('click', close, { once: true });
 }
@@ -3360,6 +3363,46 @@ async function saveProfileToFirestore() {
     await savePublicProfileToFirestore();
   } catch (err) {
     console.error('Firestore save error:', err);
+  }
+}
+
+/* 投稿に複製している名前・アイコンを最新のプロフィールへ同期する。
+   投稿は作成時点の名前・アイコンをコピーして保持しているため、
+   名前やアイコンを変更した直後に呼び出して古いままにならないようにする。 */
+async function syncProfileToPosts() {
+  const fb = window._firebase;
+  if (!fb || !state.currentUser) return;
+
+  const uid = state.currentUser.uid;
+  const name = state.profile.name || '名前';
+  const avatarUrl = state.profile.avatarUrl || 'images/ProfileIcon.png';
+
+  try {
+    const snap = await fb.getDocs(fb.query(fb.collection(fb.db, 'posts'), fb.where('authorUid', '==', uid), fb.limit(200)));
+    const targets = snap.docs.filter((d) => {
+      const data = d.data();
+      return data.authorName !== name || data.authorAvatarUrl !== avatarUrl;
+    });
+    if (targets.length === 0) return;
+
+    for (const d of targets) {
+      try {
+        await fb.updateDoc(fb.doc(fb.db, 'posts', d.id), { authorName: name, authorAvatarUrl: avatarUrl });
+      } catch (err) {
+        console.error(d.id + 'の投稿者情報の同期に失敗しました:', err);
+      }
+    }
+
+    // 一覧の表示にもすぐ反映する
+    state.allPosts.forEach((post) => {
+      if (post.authorUid === uid) {
+        post.authorName = name;
+        post.authorAvatarUrl = avatarUrl;
+      }
+    });
+    renderPosts();
+  } catch (err) {
+    console.error('投稿一覧の取得に失敗しました:', err);
   }
 }
 

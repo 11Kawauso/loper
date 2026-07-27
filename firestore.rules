@@ -48,15 +48,14 @@ service cloud.firestore {
           && d.closed is bool;
       }
 
-      /* 投稿者本人による更新でも、投稿者情報は書き換えさせない。
-         （他人になりすましたり、投稿の所有権を他人へ移すのを防ぐ）
+      /* 投稿者本人による更新でも、投稿の所有権（authorUid）は書き換えさせない。
+         authorName・authorAvatarUrlは、プロフィール変更を過去の投稿へ同期できるよう
+         本人による更新を許可する（値の妥当性はisValidPost()側でチェック済み）。
          投稿日時は「変更しない」か「募集期限の変更で現在時刻に更新する」のみ許可。 */
       function isValidOwnerUpdate() {
         let d = request.resource.data;
         let p = resource.data;
         return d.authorUid == p.authorUid
-          && d.authorName == p.authorName
-          && d.authorAvatarUrl == p.authorAvatarUrl
           && d.pinnedBy == p.pinnedBy
           && (d.createdAt == p.createdAt || d.createdAt == request.time);
       }
