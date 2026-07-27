@@ -2844,10 +2844,14 @@ button {
 
 /* 開いたときに投稿一覧のカードと同じ見た目で表示する。
    タイトル・投稿日時・期限は外側の見出しにすでに出ているため中では省略し、
-   カテゴリ別の枠色も外側の枠（.expired-post-item）だけにつける。 */
+   カテゴリ別の枠色も外側の枠（.expired-post-item）だけにつける。
+   .post-cardの枠・背景・余白は外側の.expired-post-itemが兼ねるため、
+   ここでは打ち消して二重の枠にならないようにする（内容の並び・間隔だけ流用）。 */
 .my-post-detail-card {
   cursor: default;
-  border-color: var(--content-box-border);
+  border: none;
+  background: transparent;
+  padding: 0;
 }
 
 .my-post-detail-card:hover {
