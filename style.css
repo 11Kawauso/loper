@@ -1894,14 +1894,6 @@ button {
   justify-content: flex-end;
 }
 
-.profile-screen .settings-section {
-  margin-bottom: 0;
-}
-
-.profile-screen .settings-section-title {
-  color: #FFFFFF;
-}
-
 .profile-screen .expired-posts-empty {
   color: rgba(255, 255, 255, 0.75);
 }
@@ -2060,30 +2052,78 @@ button {
   flex-shrink: 0;
 }
 
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
 .profile-name-display {
-  width: 100%;
   text-align: center;
-  align-self: center;
   font-size: 18px;
   font-weight: bold;
   font-family: inherit;
   color: var(--profile-name-color);
-  padding: 8px 0;
 }
 
-.profile-contact-display {
-  width: 100%;
+.profile-name-edit-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--profile-name-color);
+  opacity: 0.75;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.profile-name-edit-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.profile-name-edit-input {
+  display: none;
+  width: 60%;
+  max-width: 240px;
   text-align: center;
-  align-self: center;
-  font-size: 13px;
+  border: none;
+  border-radius: 20px;
+  background: var(--profile-field-bg);
+  padding: 8px 16px;
+  font-size: 15px;
   font-family: inherit;
   color: var(--text-dark);
-  opacity: 0.7;
-  padding: 0 0 8px;
+  outline: none;
 }
 
-.profile-contact-display:empty {
+.profile-name-row.editing .profile-name-display,
+.profile-name-row.editing .profile-name-edit-btn {
   display: none;
+}
+
+.profile-name-row.editing .profile-name-edit-input {
+  display: block;
+}
+
+.profile-contact-input {
+  width: 100%;
+  border: none;
+  border-radius: 20px;
+  background: var(--profile-field-bg);
+  padding: 12px 18px;
+  font-size: 13px;
+  color: var(--text-dark);
+  font-family: inherit;
+  outline: none;
+  flex-shrink: 0;
 }
 
 .profile-bio {
@@ -2512,60 +2552,6 @@ button {
 .deadline-unit {
   font-size: 14px;
   color: var(--text-dark);
-}
-
-/* ================= 設定画面 ================= */
-.settings-section {
-  margin-bottom: 28px;
-}
-
-.settings-section-title {
-  font-size: 15px;
-  font-weight: bold;
-  color: var(--text-dark);
-  margin: 0;
-}
-
-.settings-section-title + .settings-name-row {
-  margin-top: 12px;
-}
-
-.settings-name-row {
-  display: flex;
-  gap: 10px;
-}
-
-.settings-name-input {
-  flex: 1;
-  border: 1px solid #CFDEDD;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
-  font-family: inherit;
-  outline: none;
-  color: var(--text-dark);
-}
-
-.settings-name-input:focus {
-  border-color: var(--card-border);
-}
-
-.settings-name-save {
-  padding: 0 20px;
-  height: 42px;
-  border: none;
-  border-radius: 21px;
-  background: var(--header-bg);
-  color: #fff;
-  font-size: 14px;
-  font-weight: bold;
-  font-family: inherit;
-  cursor: pointer;
-  transition: filter 0.15s;
-}
-
-.settings-name-save:hover {
-  filter: brightness(0.93);
 }
 
 /* 期限切れ募集一覧 */

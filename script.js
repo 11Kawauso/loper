@@ -364,10 +364,6 @@ function cacheElements() {
   els.deadlineEditInput = document.getElementById('deadlineEditInput');
   els.deadlineEditSave = document.getElementById('deadlineEditSave');
 
-  els.settingsNameInput = document.getElementById('settingsNameInput');
-  els.settingsNameSave = document.getElementById('settingsNameSave');
-  els.settingsContactInput = document.getElementById('settingsContactInput');
-  els.settingsContactSave = document.getElementById('settingsContactSave');
   els.expiredPostsList = document.getElementById('expiredPostsList');
   els.myPostsList = document.getElementById('myPostsList');
 
@@ -383,6 +379,8 @@ function cacheElements() {
   els.profileAvatarInput = document.getElementById('profileAvatarInput');
   els.profileAvatarDeleteBtn = document.getElementById('profileAvatarDeleteBtn');
   els.profileNameInput = document.getElementById('profileNameInput');
+  els.profileNameEditBtn = document.getElementById('profileNameEditBtn');
+  els.profileNameEditInput = document.getElementById('profileNameEditInput');
   els.profileContactDisplay = document.getElementById('profileContactDisplay');
   els.profileBio = document.getElementById('profileBio');
   els.profileLinksContainer = document.getElementById('profileLinks');
@@ -435,7 +433,6 @@ function init() {
   setupDetailModal();
   setupPostModal();
   setupInfiniteScroll();
-  setupSettings();
   setupGenericConfirm();
   setupDeadlineEditModal();
   setupFirebase();
@@ -2286,12 +2283,6 @@ async function activateProfileTab(tab) {
     panel.classList.toggle('active', panel.dataset.tabPanel === tab);
   });
 
-  if (tab === 'settings') {
-    els.settingsNameInput.value = state.profile.name;
-    els.settingsContactInput.value = state.profile.contact;
-    return;
-  }
-
   if (tab === 'myposts' || tab === 'expired') {
     if (!mySettingsPostsLoaded) {
       els.myPostsList.innerHTML = '<div class="expired-posts-empty">読み込み中…</div>';
@@ -2397,10 +2388,33 @@ function setupProfilePanel() {
     showIconDeleteConfirm();
   });
 
+  // 名前編集（鉛筆アイコンで入力欄に切り替え）
+  els.profileNameEditBtn.addEventListener('click', () => {
+    els.profileNameEditInput.value = state.profile.name;
+    els.profileNameInput.parentElement.classList.add('editing');
+    els.profileNameEditInput.focus();
+    els.profileNameEditInput.select();
+  });
+  els.profileNameEditInput.addEventListener('blur', saveProfileNameEdit);
+  els.profileNameEditInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      els.profileNameEditInput.blur();
+    } else if (e.key === 'Escape') {
+      els.profileNameEditInput.value = state.profile.name;
+      els.profileNameEditInput.blur();
+    }
+  });
 
   // 自己紹介
   els.profileBio.addEventListener('input', () => {
     state.profile.bio = els.profileBio.value;
+    debouncedSaveProfile();
+  });
+
+  // 連絡先
+  els.profileContactDisplay.addEventListener('input', () => {
+    state.profile.contact = els.profileContactDisplay.value;
     debouncedSaveProfile();
   });
 
@@ -2411,6 +2425,19 @@ function setupProfilePanel() {
     state.profile.links.push('');
     renderProfileLinks();
   });
+}
+
+/* 名前編集欄をblurまたはEnterで確定し、表示に戻す */
+function saveProfileNameEdit() {
+  const newName = els.profileNameEditInput.value.trim();
+  if (newName && newName !== state.profile.name) {
+    state.profile.name = newName;
+    els.profileNameInput.textContent = newName;
+    els.menuProfileName.textContent = newName;
+    debouncedSaveProfile();
+    showToast('名前を変更しました');
+  }
+  els.profileNameInput.parentElement.classList.remove('editing');
 }
 
 const MAX_LINKS = 10;
@@ -2616,29 +2643,6 @@ function showToast(message) {
 /* =========================================================
    Firebase：認証 & Firestore
    ========================================================= */
-/* =========================================================
-   設定（プロフィール画面の「設定」タブ）
-   ========================================================= */
-function setupSettings() {
-  els.settingsNameSave.addEventListener('click', () => {
-    const newName = els.settingsNameInput.value.trim();
-    if (!newName) return;
-    state.profile.name = newName;
-    els.profileNameInput.textContent = newName;
-    els.menuProfileName.textContent = newName;
-    debouncedSaveProfile();
-    showToast('名前を変更しました');
-  });
-
-  els.settingsContactSave.addEventListener('click', () => {
-    const newContact = els.settingsContactInput.value.trim();
-    state.profile.contact = newContact;
-    els.profileContactDisplay.textContent = newContact;
-    debouncedSaveProfile();
-    showToast('連絡先を変更しました');
-  });
-}
-
 /* 「投稿済み募集」「期限切れ募集」タブ用に、自分が投稿した全件をFirestoreから直接取得する。
    一覧のページング状態（state.allPosts）とは独立させ、まだ画面に読み込まれていない
    自分の投稿も漏れなく表示できるようにする。 */
@@ -3057,7 +3061,7 @@ async function onFirebaseLogin(user) {
   }
 
   els.profileNameInput.textContent = state.profile.name;
-  els.profileContactDisplay.textContent = state.profile.contact;
+  els.profileContactDisplay.value = state.profile.contact;
   els.profileBio.value = state.profile.bio;
   applyProfileAvatar();
   applyMenuProfile();
@@ -3080,7 +3084,7 @@ function onFirebaseLogout() {
   state.profile.links = [''];
 
   els.profileNameInput.textContent = state.profile.name;
-  els.profileContactDisplay.textContent = state.profile.contact;
+  els.profileContactDisplay.value = state.profile.contact;
   els.profileBio.value = state.profile.bio;
   applyProfileAvatar();
   applyMenuProfile();

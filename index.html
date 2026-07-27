@@ -474,10 +474,17 @@
           <input type="file" id="profileAvatarInput" accept="image/*" class="visually-hidden">
         </div>
 
-        <div class="profile-name-display" id="profileNameInput">名前</div>
-        <div class="profile-contact-display" id="profileContactDisplay"></div>
+        <div class="profile-name-row">
+          <div class="profile-name-display" id="profileNameInput">名前</div>
+          <button type="button" class="profile-name-edit-btn" id="profileNameEditBtn" aria-label="名前を編集">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          </button>
+          <input type="text" class="profile-name-edit-input" id="profileNameEditInput" maxlength="20" placeholder="名前を入力">
+        </div>
 
         <textarea class="profile-bio" id="profileBio" placeholder="自己紹介や説明文を入力してください"></textarea>
+
+        <input type="text" class="profile-contact-input" id="profileContactDisplay" maxlength="50" placeholder="連絡先を入力">
 
         <div class="profile-links" id="profileLinks"></div>
         <button class="profile-add-link-btn" id="profileAddLinkBtn" type="button">＋ リンクを追加</button>
@@ -486,22 +493,6 @@
       <!-- 設定 -->
       <div class="profile-tab-panel" data-tab-panel="settings">
         <h2 class="profile-tab-title">設定</h2>
-
-        <div class="settings-section">
-          <h3 class="settings-section-title">名前を変更</h3>
-          <div class="settings-name-row">
-            <input type="text" class="settings-name-input" id="settingsNameInput" maxlength="20" placeholder="名前を入力">
-            <button class="settings-name-save" id="settingsNameSave" type="button">保存</button>
-          </div>
-        </div>
-
-        <div class="settings-section">
-          <h3 class="settings-section-title">連絡先を変更</h3>
-          <div class="settings-name-row">
-            <input type="text" class="settings-name-input" id="settingsContactInput" maxlength="50" placeholder="連絡先を入力">
-            <button class="settings-name-save" id="settingsContactSave" type="button">保存</button>
-          </div>
-        </div>
       </div>
 
       <!-- 投稿済み募集 -->
