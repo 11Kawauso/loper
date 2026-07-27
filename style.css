@@ -2466,6 +2466,12 @@ button {
   line-height: 1.6;
 }
 
+/* プロフィール画面（自分・他ユーザーとも）の上から開けるよう、
+   .modal-overlay既定のz-indexより手前に出す */
+#messageComposeOverlay {
+  z-index: 2000;
+}
+
 .message-compose-modal {
   background: #fff;
   border-radius: 18px;
