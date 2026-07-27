@@ -698,6 +698,7 @@ function renderPosts() {
       msg.textContent = '該当する投稿がありません。';
     }
     els.postsGrid.appendChild(msg);
+    fillPostsIfNeeded();
     return;
   }
 
@@ -715,6 +716,19 @@ function renderPosts() {
     end.className = 'status-message';
     end.textContent = 'すべての投稿を表示しました。';
     els.postsGrid.appendChild(end);
+  }
+
+  fillPostsIfNeeded();
+}
+
+/* カテゴリ・タグなどの絞り込み直後は、表示件数が少なくスクロールバーが
+   出ないために無限スクロールが働かないことがある。その場合は自動でもう1ページ
+   読み込み、絞り込み条件に合う投稿を切らさないようにする。 */
+function fillPostsIfNeeded() {
+  if (state.loading || state.reachedEnd) return;
+  const el = els.postsPane;
+  if (el.clientHeight > 0 && el.scrollHeight <= el.clientHeight + 1) {
+    loadMorePosts();
   }
 }
 
