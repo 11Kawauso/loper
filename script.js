@@ -3039,39 +3039,66 @@ function deleteSelectedMyPosts() {
   });
 }
 
-/* 投稿を「その場で」展開表示する内容（説明文・タグ・連絡先） */
+/* 投稿を「その場で」展開表示する内容。投稿一覧のカードと同じ見た目にするが、
+   自分の投稿なのでピン止め・投稿者アイコン・名前は表示しない。 */
 function createMyPostDetail(post) {
-  const detail = document.createElement('div');
-  detail.className = 'expired-post-detail';
+  const wrap = document.createElement('div');
+  wrap.className = 'expired-post-detail';
 
-  const desc = document.createElement('div');
-  desc.className = 'expired-post-detail-desc';
-  desc.textContent = post.description || '（説明文はありません）';
-  detail.appendChild(desc);
+  const card = document.createElement('div');
+  card.className = 'post-card my-post-detail-card ' + (CATEGORY_BORDER_CLASS[post.category] || '');
 
-  if (post.tags && post.tags.length > 0) {
-    const tagsWrap = document.createElement('div');
-    tagsWrap.className = 'expired-post-detail-tags';
-    post.tags.forEach((tag) => {
-      const pill = document.createElement('span');
-      pill.className = 'tag-pill';
-      pill.textContent = '#' + tag;
-      tagsWrap.appendChild(pill);
+  const title = document.createElement('h3');
+  title.className = 'post-title';
+  title.textContent = post.title;
+  card.appendChild(title);
+
+  const contentBox = document.createElement('div');
+  contentBox.className = 'post-content-box';
+  contentBox.appendChild(document.createTextNode(post.description));
+  card.appendChild(contentBox);
+
+  const tagsWrap = document.createElement('div');
+  tagsWrap.className = 'post-tags';
+  (post.tags || []).forEach((tag) => {
+    const pill = document.createElement('span');
+    pill.className = 'tag-pill';
+    pill.textContent = '#' + tag;
+    pill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeProfilePanel();
+      searchByTag(tag);
     });
-    detail.appendChild(tagsWrap);
+    tagsWrap.appendChild(pill);
+  });
+  card.appendChild(tagsWrap);
+
+  const footer = document.createElement('div');
+  footer.className = 'post-footer';
+
+  const dateEl = document.createElement('span');
+  dateEl.className = 'post-date';
+  dateEl.textContent = '投稿日時　' + post.date;
+  footer.appendChild(dateEl);
+
+  if (post.closed) {
+    const closedEl = document.createElement('span');
+    closedEl.textContent = '締め切り済み';
+    footer.appendChild(closedEl);
+  } else {
+    const deadline = getPostDeadline(post);
+    if (deadline) {
+      const remaining = Math.ceil((deadline - new Date()) / (24 * 60 * 60 * 1000));
+      const deadlineEl = document.createElement('span');
+      deadlineEl.className = 'post-deadline' + (remaining <= 3 ? ' urgent' : '');
+      deadlineEl.textContent = '残り ' + remaining + ' 日';
+      footer.appendChild(deadlineEl);
+    }
   }
 
-  if (post.contact && post.contact.trim()) {
-    const contact = document.createElement('div');
-    contact.className = 'expired-post-detail-contact';
-    const label = document.createElement('strong');
-    label.textContent = '連絡先：';
-    contact.appendChild(label);
-    contact.appendChild(document.createTextNode(post.contact));
-    detail.appendChild(contact);
-  }
-
-  return detail;
+  card.appendChild(footer);
+  wrap.appendChild(card);
+  return wrap;
 }
 
 /* 自分の投稿一覧（設定画面） */

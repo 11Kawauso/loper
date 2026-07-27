@@ -2819,35 +2819,31 @@ button {
   transform: rotate(180deg);
 }
 
+@keyframes my-post-detail-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .expired-post-detail {
-  padding: 0 12px 14px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0 12px 12px;
+  animation: my-post-detail-in 0.22s ease-out;
 }
 
-.expired-post-detail-desc {
-  font-size: 13px;
-  color: var(--text-dark);
-  line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 12px 0 10px;
+/* 開いたときに投稿一覧のカードと同じ見た目で表示する。
+   自分の投稿の管理画面なのでピン止め・投稿者アイコン・名前は出さない。 */
+.my-post-detail-card {
+  cursor: default;
 }
 
-.expired-post-detail-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.expired-post-detail-contact {
-  font-size: 12px;
-  color: #7A9CA0;
-}
-
-.expired-post-detail-contact strong {
-  color: var(--text-dark);
-  font-weight: bold;
+.my-post-detail-card:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .expired-posts-empty {
