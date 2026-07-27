@@ -316,6 +316,8 @@ function cacheElements() {
   els.menuProfileArea = document.querySelector('.menu-profile-area');
   els.menuProfileBtn = document.getElementById('menuProfileBtn');
   els.menuAuthBtn = document.getElementById('menuAuthBtn');
+  els.menuInboxBtn = document.getElementById('menuInboxBtn');
+  els.menuInboxBadge = document.getElementById('menuInboxBadge');
 
   els.detailPane = document.getElementById('detailPane');
   els.detailBackBtn = document.getElementById('detailBackBtn');
@@ -2244,6 +2246,7 @@ function setupProfileIcon() {
   });
   els.menuProfileArea.addEventListener('click', openProfileFromMenu);
   els.menuProfileBtn.addEventListener('click', openProfileFromMenu);
+  els.menuInboxBtn.addEventListener('click', openMessagesFromMenu);
   els.menuAuthBtn.addEventListener('click', () => {
     if (state.currentUser) {
       showLogoutConfirm();
@@ -2264,8 +2267,20 @@ function openProfileFromMenu() {
   openProfilePanel();
 }
 
+// メニューからメッセージタブへ直接ジャンプする（未ログイン時はログインを促す）
+function openMessagesFromMenu() {
+  if (!state.currentUser) {
+    showLoginPrompt('メッセージを利用するにはログインしてください');
+    return;
+  }
+  closeMenu();
+  openProfilePanel();
+  activateProfileTab('messages');
+}
+
 function openMenu() {
   applyMenuProfile();
+  checkUnreadMessages();
   els.menuOverlay.classList.add('show');
 }
 
@@ -2518,6 +2533,12 @@ function renderInboxMessages() {
   });
 }
 
+/* 未読メッセージの赤丸バッジ（メニューの受信ボタン・プロフィール画面のメッセージタブ）をまとめて切り替える */
+function setUnreadBadgeVisible(visible) {
+  els.messagesUnreadBadge.style.display = visible ? '' : 'none';
+  els.menuInboxBadge.style.display = visible ? '' : 'none';
+}
+
 /* メッセージタブを開いたタイミングで、未読メッセージをまとめて既読にする */
 async function markInboxMessagesRead() {
   const fb = window._firebase;
@@ -2525,7 +2546,7 @@ async function markInboxMessagesRead() {
   if (!fb || unread.length === 0) return;
 
   unread.forEach((m) => { m.read = true; });
-  els.messagesUnreadBadge.style.display = 'none';
+  setUnreadBadgeVisible(false);
 
   for (const m of unread) {
     try {
@@ -2536,10 +2557,10 @@ async function markInboxMessagesRead() {
   }
 }
 
-/* プロフィール画面を開いたタイミングで、未読メッセージの有無だけ軽く確認する */
+/* プロフィール画面・メニューを開いたタイミングで、未読メッセージの有無だけ軽く確認する */
 async function checkUnreadMessages() {
   if (!state.currentUser) {
-    els.messagesUnreadBadge.style.display = 'none';
+    setUnreadBadgeVisible(false);
     return;
   }
   const fb = window._firebase;
@@ -2551,7 +2572,7 @@ async function checkUnreadMessages() {
       fb.limit(1)
     );
     const snap = await fb.getDocs(q);
-    els.messagesUnreadBadge.style.display = snap.empty ? 'none' : '';
+    setUnreadBadgeVisible(!snap.empty);
   } catch (err) {
     console.error('未読メッセージの確認に失敗しました:', err);
   }
@@ -3336,7 +3357,7 @@ function onFirebaseLogout() {
 
   inboxMessages = [];
   messagesLoaded = false;
-  els.messagesUnreadBadge.style.display = 'none';
+  setUnreadBadgeVisible(false);
 }
 
 let saveProfileTimer = null;
