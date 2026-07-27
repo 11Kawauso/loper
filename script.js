@@ -3040,13 +3040,13 @@ function deleteSelectedMyPosts() {
 }
 
 /* 投稿を「その場で」展開表示する内容。投稿一覧のカードと同じ見た目にするが、
-   自分の投稿なのでピン止め・投稿者アイコン・名前は表示しない。 */
+   自分の投稿なのでピン止め・投稿者アイコン・名前は表示しない。
+   タイトルは外側の見出し（.expired-post-header）に出ているため省略し、
+   投稿日時・期限は見出しから移動して一番下に表示する。 */
 function createMyPostDetail(post) {
   const wrap = document.createElement('div');
   wrap.className = 'expired-post-detail';
 
-  // タイトル・投稿日時・期限は外側の見出し（.expired-post-header）に出ているため、
-  // ここでは内容（説明文・タグ）だけを表示する
   const card = document.createElement('div');
   card.className = 'post-card my-post-detail-card';
 
@@ -3070,6 +3070,30 @@ function createMyPostDetail(post) {
   });
   card.appendChild(tagsWrap);
 
+  const footer = document.createElement('div');
+  footer.className = 'post-footer';
+
+  const dateEl = document.createElement('span');
+  dateEl.className = 'post-date';
+  dateEl.textContent = '投稿日時　' + post.date;
+  footer.appendChild(dateEl);
+
+  if (post.closed) {
+    const closedEl = document.createElement('span');
+    closedEl.textContent = '締め切り済み';
+    footer.appendChild(closedEl);
+  } else {
+    const deadline = getPostDeadline(post);
+    if (deadline) {
+      const remaining = Math.ceil((deadline - new Date()) / (24 * 60 * 60 * 1000));
+      const deadlineEl = document.createElement('span');
+      deadlineEl.className = 'post-deadline' + (remaining <= 3 ? ' urgent' : '');
+      deadlineEl.textContent = '残り ' + remaining + ' 日';
+      footer.appendChild(deadlineEl);
+    }
+  }
+
+  card.appendChild(footer);
   wrap.appendChild(card);
   return wrap;
 }
@@ -3134,7 +3158,10 @@ function renderMyPosts() {
     }
 
     info.appendChild(title);
-    info.appendChild(meta);
+    // 展開中は投稿日時・期限を内容の一番下に表示するため、見出し側では重複させない
+    if (!expanded) {
+      info.appendChild(meta);
+    }
     header.appendChild(info);
 
     if (!myPostsSelectMode) {
