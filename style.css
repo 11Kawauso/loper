@@ -2764,9 +2764,16 @@ button {
   display: flex;
   flex-direction: column;
   background: var(--content-bg);
+  border: 3px solid transparent;
   border-radius: 10px;
   overflow: hidden;
 }
+
+/* 「投稿済み募集」の各項目にはカテゴリ別の枠色をつける（投稿一覧のカードと同じ配色） */
+.expired-post-item.cat-game  { border-color: var(--card-border-game); }
+.expired-post-item.cat-app   { border-color: var(--card-border-app); }
+.expired-post-item.cat-site  { border-color: var(--card-border-site); }
+.expired-post-item.cat-video { border-color: var(--card-border-video); }
 
 .expired-post-header {
   display: flex;
@@ -2836,9 +2843,11 @@ button {
 }
 
 /* 開いたときに投稿一覧のカードと同じ見た目で表示する。
-   自分の投稿の管理画面なのでピン止め・投稿者アイコン・名前は出さない。 */
+   タイトル・投稿日時・期限は外側の見出しにすでに出ているため中では省略し、
+   カテゴリ別の枠色も外側の枠（.expired-post-item）だけにつける。 */
 .my-post-detail-card {
   cursor: default;
+  border-color: var(--content-box-border);
 }
 
 .my-post-detail-card:hover {

@@ -3045,13 +3045,10 @@ function createMyPostDetail(post) {
   const wrap = document.createElement('div');
   wrap.className = 'expired-post-detail';
 
+  // タイトル・投稿日時・期限は外側の見出し（.expired-post-header）に出ているため、
+  // ここでは内容（説明文・タグ）だけを表示する
   const card = document.createElement('div');
-  card.className = 'post-card my-post-detail-card ' + (CATEGORY_BORDER_CLASS[post.category] || '');
-
-  const title = document.createElement('h3');
-  title.className = 'post-title';
-  title.textContent = post.title;
-  card.appendChild(title);
+  card.className = 'post-card my-post-detail-card';
 
   const contentBox = document.createElement('div');
   contentBox.className = 'post-content-box';
@@ -3073,30 +3070,6 @@ function createMyPostDetail(post) {
   });
   card.appendChild(tagsWrap);
 
-  const footer = document.createElement('div');
-  footer.className = 'post-footer';
-
-  const dateEl = document.createElement('span');
-  dateEl.className = 'post-date';
-  dateEl.textContent = '投稿日時　' + post.date;
-  footer.appendChild(dateEl);
-
-  if (post.closed) {
-    const closedEl = document.createElement('span');
-    closedEl.textContent = '締め切り済み';
-    footer.appendChild(closedEl);
-  } else {
-    const deadline = getPostDeadline(post);
-    if (deadline) {
-      const remaining = Math.ceil((deadline - new Date()) / (24 * 60 * 60 * 1000));
-      const deadlineEl = document.createElement('span');
-      deadlineEl.className = 'post-deadline' + (remaining <= 3 ? ' urgent' : '');
-      deadlineEl.textContent = '残り ' + remaining + ' 日';
-      footer.appendChild(deadlineEl);
-    }
-  }
-
-  card.appendChild(footer);
   wrap.appendChild(card);
   return wrap;
 }
@@ -3125,7 +3098,9 @@ function renderMyPosts() {
   myPosts.forEach((post) => {
     const expanded = !myPostsSelectMode && expandedMyPostId === post.id;
     const item = document.createElement('div');
-    item.className = 'expired-post-item' + (expanded ? ' expanded' : '');
+    item.className = 'expired-post-item'
+      + (expanded ? ' expanded' : '')
+      + ' ' + (CATEGORY_BORDER_CLASS[post.category] || '');
 
     const header = document.createElement('div');
     header.className = 'expired-post-header';
