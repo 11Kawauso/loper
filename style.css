@@ -427,7 +427,7 @@ button {
 .menu-profile-name {
   font-size: 15px;
   font-weight: bold;
-  color: var(--category-text-color);
+  color: #FFFFFF;
 }
 
 .menu-list {
