@@ -525,7 +525,13 @@
 
       <!-- 投稿済み募集 -->
       <div class="profile-tab-panel" data-tab-panel="myposts">
-        <h2 class="profile-tab-title">投稿済み募集</h2>
+        <div class="profile-tab-title-row">
+          <h2 class="profile-tab-title">投稿済み募集</h2>
+          <button class="myposts-select-btn" id="myPostsSelectBtn" type="button">選択</button>
+        </div>
+        <div class="myposts-bulk-bar" id="myPostsBulkBar" style="display:none;">
+          <button class="myposts-bulk-delete-btn" id="myPostsBulkDeleteBtn" type="button" disabled>選択した投稿を削除</button>
+        </div>
         <div class="expired-posts-list" id="myPostsList"></div>
       </div>
 
