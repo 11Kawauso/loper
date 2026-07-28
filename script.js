@@ -180,7 +180,6 @@ const state = {
   currentCategory: 'all',
   tagBarCategory: 'all',
   activeTags: new Set(),
-  showPinnedOnly: false,
   searchKeyword: '',
   searchIncludeBody: false,
   sortOrder: 'default',
@@ -207,8 +206,14 @@ let editingDeadlinePostId = null;
 let mySettingsPosts = [];        // マイページ「投稿済み募集」「期限切れ募集」用に取得した自分の全投稿
 let mySettingsPostsLoaded = false; // 上記を今回のマイページ表示中に取得済みか
 let mySettingsPostsPromise = null; // 取得中のPromise（件数表示と一覧で二重取得しないため）
-/* 「投稿済み募集」「期限切れ募集」は同じ操作（その場で開く／選択してまとめて削除）を
-   持つため、タブごとの状態と設定をここにまとめ、描画処理を共通化する。 */
+
+let pinnedPosts = [];            // マイページ「ピン止め」タブ用に取得した、自分がピン止めした投稿
+let pinnedPostsLoaded = false;   // 上記を今回のマイページ表示中に取得済みか
+let pinnedPostsPromise = null;   // 同上・取得中のPromise
+
+/* 「投稿済み募集」「期限切れ募集」「ピン止め」は同じ操作（その場で開く）を持つため、
+   タブごとの状態と設定をここにまとめ、描画処理を共通化する。
+   ピン止めは他ユーザーの投稿も含むため、選択してまとめて削除する機能は持たない。 */
 const POST_LIST_VIEWS = {
   myposts: {
     expandedId: null,          // その場に開いている投稿（同時に1件のみ）
@@ -235,6 +240,15 @@ const POST_LIST_VIEWS = {
       bulkBar: els.expiredBulkBar,
       bulkDeleteBtn: els.expiredBulkDeleteBtn,
     }),
+  },
+  pinned: {
+    expandedId: null,
+    selectMode: false,
+    selectedIds: new Set(),
+    emptyText: 'ピン止めした投稿はありません',
+    detailAction: 'unpin', // 他人の投稿なので、編集ではなくピン止め解除を置く
+    getPosts: () => pinnedPosts,
+    getEls: () => ({ list: els.pinnedPostsList }),
   },
 };
 
@@ -312,7 +326,6 @@ function cacheElements() {
 
   els.sidebarCategoryItems = document.querySelectorAll('.category-list-section .category-item');
   els.pulldownItems = document.querySelectorAll('.pulldown-item');
-  els.pinItem = document.getElementById('pinItem');
 
   els.sidebar = document.getElementById('sidebar');
   els.sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
@@ -412,6 +425,12 @@ function cacheElements() {
   els.expiredBulkDeleteBtn = document.getElementById('expiredBulkDeleteBtn');
   els.myPostsCount = document.getElementById('myPostsCount');
   els.expiredCount = document.getElementById('expiredCount');
+  els.pinnedPostsList = document.getElementById('pinnedPostsList');
+  els.pinnedCount = document.getElementById('pinnedCount');
+  els.menuMyPostsCount = document.getElementById('menuMyPostsCount');
+  els.menuExpiredCount = document.getElementById('menuExpiredCount');
+  els.menuPinnedCount = document.getElementById('menuPinnedCount');
+  els.menuShortcutBtns = document.querySelectorAll('.menu-list-item[data-mypage-tab]');
 
   els.toast = document.getElementById('toast');
 
@@ -479,7 +498,6 @@ function init() {
   setupTagPanelToggle();
   setupTagListEvents();
   setupSelectedTagsDropdown();
-  setupPinSection();
   setupPostButton();
   setupSearch();
   setupProfileIcon();
@@ -658,9 +676,7 @@ function getFilteredPosts() {
       return inTitle || inTags || inBody;
     }
 
-    if (state.showPinnedOnly && !isPinnedByMe(post)) return false;
-
-    if (!state.showPinnedOnly && state.currentCategory !== 'all' && post.category !== state.currentCategory) {
+    if (state.currentCategory !== 'all' && post.category !== state.currentCategory) {
       return false;
     }
 
@@ -965,10 +981,12 @@ function createPostMoreMenu(post) {
           deletePostFiles(post); // 添付ファイルの削除は結果を待たずベストエフォートで行う
           state.allPosts = state.allPosts.filter((p) => p.id !== post.id);
           mySettingsPosts = mySettingsPosts.filter((p) => p.id !== post.id);
+          pinnedPosts = pinnedPosts.filter((p) => p.id !== post.id);
           closeDetailModal();
           renderPosts();
           renderMyPosts();
           renderExpiredPosts();
+          renderPinnedPosts();
           updatePostCounts();
           showToast('投稿を削除しました');
         } catch (err) {
@@ -1248,7 +1266,6 @@ function selectTagBarCategory(categoryId) {
 function selectCategory(categoryId) {
   state.currentCategory = categoryId;
   state.tagBarCategory = categoryId;
-  state.showPinnedOnly = false;
   state.activeTags = new Set();
   updateClearTagsBtn();
   state.searchKeyword = '';
@@ -1261,7 +1278,6 @@ function selectCategory(categoryId) {
   els.sidebarCategoryItems.forEach((item) => {
     item.classList.toggle('active', item.dataset.category === categoryId);
   });
-  els.pinItem.classList.remove('active');
 
   // プルダウンのアクティブ表示
   els.pulldownItems.forEach((item) => {
@@ -1458,25 +1474,6 @@ function setupSelectedTagsDropdown() {
 /* =========================================================
    ピン止め
    ========================================================= */
-function setupPinSection() {
-  els.pinItem.addEventListener('click', () => {
-    if (!state.currentUser) {
-      showLoginPrompt();
-      return;
-    }
-    state.showPinnedOnly = true;
-    state.searchKeyword = '';
-    els.searchInput.value = '';
-
-    els.sidebarCategoryItems.forEach((item) => item.classList.remove('active'));
-    els.pinItem.classList.add('active');
-
-    renderPosts();
-    closeDetailModal();
-    els.postsPane.scrollTop = 0;
-  });
-}
-
 async function togglePin(post, btnEl) {
   if (!state.currentUser) {
     showLoginPrompt();
@@ -1513,11 +1510,6 @@ async function togglePin(post, btnEl) {
 /* ピンボタン・一覧・詳細画面の表示をpost.pinnedByの現在値に合わせて更新する */
 function applyPinButtonState(post, btnEl) {
   const pinned = isPinnedByMe(post);
-
-  if (state.showPinnedOnly && !pinned) {
-    renderPosts();
-    return;
-  }
 
   // カード上のピンアイコンの表示を更新
   const card = els.postsGrid.querySelector('.post-card[data-id="' + post.id + '"]');
@@ -1617,9 +1609,7 @@ function runSearch() {
   searchSelectAllPending = !!keyword;
 
   if (keyword) {
-    state.showPinnedOnly = false;
     els.sidebarCategoryItems.forEach((item) => item.classList.remove('active'));
-    els.pinItem.classList.remove('active');
   }
 
   renderPosts();
@@ -2324,6 +2314,13 @@ function setupProfileIcon() {
   els.menuProfileArea.addEventListener('click', openMyPageFromMenu);
   els.menuProfileBtn.addEventListener('click', openMyPageFromMenu);
   els.menuInboxBtn.addEventListener('click', openMessagesFromMenu);
+
+  // マイページ各タブへのショートカット
+  els.menuShortcutBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      openMyPageTabFromMenu(btn.dataset.mypageTab, 'マイページを利用するにはログインしてください');
+    });
+  });
   els.menuAuthBtn.addEventListener('click', () => {
     if (state.currentUser) {
       showLogoutConfirm();
@@ -2346,18 +2343,28 @@ function openMyPageFromMenu() {
 
 // メニューからメッセージタブへ直接ジャンプする（未ログイン時はログインを促す）
 function openMessagesFromMenu() {
+  openMyPageTabFromMenu('messages', 'メッセージを利用するにはログインしてください');
+}
+
+/* メニュー画面のショートカットから、マイページの該当タブを直接開く */
+function openMyPageTabFromMenu(tab, loginMessage) {
   if (!state.currentUser) {
-    showLoginPrompt('メッセージを利用するにはログインしてください');
+    showLoginPrompt(loginMessage);
     return;
   }
   closeMenu();
-  openMyPage();
-  activateMyPageTab('messages');
+  openMyPage(tab);
 }
 
 function openMenu() {
   applyMenuProfile();
   checkUnreadMessages();
+  // ショートカットに件数を出すため、開いたタイミングで取得しておく
+  updatePostCounts();
+  if (state.currentUser) {
+    ensureMySettingsPosts();
+    ensurePinnedPosts();
+  }
   els.menuOverlay.classList.add('show');
 }
 
@@ -2371,18 +2378,24 @@ function applyMenuProfile() {
   els.menuAuthBtn.textContent = state.currentUser ? 'ログアウト' : 'ログイン';
 }
 
-function openMyPage() {
-  // 開くたびに「プロフィール」タブから始め、投稿一覧・メッセージは再取得させる
+function openMyPage(tab = 'profile') {
+  // 開くたびに投稿一覧・ピン止め・メッセージは再取得させる
   mySettingsPostsLoaded = false;
   mySettingsPostsPromise = null;
+  pinnedPostsLoaded = false;
+  pinnedPostsPromise = null;
   messagesLoaded = false;
   resetPostListView('myposts');
   resetPostListView('expired');
-  activateMyPageTab('profile');
+  resetPostListView('pinned');
+  activateMyPageTab(tab);
   checkUnreadMessages();
-  // 左メニューに件数を出すため、タブを開く前に自分の投稿を取得しておく
+  // 左メニューに件数を出すため、タブを開く前に取得を始めておく
   updatePostCounts();
-  if (state.currentUser) ensureMySettingsPosts();
+  if (state.currentUser) {
+    ensureMySettingsPosts();
+    ensurePinnedPosts();
+  }
   els.myPageOverlay.classList.add('show');
 }
 
@@ -2408,6 +2421,14 @@ async function activateMyPageTab(tab) {
     }
     renderMyPosts();
     renderExpiredPosts();
+  }
+
+  if (tab === 'pinned') {
+    if (!pinnedPostsLoaded) {
+      els.pinnedPostsList.innerHTML = '<div class="expired-posts-empty">読み込み中…</div>';
+      await ensurePinnedPosts();
+    }
+    renderPinnedPosts();
   }
 
   if (tab === 'messages') {
@@ -2985,12 +3006,49 @@ function renderExpiredPosts() {
   renderOwnPostList('expired');
 }
 
-/* 左メニューの「投稿済み募集」「期限切れ募集」に、それぞれの件数を表示する。
+function renderPinnedPosts() {
+  renderOwnPostList('pinned');
+}
+
+/* 自分がピン止めした投稿を取得する。自分の投稿とは限らないので、
+   authorUidではなくpinnedByに自分のuidが入っているかで引く。 */
+async function loadPinnedPosts() {
+  if (!state.currentUser) {
+    pinnedPosts = [];
+    return;
+  }
+  const fb = window._firebase;
+  try {
+    const q = fb.query(
+      fb.collection(fb.db, 'posts'),
+      fb.where('pinnedBy', 'array-contains', state.currentUser.uid),
+      fb.limit(200)
+    );
+    const snap = await fb.getDocs(q);
+    pinnedPosts = snap.docs.map(docToPost).sort((a, b) => b.createdAt - a.createdAt);
+  } catch (err) {
+    console.error('ピン止めした投稿の取得に失敗しました:', err);
+    pinnedPosts = state.allPosts.filter((post) => isPinnedByMe(post));
+  }
+}
+
+/* 左メニュー・メニュー画面のショートカットに、それぞれの件数を表示する。
    まだ取得できていない間は空にしておく（CSSで非表示になる）。 */
 function updatePostCounts() {
-  const ready = !!state.currentUser && mySettingsPostsLoaded;
-  els.myPostsCount.textContent = ready ? POST_LIST_VIEWS.myposts.getPosts().length : '';
-  els.expiredCount.textContent = ready ? POST_LIST_VIEWS.expired.getPosts().length : '';
+  const myReady = !!state.currentUser && mySettingsPostsLoaded;
+  const myPosts = myReady ? POST_LIST_VIEWS.myposts.getPosts().length : '';
+  const expired = myReady ? POST_LIST_VIEWS.expired.getPosts().length : '';
+
+  const pinnedReady = !!state.currentUser && pinnedPostsLoaded;
+  const pinned = pinnedReady ? POST_LIST_VIEWS.pinned.getPosts().length : '';
+
+  els.myPostsCount.textContent = myPosts;
+  els.expiredCount.textContent = expired;
+  els.pinnedCount.textContent = pinned;
+
+  els.menuMyPostsCount.textContent = myPosts;
+  els.menuExpiredCount.textContent = expired;
+  els.menuPinnedCount.textContent = pinned;
 }
 
 /* 自分の投稿は「件数の表示」と「一覧タブ」の両方から必要になるため、
@@ -3005,6 +3063,18 @@ function ensureMySettingsPosts() {
     });
   }
   return mySettingsPostsPromise;
+}
+
+function ensurePinnedPosts() {
+  if (pinnedPostsLoaded) return Promise.resolve();
+  if (!pinnedPostsPromise) {
+    pinnedPostsPromise = loadPinnedPosts().then(() => {
+      pinnedPostsLoaded = true;
+      pinnedPostsPromise = null;
+      updatePostCounts();
+    });
+  }
+  return pinnedPostsPromise;
 }
 
 /* 選択モードを切り替える。切り替え時は選択・展開状態をリセットする */
@@ -3113,7 +3183,9 @@ function resetPostListView(key) {
   view.expandedId = null;
   view.selectedIds.clear();
 
+  // ピン止めタブは選択モードを持たないため、ある場合だけ戻す
   const viewEls = view.getEls();
+  if (!viewEls.selectBtn) return;
   viewEls.selectBtn.textContent = '選択';
   viewEls.selectBtn.classList.remove('active');
   viewEls.bulkBar.style.display = 'none';
@@ -3141,10 +3213,12 @@ function deleteSelectedPosts(key) {
     const deletedIds = new Set(targets.map((p) => p.id));
     mySettingsPosts = mySettingsPosts.filter((p) => !deletedIds.has(p.id));
     state.allPosts = state.allPosts.filter((p) => !deletedIds.has(p.id));
+    pinnedPosts = pinnedPosts.filter((p) => !deletedIds.has(p.id));
 
     resetPostListView(key);
     renderMyPosts();
     renderExpiredPosts();
+    renderPinnedPosts();
     updatePostCounts();
     renderPosts();
     showToast(count + '件の投稿を削除しました');
@@ -3152,10 +3226,12 @@ function deleteSelectedPosts(key) {
 }
 
 /* 投稿を「その場で」展開表示する内容。投稿一覧のカードと同じ見た目にするが、
-   自分の投稿なのでピン止め・投稿者アイコン・名前は表示しない。
+   マイページ内なのでピン止めボタン・投稿者アイコン・名前は表示しない。
    タイトルは外側の見出し（.expired-post-header）に出ているため省略し、
-   投稿日時・期限は見出しから移動して一番下に表示する。 */
-function createMyPostDetail(post) {
+   投稿日時・期限は見出しから移動して一番下に表示する。
+   末尾のボタンはタブごとに変わる（自分の投稿は「編集する」、
+   ピン止めは他人の投稿もあるため「ピン止めを外す」）。 */
+function createMyPostDetail(post, key) {
   const wrap = document.createElement('div');
   wrap.className = 'expired-post-detail';
 
@@ -3212,18 +3288,33 @@ function createMyPostDetail(post) {
 
   card.appendChild(footer);
 
-  // 編集ボタン。マイページを閉じて、メイン画面側の投稿編集フォームへ移る
-  const editBtn = document.createElement('button');
-  editBtn.type = 'button';
-  editBtn.className = 'my-post-edit-btn';
-  editBtn.textContent = '編集する';
-  editBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    closeMyPage();
-    closeDetailModal();
-    openEditPostModal(post);
-  });
-  card.appendChild(editBtn);
+  const actionBtn = document.createElement('button');
+  actionBtn.type = 'button';
+  actionBtn.className = 'my-post-edit-btn';
+
+  if (POST_LIST_VIEWS[key].detailAction === 'unpin') {
+    actionBtn.textContent = 'ピン止めを外す';
+    actionBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await togglePin(post);
+      // 一覧から取り除き、件数もあわせて更新する
+      pinnedPosts = pinnedPosts.filter((p) => p.id !== post.id);
+      POST_LIST_VIEWS.pinned.expandedId = null;
+      renderPinnedPosts();
+      updatePostCounts();
+      showToast('ピン止めを外しました');
+    });
+  } else {
+    // 編集ボタン。マイページを閉じて、メイン画面側の投稿編集フォームへ移る
+    actionBtn.textContent = '編集する';
+    actionBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMyPage();
+      closeDetailModal();
+      openEditPostModal(post);
+    });
+  }
+  card.appendChild(actionBtn);
 
   wrap.appendChild(card);
   return wrap;
@@ -3323,7 +3414,7 @@ function renderOwnPostList(key) {
 
     item.appendChild(header);
     if (expanded) {
-      item.appendChild(createMyPostDetail(post));
+      item.appendChild(createMyPostDetail(post, key));
     }
     listEl.appendChild(item);
   });
@@ -3699,6 +3790,9 @@ function onFirebaseLogout() {
   mySettingsPosts = [];
   mySettingsPostsLoaded = false;
   mySettingsPostsPromise = null;
+  pinnedPosts = [];
+  pinnedPostsLoaded = false;
+  pinnedPostsPromise = null;
   updatePostCounts();
 }
 

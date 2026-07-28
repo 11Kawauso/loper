@@ -149,15 +149,6 @@
         </div>
       </div>
 
-      <div class="pin-section">
-        <div class="category-item" id="pinItem" data-category="pin">
-          <img class="category-item-img" src="" alt="">
-          <span class="category-item-arrow left">❮</span>
-          <span class="category-item-label">ピン止め</span>
-          <span class="category-item-arrow right">❯</span>
-        </div>
-      </div>
-
       <div class="post-button-area">
         <button class="post-button" id="postButton">＋ 募集する</button>
       </div>
@@ -422,6 +413,16 @@
       <button class="menu-list-item" id="menuProfileBtn" type="button">プロフィール</button>
     </nav>
 
+    <!-- マイページの各タブへのショートカット -->
+    <div class="menu-section">
+      <nav class="menu-list">
+        <button class="menu-list-item" type="button" data-mypage-tab="myposts">投稿済み募集<span class="menu-list-count" id="menuMyPostsCount"></span></button>
+        <button class="menu-list-item" type="button" data-mypage-tab="expired">期限切れ募集<span class="menu-list-count" id="menuExpiredCount"></span></button>
+        <button class="menu-list-item" type="button" data-mypage-tab="pinned">ピン止め<span class="menu-list-count" id="menuPinnedCount"></span></button>
+        <button class="menu-list-item" type="button" data-mypage-tab="settings">設定</button>
+      </nav>
+    </div>
+
     <div class="menu-section">
       <div class="menu-section-title">ツール</div>
       <nav class="menu-list">
@@ -451,6 +452,7 @@
       <button class="mypage-nav-item" type="button" data-tab="settings">設定</button>
       <button class="mypage-nav-item" type="button" data-tab="myposts">投稿済み募集<span class="mypage-nav-count" id="myPostsCount"></span></button>
       <button class="mypage-nav-item" type="button" data-tab="expired">期限切れ募集<span class="mypage-nav-count" id="expiredCount"></span></button>
+      <button class="mypage-nav-item" type="button" data-tab="pinned">ピン止め<span class="mypage-nav-count" id="pinnedCount"></span></button>
       <button class="mypage-nav-item mypage-nav-logout" id="myPageLogoutBtn" type="button">ログアウト</button>
     </nav>
 
@@ -545,6 +547,14 @@
           <button class="myposts-bulk-delete-btn" id="expiredBulkDeleteBtn" type="button" disabled>選択した投稿を削除</button>
         </div>
         <div class="expired-posts-list" id="expiredPostsList"></div>
+      </div>
+
+      <!-- ピン止め（他ユーザーの投稿も含むため、編集・まとめて削除は置かない） -->
+      <div class="mypage-tab-panel" data-tab-panel="pinned">
+        <div class="mypage-tab-title-row">
+          <h2 class="mypage-tab-title">ピン止め</h2>
+        </div>
+        <div class="expired-posts-list" id="pinnedPostsList"></div>
       </div>
     </div>
 
