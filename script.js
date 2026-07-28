@@ -206,9 +206,36 @@ let editingPostId = null;
 let editingDeadlinePostId = null;
 let mySettingsPosts = [];        // プロフィール画面「投稿済み募集」「期限切れ募集」用に取得した自分の全投稿
 let mySettingsPostsLoaded = false; // 上記を今回のプロフィール画面表示中に取得済みか
-let expandedMyPostId = null;     // 「投稿済み募集」でその場に開いている投稿（同時に1件のみ）
-let myPostsSelectMode = false;   // 「投稿済み募集」の選択モード（チェックボックスでまとめて削除）中か
-let selectedMyPostIds = new Set(); // 選択モード中にチェックされている投稿id
+/* 「投稿済み募集」「期限切れ募集」は同じ操作（その場で開く／選択してまとめて削除）を
+   持つため、タブごとの状態と設定をここにまとめ、描画処理を共通化する。 */
+const POST_LIST_VIEWS = {
+  myposts: {
+    expandedId: null,          // その場に開いている投稿（同時に1件のみ）
+    selectMode: false,         // 選択モード（チェックボックスでまとめて削除）中か
+    selectedIds: new Set(),    // 選択モード中にチェックされている投稿id
+    emptyText: '自分の投稿はありません',
+    getPosts: () => mySettingsPosts,
+    getEls: () => ({
+      list: els.myPostsList,
+      selectBtn: els.myPostsSelectBtn,
+      bulkBar: els.myPostsBulkBar,
+      bulkDeleteBtn: els.myPostsBulkDeleteBtn,
+    }),
+  },
+  expired: {
+    expandedId: null,
+    selectMode: false,
+    selectedIds: new Set(),
+    emptyText: '期限切れの募集はありません',
+    getPosts: () => mySettingsPosts.filter((post) => isPostExpired(post)),
+    getEls: () => ({
+      list: els.expiredPostsList,
+      selectBtn: els.expiredSelectBtn,
+      bulkBar: els.expiredBulkBar,
+      bulkDeleteBtn: els.expiredBulkDeleteBtn,
+    }),
+  },
+};
 
 let inboxMessages = [];          // プロフィール画面「メッセージ」タブ用の受信メッセージ
 let messagesLoaded = false;      // 上記を今回のプロフィール画面表示中に取得済みか
@@ -379,6 +406,9 @@ function cacheElements() {
   els.myPostsSelectBtn = document.getElementById('myPostsSelectBtn');
   els.myPostsBulkBar = document.getElementById('myPostsBulkBar');
   els.myPostsBulkDeleteBtn = document.getElementById('myPostsBulkDeleteBtn');
+  els.expiredSelectBtn = document.getElementById('expiredSelectBtn');
+  els.expiredBulkBar = document.getElementById('expiredBulkBar');
+  els.expiredBulkDeleteBtn = document.getElementById('expiredBulkDeleteBtn');
 
   els.toast = document.getElementById('toast');
 
@@ -2338,12 +2368,8 @@ function openProfilePanel() {
   // 開くたびに「プロフィール」タブから始め、投稿一覧・メッセージは再取得させる
   mySettingsPostsLoaded = false;
   messagesLoaded = false;
-  expandedMyPostId = null;
-  myPostsSelectMode = false;
-  selectedMyPostIds.clear();
-  els.myPostsSelectBtn.textContent = '選択';
-  els.myPostsSelectBtn.classList.remove('active');
-  els.myPostsBulkBar.style.display = 'none';
+  resetPostListView('myposts');
+  resetPostListView('expired');
   activateProfileTab('profile');
   checkUnreadMessages();
   els.profileOverlay.classList.add('show');
@@ -2700,9 +2726,11 @@ function setupProfilePanel() {
     );
   });
 
-  // 投稿済み募集：選択モード・まとめて削除
-  els.myPostsSelectBtn.addEventListener('click', toggleMyPostsSelectMode);
-  els.myPostsBulkDeleteBtn.addEventListener('click', deleteSelectedMyPosts);
+  // 投稿済み募集・期限切れ募集：選択モード・まとめて削除
+  els.myPostsSelectBtn.addEventListener('click', () => togglePostListSelectMode('myposts'));
+  els.myPostsBulkDeleteBtn.addEventListener('click', () => deleteSelectedPosts('myposts'));
+  els.expiredSelectBtn.addEventListener('click', () => togglePostListSelectMode('expired'));
+  els.expiredBulkDeleteBtn.addEventListener('click', () => deleteSelectedPosts('expired'));
 }
 
 /* 名前編集欄をblurまたはEnterで確定し、表示に戻す */
@@ -2944,95 +2972,72 @@ async function loadMySettingsPosts() {
 }
 
 function renderExpiredPosts() {
-  const expired = mySettingsPosts.filter((post) => isPostExpired(post));
-  els.expiredPostsList.innerHTML = '';
-
-  if (expired.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'expired-posts-empty';
-    empty.textContent = '期限切れの募集はありません';
-    els.expiredPostsList.appendChild(empty);
-    return;
-  }
-
-  expired.forEach((post) => {
-    const item = document.createElement('div');
-    item.className = 'expired-post-item';
-
-    const header = document.createElement('div');
-    header.className = 'expired-post-header';
-    header.addEventListener('click', () => {
-      closeProfilePanel();
-      openDetailModal(post);
-    });
-
-    const info = document.createElement('div');
-    info.className = 'expired-post-info';
-
-    const title = document.createElement('div');
-    title.className = 'expired-post-title';
-    title.textContent = post.title;
-    appendEditedBadge(title, post);
-
-    const meta = document.createElement('div');
-    meta.className = 'expired-post-meta';
-    if (post.closed) {
-      meta.textContent = post.date + ' ／ 締め切り済み';
-    } else {
-      const deadline = new Date(post.createdAt);
-      deadline.setDate(deadline.getDate() + post.deadlineDays);
-      meta.textContent = post.date + ' ／ 期限 ' + formatDate(deadline);
-    }
-
-    info.appendChild(title);
-    info.appendChild(meta);
-    header.appendChild(info);
-    item.appendChild(header);
-    els.expiredPostsList.appendChild(item);
-  });
+  renderOwnPostList('expired');
 }
 
-/* 「投稿済み募集」の選択モードを切り替える。切り替え時は選択・展開状態をリセットする */
-function toggleMyPostsSelectMode() {
-  myPostsSelectMode = !myPostsSelectMode;
-  selectedMyPostIds.clear();
-  expandedMyPostId = null;
-  els.myPostsSelectBtn.textContent = myPostsSelectMode ? 'キャンセル' : '選択';
-  els.myPostsSelectBtn.classList.toggle('active', myPostsSelectMode);
-  els.myPostsBulkBar.style.display = myPostsSelectMode ? '' : 'none';
-  updateMyPostsBulkDeleteBtn();
-  renderMyPosts();
+/* 選択モードを切り替える。切り替え時は選択・展開状態をリセットする */
+function togglePostListSelectMode(key) {
+  const view = POST_LIST_VIEWS[key];
+  view.selectMode = !view.selectMode;
+  view.selectedIds.clear();
+  view.expandedId = null;
+
+  const viewEls = view.getEls();
+  viewEls.selectBtn.textContent = view.selectMode ? 'キャンセル' : '選択';
+  viewEls.selectBtn.classList.toggle('active', view.selectMode);
+  viewEls.bulkBar.style.display = view.selectMode ? '' : 'none';
+
+  updateBulkDeleteBtn(key);
+  renderOwnPostList(key);
 }
 
-function updateMyPostsBulkDeleteBtn() {
-  els.myPostsBulkDeleteBtn.disabled = selectedMyPostIds.size === 0;
-  els.myPostsBulkDeleteBtn.textContent = selectedMyPostIds.size > 0
-    ? '選択した投稿を削除（' + selectedMyPostIds.size + '）'
+function updateBulkDeleteBtn(key) {
+  const view = POST_LIST_VIEWS[key];
+  const btn = view.getEls().bulkDeleteBtn;
+  btn.disabled = view.selectedIds.size === 0;
+  btn.textContent = view.selectedIds.size > 0
+    ? '選択した投稿を削除（' + view.selectedIds.size + '）'
     : '選択した投稿を削除';
 }
 
-function toggleMyPostSelection(postId) {
-  if (selectedMyPostIds.has(postId)) {
-    selectedMyPostIds.delete(postId);
+function togglePostSelection(key, postId) {
+  const view = POST_LIST_VIEWS[key];
+  if (view.selectedIds.has(postId)) {
+    view.selectedIds.delete(postId);
   } else {
-    selectedMyPostIds.add(postId);
+    view.selectedIds.add(postId);
   }
-  updateMyPostsBulkDeleteBtn();
+  updateBulkDeleteBtn(key);
 }
 
-function toggleMyPostExpand(postId) {
-  expandedMyPostId = expandedMyPostId === postId ? null : postId;
-  renderMyPosts();
+function togglePostExpand(key, postId) {
+  const view = POST_LIST_VIEWS[key];
+  view.expandedId = view.expandedId === postId ? null : postId;
+  renderOwnPostList(key);
+}
+
+/* 選択モード・展開状態を初期化する（プロフィール画面を開き直したときなど） */
+function resetPostListView(key) {
+  const view = POST_LIST_VIEWS[key];
+  view.selectMode = false;
+  view.expandedId = null;
+  view.selectedIds.clear();
+
+  const viewEls = view.getEls();
+  viewEls.selectBtn.textContent = '選択';
+  viewEls.selectBtn.classList.remove('active');
+  viewEls.bulkBar.style.display = 'none';
 }
 
 /* 選択モードでチェックした投稿をまとめて削除する */
-function deleteSelectedMyPosts() {
-  if (selectedMyPostIds.size === 0) return;
-  const count = selectedMyPostIds.size;
+function deleteSelectedPosts(key) {
+  const view = POST_LIST_VIEWS[key];
+  if (view.selectedIds.size === 0) return;
+  const count = view.selectedIds.size;
 
   showGenericConfirm('選択した' + count + '件の投稿を削除しますか？この操作は取り消せません。', async () => {
     const fb = window._firebase;
-    const targets = mySettingsPosts.filter((p) => selectedMyPostIds.has(p.id));
+    const targets = mySettingsPosts.filter((p) => view.selectedIds.has(p.id));
 
     for (const post of targets) {
       try {
@@ -3047,12 +3052,7 @@ function deleteSelectedMyPosts() {
     mySettingsPosts = mySettingsPosts.filter((p) => !deletedIds.has(p.id));
     state.allPosts = state.allPosts.filter((p) => !deletedIds.has(p.id));
 
-    myPostsSelectMode = false;
-    selectedMyPostIds.clear();
-    els.myPostsSelectBtn.textContent = '選択';
-    els.myPostsSelectBtn.classList.remove('active');
-    els.myPostsBulkBar.style.display = 'none';
-
+    resetPostListView(key);
     renderMyPosts();
     renderExpiredPosts();
     renderPosts();
@@ -3103,6 +3103,11 @@ function createMyPostDetail(post) {
     const closedEl = document.createElement('span');
     closedEl.textContent = '締め切り済み';
     footer.appendChild(closedEl);
+  } else if (isPostExpired(post)) {
+    const expiredEl = document.createElement('span');
+    expiredEl.className = 'post-deadline urgent';
+    expiredEl.textContent = '期限切れ';
+    footer.appendChild(expiredEl);
   } else {
     const deadline = getPostDeadline(post);
     if (deadline) {
@@ -3133,29 +3138,36 @@ function createMyPostDetail(post) {
   return wrap;
 }
 
-/* 自分の投稿一覧（設定画面） */
 function renderMyPosts() {
-  const myPosts = mySettingsPosts;
-  els.myPostsList.innerHTML = '';
+  renderOwnPostList('myposts');
+}
+
+/* 「投稿済み募集」「期限切れ募集」の一覧を描画する。
+   どちらもクリックでその場に開き、選択モードではまとめて削除できる。 */
+function renderOwnPostList(key) {
+  const view = POST_LIST_VIEWS[key];
+  const listEl = view.getEls().list;
+  listEl.innerHTML = '';
 
   if (!state.currentUser) {
     const empty = document.createElement('div');
     empty.className = 'expired-posts-empty';
     empty.textContent = 'ログインすると表示されます';
-    els.myPostsList.appendChild(empty);
+    listEl.appendChild(empty);
     return;
   }
 
-  if (myPosts.length === 0) {
+  const posts = view.getPosts();
+  if (posts.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'expired-posts-empty';
-    empty.textContent = '自分の投稿はありません';
-    els.myPostsList.appendChild(empty);
+    empty.textContent = view.emptyText;
+    listEl.appendChild(empty);
     return;
   }
 
-  myPosts.forEach((post) => {
-    const expanded = !myPostsSelectMode && expandedMyPostId === post.id;
+  posts.forEach((post) => {
+    const expanded = !view.selectMode && view.expandedId === post.id;
     const item = document.createElement('div');
     item.className = 'expired-post-item'
       + (expanded ? ' expanded' : '')
@@ -3165,11 +3177,11 @@ function renderMyPosts() {
     header.className = 'expired-post-header';
 
     let checkbox = null;
-    if (myPostsSelectMode) {
+    if (view.selectMode) {
       checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.className = 'expired-post-checkbox';
-      checkbox.checked = selectedMyPostIds.has(post.id);
+      checkbox.checked = view.selectedIds.has(post.id);
       header.appendChild(checkbox);
     }
 
@@ -3200,7 +3212,7 @@ function renderMyPosts() {
     }
     header.appendChild(info);
 
-    if (!myPostsSelectMode) {
+    if (!view.selectMode) {
       const arrow = document.createElement('span');
       arrow.className = 'expired-post-arrow';
       arrow.textContent = '▾';
@@ -3208,11 +3220,11 @@ function renderMyPosts() {
     }
 
     header.addEventListener('click', () => {
-      if (myPostsSelectMode) {
-        toggleMyPostSelection(post.id);
-        checkbox.checked = selectedMyPostIds.has(post.id);
+      if (view.selectMode) {
+        togglePostSelection(key, post.id);
+        checkbox.checked = view.selectedIds.has(post.id);
       } else {
-        toggleMyPostExpand(post.id);
+        togglePostExpand(key, post.id);
       }
     });
 
@@ -3220,7 +3232,7 @@ function renderMyPosts() {
     if (expanded) {
       item.appendChild(createMyPostDetail(post));
     }
-    els.myPostsList.appendChild(item);
+    listEl.appendChild(item);
   });
 }
 
