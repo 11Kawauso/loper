@@ -206,6 +206,7 @@ let editingPostId = null;
 let editingDeadlinePostId = null;
 let mySettingsPosts = [];        // プロフィール画面「投稿済み募集」「期限切れ募集」用に取得した自分の全投稿
 let mySettingsPostsLoaded = false; // 上記を今回のプロフィール画面表示中に取得済みか
+let mySettingsPostsPromise = null; // 取得中のPromise（件数表示と一覧で二重取得しないため）
 /* 「投稿済み募集」「期限切れ募集」は同じ操作（その場で開く／選択してまとめて削除）を
    持つため、タブごとの状態と設定をここにまとめ、描画処理を共通化する。 */
 const POST_LIST_VIEWS = {
@@ -409,6 +410,8 @@ function cacheElements() {
   els.expiredSelectBtn = document.getElementById('expiredSelectBtn');
   els.expiredBulkBar = document.getElementById('expiredBulkBar');
   els.expiredBulkDeleteBtn = document.getElementById('expiredBulkDeleteBtn');
+  els.myPostsCount = document.getElementById('myPostsCount');
+  els.expiredCount = document.getElementById('expiredCount');
 
   els.toast = document.getElementById('toast');
 
@@ -961,8 +964,12 @@ function createPostMoreMenu(post) {
           await fb.deleteDoc(fb.doc(fb.db, 'posts', String(post.id)));
           deletePostFiles(post); // 添付ファイルの削除は結果を待たずベストエフォートで行う
           state.allPosts = state.allPosts.filter((p) => p.id !== post.id);
+          mySettingsPosts = mySettingsPosts.filter((p) => p.id !== post.id);
           closeDetailModal();
           renderPosts();
+          renderMyPosts();
+          renderExpiredPosts();
+          updatePostCounts();
           showToast('投稿を削除しました');
         } catch (err) {
           console.error('投稿の削除に失敗しました:', err);
@@ -2367,11 +2374,15 @@ function applyMenuProfile() {
 function openProfilePanel() {
   // 開くたびに「プロフィール」タブから始め、投稿一覧・メッセージは再取得させる
   mySettingsPostsLoaded = false;
+  mySettingsPostsPromise = null;
   messagesLoaded = false;
   resetPostListView('myposts');
   resetPostListView('expired');
   activateProfileTab('profile');
   checkUnreadMessages();
+  // 左メニューに件数を出すため、タブを開く前に自分の投稿を取得しておく
+  updatePostCounts();
+  if (state.currentUser) ensureMySettingsPosts();
   els.profileOverlay.classList.add('show');
 }
 
@@ -2393,8 +2404,7 @@ async function activateProfileTab(tab) {
     if (!mySettingsPostsLoaded) {
       els.myPostsList.innerHTML = '<div class="expired-posts-empty">読み込み中…</div>';
       els.expiredPostsList.innerHTML = '<div class="expired-posts-empty">読み込み中…</div>';
-      await loadMySettingsPosts();
-      mySettingsPostsLoaded = true;
+      await ensureMySettingsPosts();
     }
     renderMyPosts();
     renderExpiredPosts();
@@ -2975,6 +2985,28 @@ function renderExpiredPosts() {
   renderOwnPostList('expired');
 }
 
+/* 左メニューの「投稿済み募集」「期限切れ募集」に、それぞれの件数を表示する。
+   まだ取得できていない間は空にしておく（CSSで非表示になる）。 */
+function updatePostCounts() {
+  const ready = !!state.currentUser && mySettingsPostsLoaded;
+  els.myPostsCount.textContent = ready ? POST_LIST_VIEWS.myposts.getPosts().length : '';
+  els.expiredCount.textContent = ready ? POST_LIST_VIEWS.expired.getPosts().length : '';
+}
+
+/* 自分の投稿は「件数の表示」と「一覧タブ」の両方から必要になるため、
+   取得を1回にまとめ、同時に呼ばれても二重に取りに行かないようにする。 */
+function ensureMySettingsPosts() {
+  if (mySettingsPostsLoaded) return Promise.resolve();
+  if (!mySettingsPostsPromise) {
+    mySettingsPostsPromise = loadMySettingsPosts().then(() => {
+      mySettingsPostsLoaded = true;
+      mySettingsPostsPromise = null;
+      updatePostCounts();
+    });
+  }
+  return mySettingsPostsPromise;
+}
+
 /* 選択モードを切り替える。切り替え時は選択・展開状態をリセットする */
 function togglePostListSelectMode(key) {
   const view = POST_LIST_VIEWS[key];
@@ -3113,6 +3145,7 @@ function deleteSelectedPosts(key) {
     resetPostListView(key);
     renderMyPosts();
     renderExpiredPosts();
+    updatePostCounts();
     renderPosts();
     showToast(count + '件の投稿を削除しました');
   });
@@ -3662,6 +3695,11 @@ function onFirebaseLogout() {
   inboxMessages = [];
   messagesLoaded = false;
   setUnreadBadgeVisible(false);
+
+  mySettingsPosts = [];
+  mySettingsPostsLoaded = false;
+  mySettingsPostsPromise = null;
+  updatePostCounts();
 }
 
 let saveProfileTimer = null;

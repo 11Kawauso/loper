@@ -1885,6 +1885,8 @@ button {
 
 .profile-nav-item {
   width: 100%;
+  display: flex;
+  align-items: center;
   text-align: left;
   padding: 16px 26px;
   border: none;
@@ -1894,6 +1896,19 @@ button {
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+}
+
+/* 投稿数（項目名の右端に寄せる。件数が未取得のうちは表示しない） */
+.profile-nav-count {
+  margin-left: auto;
+  padding-left: 12px;
+  font-size: 14px;
+  font-weight: normal;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.profile-nav-count:empty {
+  display: none;
 }
 
 .profile-nav-item:hover {
