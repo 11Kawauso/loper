@@ -35,7 +35,7 @@
   --content-box-bg: #FBFEFE;
   --avatar-bg: #C9C9C9;
 
-  /* プロフィール画面 */
+  /* マイページ・プロフィール */
   --profile-bg: #79B7B5;
   --profile-name-color: #FFFFFF;
   --profile-field-bg: #EAF8F8;
@@ -1827,10 +1827,10 @@ button {
   filter: brightness(0.93);
 }
 
-/* ================= プロフィール画面（自分・全画面） =================
-   左1/4がメニュー、右3/4が選択された内容。
+/* ================= マイページ（自分専用・全画面） =================
+   左1/4がメニュー、右3/4が選択されたタブの内容。
    （他ユーザーのプロフィール閲覧は下の .profile-overlay / .profile-panel を使う） */
-.profile-screen-overlay {
+.mypage-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
@@ -1840,13 +1840,13 @@ button {
   z-index: 1500;
 }
 
-.profile-screen-overlay.show {
+.mypage-overlay.show {
   visibility: visible;
   opacity: 1;
   transition: opacity 0.18s ease;
 }
 
-.profile-screen {
+.mypage-screen {
   position: absolute;
   inset: 0;
   background: var(--profile-bg);
@@ -1855,12 +1855,12 @@ button {
   transition: transform 0.22s ease;
 }
 
-.profile-screen-overlay.show .profile-screen {
+.mypage-overlay.show .mypage-screen {
   transform: translateX(0);
 }
 
 /* 左1/4：メニュー */
-.profile-nav {
+.mypage-nav {
   width: 25%;
   flex-shrink: 0;
   display: flex;
@@ -1871,7 +1871,7 @@ button {
   overflow-y: auto;
 }
 
-.profile-nav-icon {
+.mypage-nav-icon {
   width: 56px;
   height: 56px;
   flex-shrink: 0;
@@ -1883,7 +1883,7 @@ button {
   background-position: center;
 }
 
-.profile-nav-item {
+.mypage-nav-item {
   width: 100%;
   display: flex;
   align-items: center;
@@ -1899,7 +1899,7 @@ button {
 }
 
 /* 投稿数（項目名の右端に寄せる。件数が未取得のうちは表示しない） */
-.profile-nav-count {
+.mypage-nav-count {
   margin-left: auto;
   padding-left: 12px;
   font-size: 14px;
@@ -1907,15 +1907,15 @@ button {
   color: rgba(255, 255, 255, 0.7);
 }
 
-.profile-nav-count:empty {
+.mypage-nav-count:empty {
   display: none;
 }
 
-.profile-nav-item:hover {
+.mypage-nav-item:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 
-.profile-nav-badge {
+.mypage-nav-badge {
   display: inline-block;
   width: 8px;
   height: 8px;
@@ -1925,18 +1925,18 @@ button {
   vertical-align: middle;
 }
 
-.profile-nav-item.active {
+.mypage-nav-item.active {
   background: rgba(255, 255, 255, 0.22);
   color: #FFFFFF;
   font-weight: bold;
 }
 
-.profile-nav-logout {
+.mypage-nav-logout {
   margin-top: auto;
 }
 
 /* 右3/4：選択された内容 */
-.profile-body {
+.mypage-body {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -1947,13 +1947,13 @@ button {
   scrollbar-width: none;
 }
 
-.profile-body::-webkit-scrollbar { display: none; }
+.mypage-body::-webkit-scrollbar { display: none; }
 
-.profile-tab-panel {
+.mypage-tab-panel {
   display: none;
 }
 
-.profile-tab-panel.active {
+.mypage-tab-panel.active {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -1963,14 +1963,14 @@ button {
   margin: 0 auto;
 }
 
-.profile-tab-title {
+.mypage-tab-title {
   font-size: 20px;
   font-weight: bold;
   color: #FFFFFF;
   margin: 0;
 }
 
-.profile-tab-title-row {
+.mypage-tab-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2027,11 +2027,11 @@ button {
 }
 
 /* 設定・一覧は白いモーダルから移設したため、背景に合わせて文字色を調整する */
-.profile-body .profile-panel-header {
+.mypage-body .profile-panel-header {
   justify-content: flex-end;
 }
 
-.profile-screen .expired-posts-empty {
+.mypage-screen .expired-posts-empty {
   color: rgba(255, 255, 255, 0.75);
 }
 
@@ -2070,11 +2070,11 @@ button {
 
 /* 狭い画面ではメニューを上部の横並びに切り替える */
 @media (max-width: 700px) {
-  .profile-screen {
+  .mypage-screen {
     flex-direction: column;
   }
 
-  .profile-nav {
+  .mypage-nav {
     width: 100%;
     flex-direction: row;
     gap: 6px;
@@ -2085,7 +2085,7 @@ button {
     overflow-y: hidden;
   }
 
-  .profile-nav-item {
+  .mypage-nav-item {
     width: auto;
     flex-shrink: 0;
     white-space: nowrap;
@@ -2094,21 +2094,21 @@ button {
     font-size: 14px;
   }
 
-  .profile-nav-logout {
+  .mypage-nav-logout {
     margin-top: 0;
     margin-left: auto;
   }
 
-  .profile-nav-icon {
+  .mypage-nav-icon {
     display: none;
   }
 
-  .profile-body {
+  .mypage-body {
     padding: 16px 18px 24px;
   }
 }
 
-/* ================= プロフィール画面 ================= */
+/* ================= プロフィール（他ユーザー閲覧用のモーダル） ================= */
 .profile-overlay {
   position: fixed;
   inset: 0;
@@ -2466,7 +2466,7 @@ button {
 }
 
 /* ================= ログインセクション ================= */
-.profile-login-section {
+.mypage-login-section {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2476,7 +2476,7 @@ button {
   padding: 40px 0;
 }
 
-.profile-login-icon {
+.mypage-login-icon {
   width: 88px;
   height: 88px;
   border-radius: 50%;
@@ -2486,7 +2486,7 @@ button {
   justify-content: center;
 }
 
-.profile-login-message {
+.mypage-login-message {
   text-align: center;
   color: rgba(255, 255, 255, 0.85);
   font-size: 14px;
@@ -2557,7 +2557,7 @@ button {
   display: none;
 }
 
-.profile-content {
+.mypage-content {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -2581,7 +2581,7 @@ button {
   line-height: 1.6;
 }
 
-/* プロフィール画面（自分・他ユーザーとも）の上から開けるよう、
+/* マイページ・他ユーザーのプロフィールのどちらの上からでも開けるよう、
    .modal-overlay既定のz-indexより手前に出す */
 #messageComposeOverlay {
   z-index: 2000;

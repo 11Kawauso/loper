@@ -204,8 +204,8 @@ let postExistingImages = [];
 let postExistingFiles = [];
 let editingPostId = null;
 let editingDeadlinePostId = null;
-let mySettingsPosts = [];        // プロフィール画面「投稿済み募集」「期限切れ募集」用に取得した自分の全投稿
-let mySettingsPostsLoaded = false; // 上記を今回のプロフィール画面表示中に取得済みか
+let mySettingsPosts = [];        // マイページ「投稿済み募集」「期限切れ募集」用に取得した自分の全投稿
+let mySettingsPostsLoaded = false; // 上記を今回のマイページ表示中に取得済みか
 let mySettingsPostsPromise = null; // 取得中のPromise（件数表示と一覧で二重取得しないため）
 /* 「投稿済み募集」「期限切れ募集」は同じ操作（その場で開く／選択してまとめて削除）を
    持つため、タブごとの状態と設定をここにまとめ、描画処理を共通化する。 */
@@ -238,8 +238,8 @@ const POST_LIST_VIEWS = {
   },
 };
 
-let inboxMessages = [];          // プロフィール画面「メッセージ」タブ用の受信メッセージ
-let messagesLoaded = false;      // 上記を今回のプロフィール画面表示中に取得済みか
+let inboxMessages = [];          // マイページ「メッセージ」タブ用の受信メッセージ
+let messagesLoaded = false;      // 上記を今回のマイページ表示中に取得済みか
 let publicProfileTargetUid = null;   // 現在開いている他ユーザープロフィールのuid（メッセージ送信先）
 let publicProfileTargetName = '';    // 同上・表示名
 
@@ -415,13 +415,13 @@ function cacheElements() {
 
   els.toast = document.getElementById('toast');
 
-  els.profileOverlay = document.getElementById('profileOverlay');
-  els.profilePanel = document.getElementById('profilePanel');
-  els.profileCloseBtn = document.getElementById('profileCloseBtn');
-  els.profileNav = document.getElementById('profileNav');
-  els.profileNavItems = document.querySelectorAll('.profile-nav-item[data-tab]');
-  els.profileNavIcon = document.getElementById('profileNavIcon');
-  els.profileTabPanels = document.querySelectorAll('.profile-tab-panel');
+  els.myPageOverlay = document.getElementById('myPageOverlay');
+  els.myPagePanel = document.getElementById('myPagePanel');
+  els.myPageCloseBtn = document.getElementById('myPageCloseBtn');
+  els.myPageNav = document.getElementById('myPageNav');
+  els.myPageNavItems = document.querySelectorAll('.mypage-nav-item[data-tab]');
+  els.myPageNavIcon = document.getElementById('myPageNavIcon');
+  els.myPageTabPanels = document.querySelectorAll('.mypage-tab-panel');
   els.profileAvatar = document.getElementById('profileAvatar');
   els.profileAvatarInput = document.getElementById('profileAvatarInput');
   els.profileAvatarDeleteBtn = document.getElementById('profileAvatarDeleteBtn');
@@ -432,11 +432,11 @@ function cacheElements() {
   els.profileBio = document.getElementById('profileBio');
   els.profileLinksContainer = document.getElementById('profileLinks');
   els.profileAddLinkBtn = document.getElementById('profileAddLinkBtn');
-  els.profileLoginSection = document.getElementById('profileLoginSection');
-  els.profileContent = document.getElementById('profileContent');
+  els.myPageLoginSection = document.getElementById('myPageLoginSection');
+  els.myPageContent = document.getElementById('myPageContent');
   els.githubLoginBtn = document.getElementById('githubLoginBtn');
   els.twitterLoginBtn = document.getElementById('twitterLoginBtn');
-  els.profileLogoutBtn = document.getElementById('profileLogoutBtn');
+  els.myPageLogoutBtn = document.getElementById('myPageLogoutBtn');
   els.deleteAccountBtn = document.getElementById('deleteAccountBtn');
 
   els.publicProfileOverlay = document.getElementById('publicProfileOverlay');
@@ -484,7 +484,7 @@ function init() {
   setupSearch();
   setupProfileIcon();
   setupAvatarCrop();
-  setupProfilePanel();
+  setupMyPage();
   setupPublicProfile();
   setupMessageCompose();
   applyProfileAvatar();
@@ -2090,7 +2090,7 @@ function setupPostModal() {
           edited: true,
         });
 
-        // 一覧・プロフィール画面の双方が同じ投稿を保持しているため、両方に反映する
+        // 一覧・マイページの双方が同じ投稿を保持しているため、両方に反映する
         [state.allPosts, mySettingsPosts].forEach((list) => {
           const post = list.find((p) => p.id === postId);
           if (!post) return;
@@ -2313,7 +2313,7 @@ function createFilePreviewItem(name, onRemove) {
 }
 
 /* =========================================================
-   プロフィールアイコン・プロフィール画面
+   プロフィールアイコン・マイページ
    ========================================================= */
 function setupProfileIcon() {
   els.hamburgerBtn.addEventListener('click', () => openMenu());
@@ -2321,8 +2321,8 @@ function setupProfileIcon() {
   els.menuOverlay.addEventListener('click', (e) => {
     if (e.target === els.menuOverlay) closeMenu();
   });
-  els.menuProfileArea.addEventListener('click', openProfileFromMenu);
-  els.menuProfileBtn.addEventListener('click', openProfileFromMenu);
+  els.menuProfileArea.addEventListener('click', openMyPageFromMenu);
+  els.menuProfileBtn.addEventListener('click', openMyPageFromMenu);
   els.menuInboxBtn.addEventListener('click', openMessagesFromMenu);
   els.menuAuthBtn.addEventListener('click', () => {
     if (state.currentUser) {
@@ -2334,14 +2334,14 @@ function setupProfileIcon() {
   });
 }
 
-// メニューからプロフィール画面へ（未ログイン時はログインを促す）
-function openProfileFromMenu() {
+// メニューからマイページへ（未ログイン時はログインを促す）
+function openMyPageFromMenu() {
   if (!state.currentUser) {
     showLoginPrompt('プロフィールを利用するにはログインしてください');
     return;
   }
   closeMenu();
-  openProfilePanel();
+  openMyPage();
 }
 
 // メニューからメッセージタブへ直接ジャンプする（未ログイン時はログインを促す）
@@ -2351,8 +2351,8 @@ function openMessagesFromMenu() {
     return;
   }
   closeMenu();
-  openProfilePanel();
-  activateProfileTab('messages');
+  openMyPage();
+  activateMyPageTab('messages');
 }
 
 function openMenu() {
@@ -2371,32 +2371,32 @@ function applyMenuProfile() {
   els.menuAuthBtn.textContent = state.currentUser ? 'ログアウト' : 'ログイン';
 }
 
-function openProfilePanel() {
+function openMyPage() {
   // 開くたびに「プロフィール」タブから始め、投稿一覧・メッセージは再取得させる
   mySettingsPostsLoaded = false;
   mySettingsPostsPromise = null;
   messagesLoaded = false;
   resetPostListView('myposts');
   resetPostListView('expired');
-  activateProfileTab('profile');
+  activateMyPageTab('profile');
   checkUnreadMessages();
   // 左メニューに件数を出すため、タブを開く前に自分の投稿を取得しておく
   updatePostCounts();
   if (state.currentUser) ensureMySettingsPosts();
-  els.profileOverlay.classList.add('show');
+  els.myPageOverlay.classList.add('show');
 }
 
-function closeProfilePanel() {
-  els.profileOverlay.classList.remove('show');
+function closeMyPage() {
+  els.myPageOverlay.classList.remove('show');
 }
 
 /* 左メニューで選ばれたタブの内容だけを表示する。
    投稿一覧のタブは、開いたタイミングで初回だけFirestoreから取得する。 */
-async function activateProfileTab(tab) {
-  els.profileNavItems.forEach((btn) => {
+async function activateMyPageTab(tab) {
+  els.myPageNavItems.forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
-  els.profileTabPanels.forEach((panel) => {
+  els.myPageTabPanels.forEach((panel) => {
     panel.classList.toggle('active', panel.dataset.tabPanel === tab);
   });
 
@@ -2424,7 +2424,7 @@ async function activateProfileTab(tab) {
 function applyProfileAvatar() {
   setBackgroundImageSafely(els.profileAvatar, state.profile.avatarUrl);
   setBackgroundImageSafely(els.menuProfileIcon, state.profile.avatarUrl);
-  setBackgroundImageSafely(els.profileNavIcon, state.profile.avatarUrl);
+  setBackgroundImageSafely(els.myPageNavIcon, state.profile.avatarUrl);
   els.menuProfileName.textContent = state.profile.name || '名前';
 }
 
@@ -2548,7 +2548,7 @@ async function sendMessage() {
   }
 }
 
-/* 受信メッセージ一覧を取得する（プロフィール画面「メッセージ」タブ表示時） */
+/* 受信メッセージ一覧を取得する（マイページ「メッセージ」タブ表示時） */
 async function loadInboxMessages() {
   if (!state.currentUser) {
     inboxMessages = [];
@@ -2615,7 +2615,7 @@ function renderInboxMessages() {
   });
 }
 
-/* 未読メッセージの赤丸バッジ（メニューの受信ボタン・プロフィール画面のメッセージタブ）をまとめて切り替える */
+/* 未読メッセージの赤丸バッジ（メニューの受信ボタン・マイページのメッセージタブ）をまとめて切り替える */
 function setUnreadBadgeVisible(visible) {
   els.messagesUnreadBadge.style.display = visible ? '' : 'none';
   els.menuInboxBadge.style.display = visible ? '' : 'none';
@@ -2639,7 +2639,7 @@ async function markInboxMessagesRead() {
   }
 }
 
-/* プロフィール画面・メニューを開いたタイミングで、未読メッセージの有無だけ軽く確認する */
+/* マイページ・メニューを開いたタイミングで、未読メッセージの有無だけ軽く確認する */
 async function checkUnreadMessages() {
   if (!state.currentUser) {
     setUnreadBadgeVisible(false);
@@ -2664,20 +2664,20 @@ function closePublicProfile() {
   els.publicProfileOverlay.classList.remove('show');
 }
 
-function setupProfilePanel() {
+function setupMyPage() {
   // ×ボタンでメニュー画面へ戻る
-  els.profileCloseBtn.addEventListener('click', () => {
-    closeProfilePanel();
+  els.myPageCloseBtn.addEventListener('click', () => {
+    closeMyPage();
     openMenu();
   });
   // 背景クリックで一気にメイン画面へ戻る
-  els.profileOverlay.addEventListener('click', (e) => {
-    if (e.target === els.profileOverlay) closeProfilePanel();
+  els.myPageOverlay.addEventListener('click', (e) => {
+    if (e.target === els.myPageOverlay) closeMyPage();
   });
 
   // 左メニューでのタブ切り替え
-  els.profileNavItems.forEach((btn) => {
-    btn.addEventListener('click', () => activateProfileTab(btn.dataset.tab));
+  els.myPageNavItems.forEach((btn) => {
+    btn.addEventListener('click', () => activateMyPageTab(btn.dataset.tab));
   });
 
   // アイコンクリックでファイル選択 → トリムモーダルへ
@@ -3106,7 +3106,7 @@ function animateListShift(listEl, beforeTops) {
   });
 }
 
-/* 選択モード・展開状態を初期化する（プロフィール画面を開き直したときなど） */
+/* 選択モード・展開状態を初期化する（マイページを開き直したときなど） */
 function resetPostListView(key) {
   const view = POST_LIST_VIEWS[key];
   view.selectMode = false;
@@ -3175,7 +3175,7 @@ function createMyPostDetail(post) {
     pill.textContent = '#' + tag;
     pill.addEventListener('click', (e) => {
       e.stopPropagation();
-      closeProfilePanel();
+      closeMyPage();
       searchByTag(tag);
     });
     tagsWrap.appendChild(pill);
@@ -3212,14 +3212,14 @@ function createMyPostDetail(post) {
 
   card.appendChild(footer);
 
-  // 編集ボタン。プロフィール画面を閉じて、メイン画面側の投稿編集フォームへ移る
+  // 編集ボタン。マイページを閉じて、メイン画面側の投稿編集フォームへ移る
   const editBtn = document.createElement('button');
   editBtn.type = 'button';
   editBtn.className = 'my-post-edit-btn';
   editBtn.textContent = '編集する';
   editBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    closeProfilePanel();
+    closeMyPage();
     closeDetailModal();
     openEditPostModal(post);
   });
@@ -3346,7 +3346,7 @@ function setupFirebase() {
 
   els.githubLoginBtn.addEventListener('click', loginWithGithub);
   els.twitterLoginBtn.addEventListener('click', loginWithTwitter);
-  els.profileLogoutBtn.addEventListener('click', () => {
+  els.myPageLogoutBtn.addEventListener('click', () => {
     showLogoutConfirm();
   });
   setupLoginPrompt();
@@ -3418,7 +3418,7 @@ function applyLastLoginHints() {
 
   const hintText = provider ? '前回' + LAST_LOGIN_LABELS[provider] + 'でログインしました。' : '';
   const hint1 = document.getElementById('loginPromptLastLoginHint');
-  const hint2 = document.getElementById('profileLastLoginHint');
+  const hint2 = document.getElementById('myPageLastLoginHint');
   if (hint1) hint1.textContent = hintText;
   if (hint2) hint2.textContent = hintText;
 }
@@ -3615,9 +3615,9 @@ async function logoutFirebase() {
 async function onFirebaseLogin(user) {
   state.currentUser = user;
 
-  els.profileLoginSection.style.display = 'none';
-  els.profileContent.style.display = 'flex';
-  els.profileNav.style.display = 'flex';
+  els.myPageLoginSection.style.display = 'none';
+  els.myPageContent.style.display = 'flex';
+  els.myPageNav.style.display = 'flex';
 
   const fb = window._firebase;
   const userRef = fb.doc(fb.db, 'users', user.uid);
@@ -3672,9 +3672,9 @@ async function onFirebaseLogin(user) {
 function onFirebaseLogout() {
   state.currentUser = null;
 
-  els.profileLoginSection.style.display = 'flex';
-  els.profileContent.style.display = 'none';
-  els.profileNav.style.display = 'none';
+  els.myPageLoginSection.style.display = 'flex';
+  els.myPageContent.style.display = 'none';
+  els.myPageNav.style.display = 'none';
   applyLastLoginHints();
 
   state.profile.name = '名前';

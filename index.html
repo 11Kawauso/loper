@@ -439,33 +439,33 @@
   </div>
 </div>
 
-<!-- プロフィール画面（全画面。左1/4がメニュー、右3/4が内容） -->
-<div class="profile-screen-overlay" id="profileOverlay">
-  <div class="profile-screen" id="profilePanel">
+<!-- マイページ（全画面。左1/4がメニュー、右3/4が内容） -->
+<div class="mypage-overlay" id="myPageOverlay">
+  <div class="mypage-screen" id="myPagePanel">
 
     <!-- 左1/4：メニュー -->
-    <nav class="profile-nav" id="profileNav" style="display:none;">
-      <div class="profile-nav-icon" id="profileNavIcon"></div>
-      <button class="profile-nav-item active" type="button" data-tab="profile">プロフィール</button>
-      <button class="profile-nav-item" type="button" data-tab="messages">メッセージ<span class="profile-nav-badge" id="messagesUnreadBadge" style="display:none;"></span></button>
-      <button class="profile-nav-item" type="button" data-tab="settings">設定</button>
-      <button class="profile-nav-item" type="button" data-tab="myposts">投稿済み募集<span class="profile-nav-count" id="myPostsCount"></span></button>
-      <button class="profile-nav-item" type="button" data-tab="expired">期限切れ募集<span class="profile-nav-count" id="expiredCount"></span></button>
-      <button class="profile-nav-item profile-nav-logout" id="profileLogoutBtn" type="button">ログアウト</button>
+    <nav class="mypage-nav" id="myPageNav" style="display:none;">
+      <div class="mypage-nav-icon" id="myPageNavIcon"></div>
+      <button class="mypage-nav-item active" type="button" data-tab="profile">プロフィール</button>
+      <button class="mypage-nav-item" type="button" data-tab="messages">メッセージ<span class="mypage-nav-badge" id="messagesUnreadBadge" style="display:none;"></span></button>
+      <button class="mypage-nav-item" type="button" data-tab="settings">設定</button>
+      <button class="mypage-nav-item" type="button" data-tab="myposts">投稿済み募集<span class="mypage-nav-count" id="myPostsCount"></span></button>
+      <button class="mypage-nav-item" type="button" data-tab="expired">期限切れ募集<span class="mypage-nav-count" id="expiredCount"></span></button>
+      <button class="mypage-nav-item mypage-nav-logout" id="myPageLogoutBtn" type="button">ログアウト</button>
     </nav>
 
     <!-- 右3/4：選択された内容 -->
-    <div class="profile-body">
+    <div class="mypage-body">
     <div class="profile-panel-header">
-      <button class="profile-icon-btn" id="profileCloseBtn" aria-label="メニュー画面へ戻る">×</button>
+      <button class="profile-icon-btn" id="myPageCloseBtn" aria-label="メニュー画面へ戻る">×</button>
     </div>
 
     <!-- ログイン前 -->
-    <div class="profile-login-section" id="profileLoginSection">
-      <div class="profile-login-icon">
+    <div class="mypage-login-section" id="myPageLoginSection">
+      <div class="mypage-login-icon">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </div>
-      <p class="profile-login-message">ログインしてプロフィールを<br>管理しましょう</p>
+      <p class="mypage-login-message">ログインしてプロフィールを<br>管理しましょう</p>
       <div class="login-btn-group">
         <button class="oauth-login-btn github" id="githubLoginBtn" type="button">
           <span class="oauth-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg></span>
@@ -476,14 +476,14 @@
           X（旧Twitter）でログイン
         </button>
       </div>
-      <p class="last-login-hint" id="profileLastLoginHint"></p>
+      <p class="last-login-hint" id="myPageLastLoginHint"></p>
     </div>
 
     <!-- ログイン後 -->
-    <div class="profile-content" id="profileContent" style="display:none;">
+    <div class="mypage-content" id="myPageContent" style="display:none;">
 
       <!-- プロフィール -->
-      <div class="profile-tab-panel active" data-tab-panel="profile">
+      <div class="mypage-tab-panel active" data-tab-panel="profile">
         <div class="profile-avatar-wrap">
           <div class="profile-avatar" id="profileAvatar"></div>
           <button type="button" class="profile-avatar-delete-btn" id="profileAvatarDeleteBtn" title="アイコンを削除">×</button>
@@ -507,14 +507,14 @@
       </div>
 
       <!-- メッセージ -->
-      <div class="profile-tab-panel" data-tab-panel="messages">
-        <h2 class="profile-tab-title">メッセージ</h2>
+      <div class="mypage-tab-panel" data-tab-panel="messages">
+        <h2 class="mypage-tab-title">メッセージ</h2>
         <div class="expired-posts-list" id="messagesList"></div>
       </div>
 
       <!-- 設定 -->
-      <div class="profile-tab-panel" data-tab-panel="settings">
-        <h2 class="profile-tab-title">設定</h2>
+      <div class="mypage-tab-panel" data-tab-panel="settings">
+        <h2 class="mypage-tab-title">設定</h2>
 
         <div class="settings-section">
           <h3 class="settings-section-title">アカウント削除</h3>
@@ -524,9 +524,9 @@
       </div>
 
       <!-- 投稿済み募集 -->
-      <div class="profile-tab-panel" data-tab-panel="myposts">
-        <div class="profile-tab-title-row">
-          <h2 class="profile-tab-title">投稿済み募集</h2>
+      <div class="mypage-tab-panel" data-tab-panel="myposts">
+        <div class="mypage-tab-title-row">
+          <h2 class="mypage-tab-title">投稿済み募集</h2>
           <button class="myposts-select-btn" id="myPostsSelectBtn" type="button">選択</button>
         </div>
         <div class="myposts-bulk-bar" id="myPostsBulkBar" style="display:none;">
@@ -536,9 +536,9 @@
       </div>
 
       <!-- 期限切れ募集 -->
-      <div class="profile-tab-panel" data-tab-panel="expired">
-        <div class="profile-tab-title-row">
-          <h2 class="profile-tab-title">期限切れ募集</h2>
+      <div class="mypage-tab-panel" data-tab-panel="expired">
+        <div class="mypage-tab-title-row">
+          <h2 class="mypage-tab-title">期限切れ募集</h2>
           <button class="myposts-select-btn" id="expiredSelectBtn" type="button">選択</button>
         </div>
         <div class="myposts-bulk-bar" id="expiredBulkBar" style="display:none;">
