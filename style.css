@@ -2840,20 +2840,10 @@ button {
   transform: rotate(180deg);
 }
 
-@keyframes my-post-detail-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
+/* 開閉時の高さアニメーション（JS側で実行）で中身がはみ出さないよう切り取る */
 .expired-post-detail {
   padding: 0 12px 12px;
-  animation: my-post-detail-in 0.22s ease-out;
+  overflow: hidden;
 }
 
 /* 開いたときに投稿一覧のカードと同じ見た目で表示する。

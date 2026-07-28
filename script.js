@@ -3010,10 +3010,68 @@ function togglePostSelection(key, postId) {
   updateBulkDeleteBtn(key);
 }
 
+const POST_EXPAND_DURATION = 260;
+const POST_EXPAND_EASING = 'cubic-bezier(0.2, 0, 0, 1)';
+
+/* OSの「視差効果を減らす」設定を尊重し、その場合はアニメーションを行わない */
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 function togglePostExpand(key, postId) {
   const view = POST_LIST_VIEWS[key];
+  const listEl = view.getEls().list;
+
+  // 描画し直すと要素が作り直されCSSトランジションが効かないため、
+  // 描画前後の位置を測って差分を打ち消すアニメーション（FLIP）で滑らかに見せる。
+  const beforeTops = new Map();
+  if (!prefersReducedMotion()) {
+    listEl.querySelectorAll('.expired-post-item').forEach((el) => {
+      beforeTops.set(el.dataset.postId, el.getBoundingClientRect().top);
+    });
+  }
+
   view.expandedId = view.expandedId === postId ? null : postId;
   renderOwnPostList(key);
+
+  if (prefersReducedMotion()) return;
+  animateExpandedDetail(listEl);
+  animateListShift(listEl, beforeTops);
+}
+
+/* 開いた投稿の中身を、高さ0から本来の高さへ広げながらフェードインさせる */
+function animateExpandedDetail(listEl) {
+  const detail = listEl.querySelector('.expired-post-item.expanded .expired-post-detail');
+  if (!detail || !detail.animate) return;
+
+  const style = getComputedStyle(detail);
+  const height = detail.getBoundingClientRect().height;
+  detail.animate(
+    [
+      { height: '0px', paddingBottom: '0px', opacity: 0 },
+      { height: height + 'px', paddingBottom: style.paddingBottom, opacity: 1 },
+    ],
+    { duration: POST_EXPAND_DURATION, easing: POST_EXPAND_EASING }
+  );
+}
+
+/* 開閉によって位置がずれた投稿を、元の位置から新しい位置へ滑らせる */
+function animateListShift(listEl, beforeTops) {
+  listEl.querySelectorAll('.expired-post-item').forEach((el) => {
+    const beforeTop = beforeTops.get(el.dataset.postId);
+    if (beforeTop === undefined || !el.animate) return;
+
+    const delta = beforeTop - el.getBoundingClientRect().top;
+    if (Math.abs(delta) < 1) return;
+
+    el.animate(
+      [
+        { transform: 'translateY(' + delta + 'px)' },
+        { transform: 'translateY(0)' },
+      ],
+      { duration: POST_EXPAND_DURATION, easing: POST_EXPAND_EASING }
+    );
+  });
 }
 
 /* 選択モード・展開状態を初期化する（プロフィール画面を開き直したときなど） */
@@ -3172,6 +3230,8 @@ function renderOwnPostList(key) {
     item.className = 'expired-post-item'
       + (expanded ? ' expanded' : '')
       + ' ' + (CATEGORY_BORDER_CLASS[post.category] || '');
+    // 描画し直しても同じ投稿だと分かるようにしておく（開閉アニメーションで使う）
+    item.dataset.postId = post.id;
 
     const header = document.createElement('div');
     header.className = 'expired-post-header';
