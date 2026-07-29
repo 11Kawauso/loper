@@ -463,6 +463,7 @@ function cacheElements() {
   els.publicProfileAvatar = document.getElementById('publicProfileAvatar');
   els.publicProfileName = document.getElementById('publicProfileName');
   els.publicProfileContact = document.getElementById('publicProfileContact');
+  els.publicProfileContactValue = document.getElementById('publicProfileContactValue');
   els.publicProfileBio = document.getElementById('publicProfileBio');
   els.publicProfileLinks = document.getElementById('publicProfileLinks');
   els.publicProfileMessageBtn = document.getElementById('publicProfileMessageBtn');
@@ -2542,7 +2543,11 @@ function renderPublicProfile(data) {
   setBackgroundImageSafely(els.publicProfileAvatar, data.avatarUrl);
   publicProfileTargetName = truncateName(data.name) || '名前';
   els.publicProfileName.textContent = publicProfileTargetName;
-  els.publicProfileContact.textContent = data.contact || '';
+
+  // 連絡先（未入力なら枠ごと隠す。URLならリンクにする）
+  const contact = (data.contact || '').trim();
+  els.publicProfileContact.classList.toggle('is-empty', !contact);
+  fillContactValue(els.publicProfileContactValue, contact);
 
   els.publicProfileBio.textContent = data.bio || '';
 

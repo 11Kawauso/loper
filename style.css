@@ -2420,6 +2420,35 @@ button {
   opacity: 0.5;
 }
 
+/* 連絡先（自己紹介・リンクと同じ淡い箱で揃える。未入力なら出さない） */
+.public-profile-contact {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  background: var(--profile-field-bg);
+  padding: 12px 18px;
+}
+
+.public-profile-contact.is-empty {
+  display: none;
+}
+
+.public-profile-contact-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--header-bg);
+}
+
+.public-profile-contact-value {
+  font-size: 13px;
+  color: var(--text-dark);
+  word-break: break-word;
+  white-space: pre-line;
+}
+
 .public-profile-links {
   display: flex;
   flex-direction: column;
