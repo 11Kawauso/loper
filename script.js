@@ -1496,6 +1496,15 @@ async function togglePin(post, btnEl) {
     await fb.updateDoc(fb.doc(fb.db, 'posts', String(post.id)), {
       pinnedBy: nowPinned ? fb.arrayUnion(uid) : fb.arrayRemove(uid),
     });
+    showToast(nowPinned ? 'ピン止めしました' : 'ピン止めを解除しました');
+
+    // マイページの「ピン止め」タブの中身と件数も、開き直さずに合わせておく
+    if (nowPinned) {
+      if (!pinnedPosts.some((p) => p.id === post.id)) pinnedPosts.unshift(post);
+    } else {
+      pinnedPosts = pinnedPosts.filter((p) => p.id !== post.id);
+    }
+    updatePostCounts();
   } catch (err) {
     console.error('ピン止めの更新に失敗しました:', err);
     // 失敗したら表示を元に戻す
@@ -2384,12 +2393,8 @@ function openMyPageTabFromMenu(tab, loginMessage) {
 function openMenu() {
   applyMenuProfile();
   checkUnreadMessages();
-  // ショートカットに件数を出すため、開いたタイミングで取得しておく
-  updatePostCounts();
-  if (state.currentUser) {
-    ensureMySettingsPosts();
-    ensurePinnedPosts();
-  }
+  // メイン画面での操作（投稿の作成・締め切りなど）を反映するため、開くたびに取り直す
+  refreshMyPostsAndPinned();
   els.menuOverlay.classList.add('show');
 }
 
@@ -2405,22 +2410,14 @@ function applyMenuProfile() {
 
 function openMyPage(tab = 'profile') {
   // 開くたびに投稿一覧・ピン止め・メッセージは再取得させる
-  mySettingsPostsLoaded = false;
-  mySettingsPostsPromise = null;
-  pinnedPostsLoaded = false;
-  pinnedPostsPromise = null;
   messagesLoaded = false;
   resetPostListView('myposts');
   resetPostListView('expired');
   resetPostListView('pinned');
+  // 左メニューに件数を出すため、タブを開く前に取得を始めておく
+  refreshMyPostsAndPinned();
   activateMyPageTab(tab);
   checkUnreadMessages();
-  // 左メニューに件数を出すため、タブを開く前に取得を始めておく
-  updatePostCounts();
-  if (state.currentUser) {
-    ensureMySettingsPosts();
-    ensurePinnedPosts();
-  }
   els.myPageOverlay.classList.add('show');
 }
 
@@ -3102,6 +3099,22 @@ function ensurePinnedPosts() {
   return pinnedPostsPromise;
 }
 
+/* 取得済みでも取り直す。メイン画面で投稿を作る・締め切るなどの操作をしても
+   件数が古いままにならないよう、メニュー画面・マイページを開くたびに呼ぶ。
+   取得が終わるまでは前回の件数を出したままにして、数字が一瞬消えないようにする。 */
+function refreshMyPostsAndPinned() {
+  if (!state.currentUser) {
+    updatePostCounts();
+    return;
+  }
+  mySettingsPostsLoaded = false;
+  mySettingsPostsPromise = null;
+  pinnedPostsLoaded = false;
+  pinnedPostsPromise = null;
+  ensureMySettingsPosts();
+  ensurePinnedPosts();
+}
+
 /* 選択モードを切り替える。切り替え時は選択・展開状態をリセットする */
 function togglePostListSelectMode(key) {
   const view = POST_LIST_VIEWS[key];
@@ -3290,6 +3303,24 @@ function createMyPostDetail(post, key) {
   });
   card.appendChild(tagsWrap);
 
+  // 連絡先（未入力なら出さない）
+  if (post.contact && post.contact.trim()) {
+    const contact = document.createElement('div');
+    contact.className = 'detail-contact';
+
+    const label = document.createElement('span');
+    label.className = 'detail-contact-label';
+    label.textContent = '連絡先';
+
+    const value = document.createElement('span');
+    value.className = 'detail-contact-value';
+    value.textContent = post.contact;
+
+    contact.appendChild(label);
+    contact.appendChild(value);
+    card.appendChild(contact);
+  }
+
   const footer = document.createElement('div');
   footer.className = 'post-footer';
 
@@ -3328,13 +3359,10 @@ function createMyPostDetail(post, key) {
     actionBtn.textContent = 'ピン止めを外す';
     actionBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
+      // 一覧からの除去・件数の更新・トーストはtogglePin側でまとめて行う
       await togglePin(post);
-      // 一覧から取り除き、件数もあわせて更新する
-      pinnedPosts = pinnedPosts.filter((p) => p.id !== post.id);
       POST_LIST_VIEWS.pinned.expandedId = null;
       renderPinnedPosts();
-      updatePostCounts();
-      showToast('ピン止めを外しました');
     });
   } else {
     // 編集ボタン。マイページを閉じて、メイン画面側の投稿編集フォームへ移る

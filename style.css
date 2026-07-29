@@ -2886,9 +2886,10 @@ button {
   box-shadow: none;
 }
 
-/* 縦の間隔は .post-card の gap で付くため、画像・添付の下マージンは打ち消す */
+/* 縦の間隔は .post-card の gap で付くため、画像・添付・連絡先の下マージンは打ち消す */
 .my-post-detail-card .modal-image-box,
-.my-post-detail-card .detail-files {
+.my-post-detail-card .detail-files,
+.my-post-detail-card .detail-contact {
   margin-bottom: 0;
 }
 
