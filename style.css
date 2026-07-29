@@ -1592,6 +1592,17 @@ button {
   white-space: pre-line;
 }
 
+/* 連絡先がURLのときだけリンクにする（それ以外はただの文字） */
+.detail-contact-link {
+  color: var(--header-bg);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.detail-contact-link:hover {
+  text-decoration: underline;
+}
+
 .detail-pin-btn {
   width: 26px;
   height: 26px;

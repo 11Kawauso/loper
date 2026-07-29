@@ -1702,6 +1702,25 @@ function fillPostFileList(box, post) {
   return box.childElementCount > 0;
 }
 
+/* 連絡先を表示する（投稿詳細・マイページで共通）。
+   URLのときだけリンクにし、Discord IDやメールなどURL以外はそのまま文字で出す。 */
+function fillContactValue(box, contact) {
+  box.textContent = '';
+  const safeUrl = toSafeLinkUrl(contact);
+  if (!safeUrl) {
+    box.textContent = contact;
+    return;
+  }
+  const link = document.createElement('a');
+  link.className = 'detail-contact-link';
+  link.href = safeUrl;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = safeUrl;
+  link.addEventListener('click', (e) => e.stopPropagation());
+  box.appendChild(link);
+}
+
 /* マイページの展開表示用に、画像・添付ファイルの入れ物ごと作る（無ければnull） */
 function createPostImageBox(post) {
   const box = document.createElement('div');
@@ -1760,7 +1779,7 @@ function openDetailModal(post) {
 
   // 連絡先（未入力なら非表示）
   if (post.contact && post.contact.trim()) {
-    els.detailContactValue.textContent = post.contact;
+    fillContactValue(els.detailContactValue, post.contact);
     els.detailContact.style.display = '';
   } else {
     els.detailContactValue.textContent = '';
@@ -3314,7 +3333,7 @@ function createMyPostDetail(post, key) {
 
     const value = document.createElement('span');
     value.className = 'detail-contact-value';
-    value.textContent = post.contact;
+    fillContactValue(value, post.contact);
 
     contact.appendChild(label);
     contact.appendChild(value);
