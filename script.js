@@ -182,7 +182,6 @@ const state = {
   activeTags: new Set(),
   searchKeyword: '',
   searchIncludeBody: false,
-  sortOrder: 'default',
   loading: false,
   loadError: false,
   reachedEnd: false,
@@ -219,6 +218,7 @@ const POST_LIST_VIEWS = {
     expandedId: null,          // その場に開いている投稿（同時に1件のみ）
     selectMode: false,         // 選択モード（チェックボックスでまとめて削除）中か
     selectedIds: new Set(),    // 選択モード中にチェックされている投稿id
+    sortOrder: 'newest',       // 並び替え（このタブ内でのみ有効）
     emptyText: '自分の投稿はありません',
     getPosts: () => mySettingsPosts,
     getEls: () => ({
@@ -226,12 +226,14 @@ const POST_LIST_VIEWS = {
       selectBtn: els.myPostsSelectBtn,
       bulkBar: els.myPostsBulkBar,
       bulkDeleteBtn: els.myPostsBulkDeleteBtn,
+      sortSelect: els.myPostsSortSelect,
     }),
   },
   expired: {
     expandedId: null,
     selectMode: false,
     selectedIds: new Set(),
+    sortOrder: 'newest',
     emptyText: '期限切れの募集はありません',
     getPosts: () => mySettingsPosts.filter((post) => isPostExpired(post)),
     getEls: () => ({
@@ -239,16 +241,18 @@ const POST_LIST_VIEWS = {
       selectBtn: els.expiredSelectBtn,
       bulkBar: els.expiredBulkBar,
       bulkDeleteBtn: els.expiredBulkDeleteBtn,
+      sortSelect: els.expiredSortSelect,
     }),
   },
   pinned: {
     expandedId: null,
     selectMode: false,
     selectedIds: new Set(),
+    sortOrder: 'newest',
     emptyText: 'ピン止めした投稿はありません',
     detailAction: 'unpin', // 他人の投稿なので、編集ではなくピン止め解除を置く
     getPosts: () => pinnedPosts,
-    getEls: () => ({ list: els.pinnedPostsList }),
+    getEls: () => ({ list: els.pinnedPostsList, sortSelect: els.pinnedSortSelect }),
   },
 };
 
@@ -343,10 +347,6 @@ function cacheElements() {
   els.searchBtn = document.getElementById('searchBtn');
   els.searchOptionsPanel = document.getElementById('searchOptionsPanel');
   els.searchIncludeBody = document.getElementById('searchIncludeBody');
-  els.sortDropdown = document.getElementById('sortDropdown');
-  els.sortCurrentLabel = document.getElementById('sortCurrentLabel');
-  els.sortPulldown = document.getElementById('sortPulldown');
-  els.sortPulldownItems = document.querySelectorAll('.sort-pulldown-item');
 
   els.selectedTagsDropdown = document.getElementById('selectedTagsDropdown');
   els.selectedTagsLabel = document.getElementById('selectedTagsLabel');
@@ -427,6 +427,9 @@ function cacheElements() {
   els.expiredCount = document.getElementById('expiredCount');
   els.pinnedPostsList = document.getElementById('pinnedPostsList');
   els.pinnedCount = document.getElementById('pinnedCount');
+  els.myPostsSortSelect = document.getElementById('myPostsSortSelect');
+  els.expiredSortSelect = document.getElementById('expiredSortSelect');
+  els.pinnedSortSelect = document.getElementById('pinnedSortSelect');
   els.menuMyPostsCount = document.getElementById('menuMyPostsCount');
   els.menuExpiredCount = document.getElementById('menuExpiredCount');
   els.menuPinnedCount = document.getElementById('menuPinnedCount');
@@ -495,7 +498,6 @@ function init() {
   setupCategorySidebar();
   setupSidebarToggle();
   setupPulldown();
-  setupSortDropdown();
   setupTagPanelToggle();
   setupTagListEvents();
   setupSelectedTagsDropdown();
@@ -686,7 +688,8 @@ function getFilteredPosts() {
     return true;
   });
 
-  return sortPosts(filtered);
+  // 取得した順（createdAtの新しい順）のまま表示する
+  return filtered;
 }
 
 /* =========================================================
@@ -1154,52 +1157,14 @@ function closePulldown() {
 /* =========================================================
    並び替え
    ========================================================= */
-const SORT_LABELS = {
-  default: 'デフォルト',
+/* 並び替えはマイページの一覧（投稿済み募集・期限切れ募集・ピン止め）だけで使う。
+   メイン画面は少しずつ読み込む作りのため、並べ替えても「読み込み済みの分」しか
+   対象にできず、続きを読み込むたびに順番が入れ替わってしまうので置いていない。 */
+const MY_LIST_SORT_LABELS = {
   newest: '新着順',
   oldest: '古い順',
-  deadline_long: '期限が長い順',
-  deadline_short: '期限が短い順',
+  deadline_near: '期限が近い順',
 };
-
-function setupSortDropdown() {
-  els.sortDropdown.addEventListener('click', (e) => {
-    if (e.target.closest('.sort-pulldown-item')) return;
-    const willOpen = !els.sortPulldown.classList.contains('open');
-    els.sortDropdown.classList.toggle('open', willOpen);
-    els.sortPulldown.classList.toggle('open', willOpen);
-  });
-
-  els.sortPulldownItems.forEach((item) => {
-    item.addEventListener('click', (e) => {
-      e.stopPropagation();
-      selectSortOrder(item.dataset.sort);
-      closeSortPulldown();
-    });
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!els.sortDropdown.contains(e.target)) {
-      closeSortPulldown();
-    }
-  });
-}
-
-function closeSortPulldown() {
-  els.sortDropdown.classList.remove('open');
-  els.sortPulldown.classList.remove('open');
-}
-
-function selectSortOrder(sortOrder) {
-  if (!sortOrder || state.sortOrder === sortOrder) return;
-  state.sortOrder = sortOrder;
-  els.sortCurrentLabel.textContent = SORT_LABELS[sortOrder];
-  els.sortPulldownItems.forEach((item) => {
-    item.classList.toggle('active', item.dataset.sort === sortOrder);
-  });
-  renderPosts();
-  closeDetailModal();
-}
 
 function getPostDeadline(post) {
   if (!post.createdAt || !post.deadlineDays) return null;
@@ -1208,24 +1173,26 @@ function getPostDeadline(post) {
   return deadline;
 }
 
-function sortPosts(posts) {
+function sortMyListPosts(posts, sortOrder) {
   const sorted = posts.slice();
-  switch (state.sortOrder) {
-    case 'newest':
-      sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      break;
+  switch (sortOrder) {
     case 'oldest':
       sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       break;
-    case 'deadline_long':
-      sorted.sort((a, b) => (getPostDeadline(b) || 0) - (getPostDeadline(a) || 0));
+    case 'deadline_near':
+      // 期限のない投稿は末尾へ回す
+      sorted.sort((a, b) => {
+        const da = getPostDeadline(a);
+        const db = getPostDeadline(b);
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da - db;
+      });
       break;
-    case 'deadline_short':
-      sorted.sort((a, b) => (getPostDeadline(a) || 0) - (getPostDeadline(b) || 0));
-      break;
-    case 'default':
+    case 'newest':
     default:
-      // 並び替えをせず、取得した順のまま返す
+      sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       break;
   }
   return sorted;
@@ -2808,6 +2775,13 @@ function setupMyPage() {
   els.myPostsBulkDeleteBtn.addEventListener('click', () => deleteSelectedPosts('myposts'));
   els.expiredSelectBtn.addEventListener('click', () => togglePostListSelectMode('expired'));
   els.expiredBulkDeleteBtn.addEventListener('click', () => deleteSelectedPosts('expired'));
+
+  // 並び替え（マイページの一覧のみ。タブごとに独立して切り替わる）
+  Object.keys(POST_LIST_VIEWS).forEach((key) => {
+    const sortSelect = POST_LIST_VIEWS[key].getEls().sortSelect;
+    if (!sortSelect) return;
+    sortSelect.addEventListener('change', () => changePostListSort(key, sortSelect.value));
+  });
 }
 
 /* 名前編集欄をblurまたはEnterで確定し、表示に戻す */
@@ -3244,13 +3218,25 @@ function resetPostListView(key) {
   view.selectMode = false;
   view.expandedId = null;
   view.selectedIds.clear();
+  view.sortOrder = 'newest';
+
+  const viewEls = view.getEls();
+  if (viewEls.sortSelect) viewEls.sortSelect.value = view.sortOrder;
 
   // ピン止めタブは選択モードを持たないため、ある場合だけ戻す
-  const viewEls = view.getEls();
   if (!viewEls.selectBtn) return;
   viewEls.selectBtn.textContent = '選択';
   viewEls.selectBtn.classList.remove('active');
   viewEls.bulkBar.style.display = 'none';
+}
+
+/* 並び替えを変える。開いている投稿は閉じて、先頭から見直せるようにする */
+function changePostListSort(key, sortOrder) {
+  const view = POST_LIST_VIEWS[key];
+  if (!MY_LIST_SORT_LABELS[sortOrder] || view.sortOrder === sortOrder) return;
+  view.sortOrder = sortOrder;
+  view.expandedId = null;
+  renderOwnPostList(key);
 }
 
 /* 選択モードでチェックした投稿をまとめて削除する */
@@ -3423,7 +3409,7 @@ function renderOwnPostList(key) {
     return;
   }
 
-  const posts = view.getPosts();
+  const posts = sortMyListPosts(view.getPosts(), view.sortOrder);
   if (posts.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'expired-posts-empty';

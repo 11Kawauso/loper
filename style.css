@@ -658,28 +658,15 @@ button {
   white-space: nowrap;
 }
 
-.pulldown-item:hover,
-.sort-pulldown-item:hover {
+.pulldown-item:hover {
   background: var(--content-bg);
 }
 
-.pulldown-item.active,
-.sort-pulldown-item.active {
+.pulldown-item.active {
   background: var(--tag-pill-bg);
   font-weight: bold;
 }
 
-.sort-pulldown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 18px;
-  font-size: 14px;
-  font-weight: normal;
-  color: var(--text-dark);
-  cursor: pointer;
-  white-space: nowrap;
-}
 
 .tag-list {
   flex: 1;
@@ -1992,8 +1979,36 @@ button {
 .mypage-tab-title-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
+}
+
+/* 見出しの右に並び替え・選択ボタンを寄せる */
+.mypage-tab-title-row .mypage-tab-title {
+  margin-right: auto;
+}
+
+/* 並び替え（マイページの一覧だけ。メイン画面は少しずつ読み込むため置いていない） */
+.mypage-sort-select {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  background: transparent;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.mypage-sort-select:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 選択肢の一覧はOS標準の白背景で出るため、文字色を戻しておく */
+.mypage-sort-select option {
+  color: var(--text-dark);
+  background: #FFFFFF;
 }
 
 .myposts-select-btn {

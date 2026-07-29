@@ -34,18 +34,6 @@
       </div>
     </div>
 
-    <div class="selected-tags-dropdown sort-dropdown" id="sortDropdown">
-      <span class="selected-tags-label" id="sortCurrentLabel">デフォルト</span>
-      <span class="dropdown-arrow">▽</span>
-      <div class="category-pulldown sort-pulldown" id="sortPulldown">
-        <div class="sort-pulldown-item active" data-sort="default">デフォルト</div>
-        <div class="sort-pulldown-item" data-sort="newest">新着順</div>
-        <div class="sort-pulldown-item" data-sort="oldest">古い順</div>
-        <div class="sort-pulldown-item" data-sort="deadline_long">期限が長い順</div>
-        <div class="sort-pulldown-item" data-sort="deadline_short">期限が短い順</div>
-      </div>
-    </div>
-
     <div class="selected-tags-dropdown" id="selectedTagsDropdown">
       <span class="selected-tags-label" id="selectedTagsLabel">選択タグ</span>
       <span class="dropdown-arrow">▽</span>
@@ -529,6 +517,11 @@
       <div class="mypage-tab-panel" data-tab-panel="myposts">
         <div class="mypage-tab-title-row">
           <h2 class="mypage-tab-title">投稿済み募集</h2>
+          <select class="mypage-sort-select" id="myPostsSortSelect" aria-label="並び替え">
+            <option value="newest">新着順</option>
+            <option value="oldest">古い順</option>
+            <option value="deadline_near">期限が近い順</option>
+          </select>
           <button class="myposts-select-btn" id="myPostsSelectBtn" type="button">選択</button>
         </div>
         <div class="myposts-bulk-bar" id="myPostsBulkBar" style="display:none;">
@@ -541,6 +534,11 @@
       <div class="mypage-tab-panel" data-tab-panel="expired">
         <div class="mypage-tab-title-row">
           <h2 class="mypage-tab-title">期限切れ募集</h2>
+          <select class="mypage-sort-select" id="expiredSortSelect" aria-label="並び替え">
+            <option value="newest">新着順</option>
+            <option value="oldest">古い順</option>
+            <option value="deadline_near">期限が近い順</option>
+          </select>
           <button class="myposts-select-btn" id="expiredSelectBtn" type="button">選択</button>
         </div>
         <div class="myposts-bulk-bar" id="expiredBulkBar" style="display:none;">
@@ -553,6 +551,11 @@
       <div class="mypage-tab-panel" data-tab-panel="pinned">
         <div class="mypage-tab-title-row">
           <h2 class="mypage-tab-title">ピン止め</h2>
+          <select class="mypage-sort-select" id="pinnedSortSelect" aria-label="並び替え">
+            <option value="newest">新着順</option>
+            <option value="oldest">古い順</option>
+            <option value="deadline_near">期限が近い順</option>
+          </select>
         </div>
         <div class="expired-posts-list" id="pinnedPostsList"></div>
       </div>
