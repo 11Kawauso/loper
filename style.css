@@ -1486,7 +1486,8 @@ button {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
-  z-index: 1000;
+  /* マイページ（1500）から開くこともあるため、その手前に出す */
+  z-index: 2100;
   align-items: center;
   justify-content: center;
   cursor: zoom-out;
@@ -2883,6 +2884,12 @@ button {
 .my-post-detail-card:hover {
   transform: none;
   box-shadow: none;
+}
+
+/* 縦の間隔は .post-card の gap で付くため、画像・添付の下マージンは打ち消す */
+.my-post-detail-card .modal-image-box,
+.my-post-detail-card .detail-files {
+  margin-bottom: 0;
 }
 
 .my-post-edit-btn {

@@ -1654,6 +1654,58 @@ function openLightbox(src) {
   els.lightboxOverlay.classList.add('show');
 }
 
+/* 投稿の画像サムネイルを指定の入れ物に並べる（投稿詳細・マイページで共通）。
+   不正なURLを除外した結果0枚になることもあるため、実際の件数で表示を切り替える。 */
+function fillPostImageBox(box, post) {
+  (post.images || []).forEach((src) => {
+    const safeSrc = toSafeImageUrl(src);
+    if (!safeSrc) return;
+    const img = document.createElement('img');
+    img.src = safeSrc;
+    img.className = 'modal-thumbnail';
+    img.alt = '';
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openLightbox(safeSrc);
+    });
+    box.appendChild(img);
+  });
+  box.classList.toggle('has-image', box.childElementCount > 0);
+  return box.childElementCount > 0;
+}
+
+/* 投稿の添付ファイルのリンクを指定の入れ物に並べる（投稿詳細・マイページで共通） */
+function fillPostFileList(box, post) {
+  (post.files || []).forEach((file) => {
+    const safeUrl = toSafeLinkUrl(file && file.url);
+    if (!safeUrl) return;
+    const link = document.createElement('a');
+    link.className = 'detail-file-link';
+    link.href = safeUrl;
+    link.download = file.name;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = '📄 ' + file.name;
+    link.addEventListener('click', (e) => e.stopPropagation());
+    box.appendChild(link);
+  });
+  box.classList.toggle('has-files', box.childElementCount > 0);
+  return box.childElementCount > 0;
+}
+
+/* マイページの展開表示用に、画像・添付ファイルの入れ物ごと作る（無ければnull） */
+function createPostImageBox(post) {
+  const box = document.createElement('div');
+  box.className = 'modal-image-box';
+  return fillPostImageBox(box, post) ? box : null;
+}
+
+function createPostFileList(post) {
+  const box = document.createElement('div');
+  box.className = 'detail-files';
+  return fillPostFileList(box, post) ? box : null;
+}
+
 function openDetailModal(post) {
   els.detailPane.dataset.postId = String(post.id);
 
@@ -1679,38 +1731,11 @@ function openDetailModal(post) {
 
   // 画像（サムネイル一覧。クリックでライトボックス）
   els.detailImageBox.innerHTML = '';
-  if (post.images && post.images.length > 0) {
-    post.images.forEach((src) => {
-      const safeSrc = toSafeImageUrl(src);
-      if (!safeSrc) return; // 不正なURLの画像は表示しない
-      const img = document.createElement('img');
-      img.src = safeSrc;
-      img.className = 'modal-thumbnail';
-      img.alt = '';
-      img.addEventListener('click', () => openLightbox(safeSrc));
-      els.detailImageBox.appendChild(img);
-    });
-  }
-  // 不正なURLを除外した結果、表示できる画像が無い場合もあるため実際の件数で判定する
-  els.detailImageBox.classList.toggle('has-image', els.detailImageBox.childElementCount > 0);
+  fillPostImageBox(els.detailImageBox, post);
 
   // 添付ファイル（クリックでダウンロード）
   els.detailFiles.innerHTML = '';
-  if (post.files && post.files.length > 0) {
-    post.files.forEach((file) => {
-      const safeUrl = toSafeLinkUrl(file && file.url);
-      if (!safeUrl) return; // 不正なURLの添付ファイルはリンクにしない
-      const link = document.createElement('a');
-      link.className = 'detail-file-link';
-      link.href = safeUrl;
-      link.download = file.name;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.textContent = '📄 ' + file.name;
-      els.detailFiles.appendChild(link);
-    });
-  }
-  els.detailFiles.classList.toggle('has-files', els.detailFiles.childElementCount > 0);
+  fillPostFileList(els.detailFiles, post);
 
   // 内容
   els.detailDesc.textContent = post.description;
@@ -3242,6 +3267,13 @@ function createMyPostDetail(post, key) {
   contentBox.className = 'post-content-box';
   contentBox.appendChild(document.createTextNode(post.description));
   card.appendChild(contentBox);
+
+  // 画像・添付ファイル（投稿詳細画面と同じ並び・見た目）
+  const imageBox = createPostImageBox(post);
+  if (imageBox) card.appendChild(imageBox);
+
+  const fileList = createPostFileList(post);
+  if (fileList) card.appendChild(fileList);
 
   const tagsWrap = document.createElement('div');
   tagsWrap.className = 'post-tags';
