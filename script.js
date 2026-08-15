@@ -261,6 +261,8 @@ let messagesLoaded = false;      // 上記を今回のマイページ表示中�
 let publicProfileTargetUid = null;   // 現在開いている他ユーザープロフィールのuid（メッセージ送信先）
 let publicProfileTargetName = '';    // 同上・表示名
 
+let blockedUids = new Set();     // 自分がブロックしたユーザーのuid
+
 const CROP_SIZE = 280;    // トリムコンテナのサイズ（px）
 const CROP_RADIUS = 120;  // トリム円の半径（px）
 const cropState = { scale: 1, minScale: 1, maxScale: 4, tx: 0, ty: 0, dragging: false, lastX: 0, lastY: 0 };
@@ -470,6 +472,16 @@ function cacheElements() {
   els.publicProfileBio = document.getElementById('publicProfileBio');
   els.publicProfileLinks = document.getElementById('publicProfileLinks');
   els.publicProfileMessageBtn = document.getElementById('publicProfileMessageBtn');
+  els.publicProfileActions = document.getElementById('publicProfileActions');
+  els.publicProfileReportBtn = document.getElementById('publicProfileReportBtn');
+  els.publicProfileBlockBtn = document.getElementById('publicProfileBlockBtn');
+  els.publicProfileBlockedNote = document.getElementById('publicProfileBlockedNote');
+
+  els.userReportOverlay = document.getElementById('userReportOverlay');
+  els.userReportClose = document.getElementById('userReportClose');
+  els.userReportTitle = document.getElementById('userReportTitle');
+  els.userReportDetail = document.getElementById('userReportDetail');
+  els.userReportSend = document.getElementById('userReportSend');
 
   els.messagesUnreadBadge = document.getElementById('messagesUnreadBadge');
   els.messagesList = document.getElementById('messagesList');
@@ -508,6 +520,7 @@ function init() {
   setupMyPage();
   setupPublicProfile();
   setupMessageCompose();
+  setupUserReport();
   applyProfileAvatar();
   setupDetailModal();
   setupPostModal();
@@ -2474,6 +2487,34 @@ function setupPublicProfile() {
     }
     openMessageCompose(publicProfileTargetUid, publicProfileTargetName);
   });
+
+  els.publicProfileReportBtn.addEventListener('click', () => {
+    if (!state.currentUser) {
+      showLoginPrompt('通報するにはログインしてください');
+      return;
+    }
+    openUserReport();
+  });
+
+  els.publicProfileBlockBtn.addEventListener('click', () => {
+    if (!state.currentUser) {
+      showLoginPrompt('ブロックするにはログインしてください');
+      return;
+    }
+    const uid = publicProfileTargetUid;
+    const name = publicProfileTargetName;
+    if (isBlocked(uid)) {
+      showGenericConfirm(
+        (name || 'このユーザー') + 'のブロックを解除しますか？相手からメッセージが届くようになります。',
+        () => unblockUser(uid, name)
+      );
+    } else {
+      showGenericConfirm(
+        (name || 'このユーザー') + 'をブロックしますか？相手からのメッセージが届かなくなり、受信済みのメッセージも表示されなくなります。',
+        () => blockUser(uid, name)
+      );
+    }
+  });
 }
 
 /* uidの投稿者プロフィールを開く。fallbackには投稿に複製されている
@@ -2482,8 +2523,7 @@ async function openPublicProfile(uid, fallback) {
   if (!uid) return; // 運営名義の投稿など、投稿者が存在しない場合は開かない
 
   publicProfileTargetUid = uid;
-  const isOwnProfile = state.currentUser && uid === state.currentUser.uid;
-  els.publicProfileMessageBtn.style.display = isOwnProfile ? 'none' : '';
+  applyPublicProfileBlockState();
 
   els.publicProfileOverlay.classList.add('show');
   renderPublicProfile({
@@ -2533,6 +2573,142 @@ function renderPublicProfile(data) {
 }
 
 /* =========================================================
+   ブロック・ユーザー通報
+   ========================================================= */
+
+/* ブロックはドキュメントIDを「自分のUID_相手のUID」にしておく。
+   Firestoreのルール側から exists() だけで判定できるようにするため。 */
+function blockDocId(blockerUid, blockedUid) {
+  return blockerUid + '_' + blockedUid;
+}
+
+/* 自分がブロックした相手の一覧を取得する（ログイン時に一度だけ） */
+async function loadBlockedUids() {
+  if (!state.currentUser) {
+    blockedUids = new Set();
+    return;
+  }
+  const fb = window._firebase;
+  try {
+    const q = fb.query(fb.collection(fb.db, 'blocks'), fb.where('blockerUid', '==', state.currentUser.uid), fb.limit(500));
+    const snap = await fb.getDocs(q);
+    blockedUids = new Set(snap.docs.map((d) => d.data().blockedUid));
+  } catch (err) {
+    console.error('ブロック一覧の取得に失敗しました:', err);
+    blockedUids = new Set();
+  }
+}
+
+function isBlocked(uid) {
+  return !!uid && blockedUids.has(uid);
+}
+
+/* ブロックする。以後その相手からのメッセージは受け取らない
+   （送信の遮断はFirestoreのルール側で行う）。 */
+async function blockUser(uid, name) {
+  const fb = window._firebase;
+  if (!fb || !state.currentUser || !uid) return;
+
+  try {
+    await fb.setDoc(fb.doc(fb.db, 'blocks', blockDocId(state.currentUser.uid, uid)), {
+      blockerUid: state.currentUser.uid,
+      blockedUid: uid,
+      createdAt: fb.serverTimestamp(),
+    });
+    blockedUids.add(uid);
+
+    // すでに届いている相手のメッセージも受信箱から隠す
+    inboxMessages = inboxMessages.filter((m) => m.fromUid !== uid);
+    renderInboxMessages();
+    checkUnreadMessages();
+
+    applyPublicProfileBlockState();
+    showToast((name || 'このユーザー') + 'をブロックしました');
+  } catch (err) {
+    console.error('ブロックに失敗しました:', err);
+    showToast('ブロックに失敗しました');
+  }
+}
+
+async function unblockUser(uid, name) {
+  const fb = window._firebase;
+  if (!fb || !state.currentUser || !uid) return;
+
+  try {
+    await fb.deleteDoc(fb.doc(fb.db, 'blocks', blockDocId(state.currentUser.uid, uid)));
+    blockedUids.delete(uid);
+    applyPublicProfileBlockState();
+    showToast((name || 'このユーザー') + 'のブロックを解除しました');
+  } catch (err) {
+    console.error('ブロック解除に失敗しました:', err);
+    showToast('ブロック解除に失敗しました');
+  }
+}
+
+/* 開いているプロフィールのブロック状態に合わせて、ボタンと注意書きを切り替える */
+function applyPublicProfileBlockState() {
+  const uid = publicProfileTargetUid;
+  const isOwnProfile = state.currentUser && uid === state.currentUser.uid;
+  const blocked = isBlocked(uid);
+
+  // 自分のプロフィールには通報・ブロックを出さない
+  els.publicProfileActions.style.display = isOwnProfile ? 'none' : '';
+  els.publicProfileMessageBtn.style.display = (isOwnProfile || blocked) ? 'none' : '';
+  els.publicProfileBlockedNote.style.display = blocked ? '' : 'none';
+  els.publicProfileBlockBtn.textContent = blocked ? 'ブロックを解除' : 'ブロックする';
+  els.publicProfileBlockBtn.classList.toggle('danger', !blocked);
+}
+
+function setupUserReport() {
+  els.userReportClose.addEventListener('click', closeUserReport);
+  els.userReportOverlay.addEventListener('click', (e) => {
+    if (e.target === els.userReportOverlay) closeUserReport();
+  });
+  els.userReportSend.addEventListener('click', sendUserReport);
+}
+
+function openUserReport() {
+  els.userReportTitle.textContent = (publicProfileTargetName || '名前') + 'さんを通報';
+  els.userReportDetail.value = '';
+  const first = document.querySelector('input[name="userReportReason"]');
+  if (first) first.checked = true;
+  els.userReportOverlay.classList.add('show');
+}
+
+function closeUserReport() {
+  els.userReportOverlay.classList.remove('show');
+}
+
+async function sendUserReport() {
+  const fb = window._firebase;
+  if (!fb || !state.currentUser || !publicProfileTargetUid) return;
+
+  const checked = document.querySelector('input[name="userReportReason"]:checked');
+  const reason = checked ? checked.value : 'other';
+  const detail = els.userReportDetail.value.trim();
+
+  els.userReportSend.disabled = true;
+  try {
+    await fb.addDoc(fb.collection(fb.db, 'reports'), {
+      targetType: 'user',
+      targetUid: publicProfileTargetUid,
+      targetName: publicProfileTargetName || '',
+      reason,
+      detail,
+      reporterUid: state.currentUser.uid,
+      createdAt: new Date().toISOString(),
+    });
+    closeUserReport();
+    showToast('通報しました。ご協力ありがとうございます');
+  } catch (err) {
+    console.error('通報に失敗しました:', err);
+    showToast('通報に失敗しました');
+  } finally {
+    els.userReportSend.disabled = false;
+  }
+}
+
+/* =========================================================
    メッセージ（一方通行・ユーザー間のやり取り）
    ========================================================= */
 function setupMessageCompose() {
@@ -2576,7 +2752,13 @@ async function sendMessage() {
     closeMessageCompose();
   } catch (err) {
     console.error('メッセージの送信に失敗しました:', err);
-    showToast('送信に失敗しました');
+    // 相手にブロックされている場合もここに来る（ルール側で拒否される）。
+    // ブロックされていることは相手に知られないよう、理由は伏せて伝える。
+    if (err.code === 'permission-denied') {
+      showToast('このユーザーにはメッセージを送れません');
+    } else {
+      showToast('送信に失敗しました');
+    }
   } finally {
     els.messageComposeSend.disabled = false;
   }
@@ -2594,6 +2776,8 @@ async function loadInboxMessages() {
     const snap = await fb.getDocs(q);
     inboxMessages = snap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
+      // ブロック後に届いた分はルール側で防げるが、ブロック前に届いていた分はここで隠す
+      .filter((m) => !isBlocked(m.fromUid))
       .sort((a, b) => (b.createdAt ? b.createdAt.toMillis() : 0) - (a.createdAt ? a.createdAt.toMillis() : 0));
   } catch (err) {
     console.error('メッセージの取得に失敗しました:', err);
@@ -2616,9 +2800,17 @@ function renderInboxMessages() {
     const item = document.createElement('div');
     item.className = 'message-item' + (msg.read ? '' : ' unread');
 
+    // 送信者のアイコン・名前はクリックでその人のプロフィールを開く
+    const openSenderProfile = () => {
+      if (!msg.fromUid) return;
+      closeMyPage();
+      openPublicProfile(msg.fromUid, { name: msg.fromName, avatarUrl: msg.fromAvatarUrl });
+    };
+
     const avatar = document.createElement('div');
-    avatar.className = 'message-item-avatar';
+    avatar.className = 'message-item-avatar' + (msg.fromUid ? ' clickable' : '');
     setBackgroundImageSafely(avatar, msg.fromAvatarUrl);
+    if (msg.fromUid) avatar.addEventListener('click', openSenderProfile);
 
     const info = document.createElement('div');
     info.className = 'message-item-info';
@@ -2627,8 +2819,9 @@ function renderInboxMessages() {
     head.className = 'message-item-head';
 
     const name = document.createElement('span');
-    name.className = 'message-item-name';
+    name.className = 'message-item-name' + (msg.fromUid ? ' clickable' : '');
     name.textContent = truncateName(msg.fromName) || '名前';
+    if (msg.fromUid) name.addEventListener('click', openSenderProfile);
     head.appendChild(name);
 
     if (!msg.read) {
@@ -2643,10 +2836,38 @@ function renderInboxMessages() {
 
     info.appendChild(head);
     info.appendChild(body);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'message-item-delete-btn';
+    deleteBtn.textContent = '×';
+    deleteBtn.title = 'このメッセージを削除';
+    deleteBtn.setAttribute('aria-label', 'このメッセージを削除');
+    deleteBtn.addEventListener('click', () => {
+      showGenericConfirm('このメッセージを削除しますか？この操作は取り消せません。', () => deleteInboxMessage(msg));
+    });
+
     item.appendChild(avatar);
     item.appendChild(info);
+    item.appendChild(deleteBtn);
     els.messagesList.appendChild(item);
   });
+}
+
+/* 受信したメッセージを自分の受信箱から削除する（Firestore側でも受信者のみ削除できる） */
+async function deleteInboxMessage(msg) {
+  const fb = window._firebase;
+  if (!fb) return;
+  try {
+    await fb.deleteDoc(fb.doc(fb.db, 'messages', msg.id));
+    inboxMessages = inboxMessages.filter((m) => m.id !== msg.id);
+    renderInboxMessages();
+    checkUnreadMessages();
+    showToast('メッセージを削除しました');
+  } catch (err) {
+    console.error('メッセージの削除に失敗しました:', err);
+    showToast('削除に失敗しました');
+  }
 }
 
 /* 未読メッセージの赤丸バッジ（メニューの受信ボタン・マイページのメッセージタブ）をまとめて切り替える */
@@ -2685,10 +2906,12 @@ async function checkUnreadMessages() {
       fb.collection(fb.db, 'messages'),
       fb.where('toUid', '==', state.currentUser.uid),
       fb.where('read', '==', false),
-      fb.limit(1)
+      fb.limit(50)
     );
     const snap = await fb.getDocs(q);
-    setUnreadBadgeVisible(!snap.empty);
+    // ブロック済みの相手からの未読でバッジが点いたままにならないようにする
+    const hasUnread = snap.docs.some((d) => !isBlocked(d.data().fromUid));
+    setUnreadBadgeVisible(hasUnread);
   } catch (err) {
     console.error('未読メッセージの確認に失敗しました:', err);
   }
@@ -3747,6 +3970,17 @@ async function deleteAccountFirebase() {
       await fb.deleteDoc(fb.doc(fb.db, 'posts', d.id));
     }
 
+    // 自分が受け取ったメッセージと、自分が行ったブロックも消す
+    const msgSnap = await fb.getDocs(fb.query(fb.collection(fb.db, 'messages'), fb.where('toUid', '==', uid)));
+    for (const d of msgSnap.docs) {
+      await fb.deleteDoc(fb.doc(fb.db, 'messages', d.id));
+    }
+
+    const blockSnap = await fb.getDocs(fb.query(fb.collection(fb.db, 'blocks'), fb.where('blockerUid', '==', uid)));
+    for (const d of blockSnap.docs) {
+      await fb.deleteDoc(fb.doc(fb.db, 'blocks', d.id));
+    }
+
     await fb.deleteDoc(fb.doc(fb.db, 'users', uid));
     await fb.deleteDoc(fb.doc(fb.db, 'publicProfiles', uid));
 
@@ -3779,6 +4013,9 @@ async function onFirebaseLogin(user) {
   els.myPageLoginSection.style.display = 'none';
   els.myPageContent.style.display = 'flex';
   els.myPageNav.style.display = 'flex';
+
+  // ブロック一覧は受信箱の絞り込みに使うため、メッセージを読む前に取得しておく
+  await loadBlockedUids();
 
   const fb = window._firebase;
   const userRef = fb.doc(fb.db, 'users', user.uid);
@@ -3856,6 +4093,7 @@ function onFirebaseLogout() {
   inboxMessages = [];
   messagesLoaded = false;
   setUnreadBadgeVisible(false);
+  blockedUids = new Set();
 
   mySettingsPosts = [];
   mySettingsPostsLoaded = false;

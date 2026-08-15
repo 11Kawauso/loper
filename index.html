@@ -582,8 +582,36 @@
       </div>
       <div class="public-profile-bio" id="publicProfileBio"></div>
       <div class="public-profile-links" id="publicProfileLinks"></div>
+
+      <p class="public-profile-blocked-note" id="publicProfileBlockedNote" style="display:none;">
+        このユーザーをブロックしています。相手からのメッセージは届きません。
+      </p>
+
       <button class="public-profile-message-btn" id="publicProfileMessageBtn" type="button">メッセージを送る</button>
+
+      <div class="public-profile-actions" id="publicProfileActions">
+        <button class="public-profile-action-btn" id="publicProfileReportBtn" type="button">通報する</button>
+        <button class="public-profile-action-btn danger" id="publicProfileBlockBtn" type="button">ブロックする</button>
+      </div>
     </div>
+  </div>
+</div>
+
+<!-- ユーザー通報モーダル -->
+<div class="modal-overlay" id="userReportOverlay">
+  <div class="message-compose-modal">
+    <button class="modal-close" id="userReportClose">×</button>
+    <h2 class="modal-title" id="userReportTitle">ユーザーを通報</h2>
+    <p class="deadline-edit-message">通報の理由を選んでください。通報したことが相手に伝わることはありません。</p>
+    <div class="user-report-reasons" id="userReportReasons">
+      <label class="user-report-reason"><input type="radio" name="userReportReason" value="harassment" checked> 迷惑・執拗なメッセージ</label>
+      <label class="user-report-reason"><input type="radio" name="userReportReason" value="dating"> 出会い目的の利用</label>
+      <label class="user-report-reason"><input type="radio" name="userReportReason" value="inappropriate"> 不適切・わいせつな内容</label>
+      <label class="user-report-reason"><input type="radio" name="userReportReason" value="spam"> 宣伝・スパム</label>
+      <label class="user-report-reason"><input type="radio" name="userReportReason" value="other"> その他</label>
+    </div>
+    <textarea class="message-compose-input" id="userReportDetail" maxlength="500" placeholder="補足があれば入力してください（任意）"></textarea>
+    <button class="form-submit" id="userReportSend" type="button">通報する</button>
   </div>
 </div>
 
