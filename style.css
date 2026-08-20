@@ -108,10 +108,26 @@ button {
   object-fit: contain;
 }
 
+/* ロゴはクリックで投稿一覧の先頭へ戻るボタンにしている */
+.logo-home-btn {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.logo-home-btn:hover {
+  opacity: 0.75;
+}
+
 .logo-img {
   height: 28px;
   width: auto;
   object-fit: contain;
+  display: block;
 }
 
 .search-area {

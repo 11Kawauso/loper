@@ -343,6 +343,7 @@ function cacheElements() {
   els.contentSlider = document.getElementById('contentSlider');
   els.postsPane = document.getElementById('postsPane');
   els.postsGrid = document.getElementById('postsGrid');
+  els.logoHomeBtn = document.getElementById('logoHomeBtn');
 
   els.searchArea = document.getElementById('searchArea');
   els.searchInput = document.getElementById('searchInput');
@@ -515,6 +516,7 @@ function init() {
   setupSelectedTagsDropdown();
   setupPostButton();
   setupSearch();
+  setupLogoHome();
   setupProfileIcon();
   setupAvatarCrop();
   setupMyPage();
@@ -1611,6 +1613,29 @@ function runSearch() {
 function searchByTag(tag) {
   els.searchInput.value = tag;
   runSearch();
+}
+
+/* =========================================================
+   ロゴから投稿一覧の先頭へ戻る
+   ========================================================= */
+function setupLogoHome() {
+  els.logoHomeBtn.addEventListener('click', scrollPostsToTop);
+}
+
+/* 投稿一覧を先頭まで滑らかに戻す。
+   投稿詳細を開いている場合は一覧に戻してから動かす（一覧が隠れているため）。 */
+function scrollPostsToTop() {
+  closeDetailModal();
+
+  const el = els.postsPane;
+  if (el.scrollTop === 0) return;
+
+  // OSの「視差効果を減らす」設定のときは一瞬で移動する
+  if (prefersReducedMotion()) {
+    el.scrollTop = 0;
+    return;
+  }
+  el.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /* =========================================================
