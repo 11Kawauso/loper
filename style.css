@@ -2753,33 +2753,128 @@ button {
   gap: 8px;
 }
 
+/* プルダウンを開くと行の高さが伸びるため、上端でそろえる */
 .post-role-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
 }
 
-/* .form-group input / select の width:100% を上書きするため、
-   募集期限の入力欄と同じくセレクタを強めにしている */
-.post-role-row .post-role-select {
+/* 役割の選択欄（自前のプルダウン）。
+   ネイティブの<select>は選択肢がモーダルの外へ飛び出してしまうため、
+   タグ選択と同じく、その場に開くパネルにしている */
+.post-role-dropdown {
   flex: 1;
   min-width: 0;
 }
 
+.post-role-dropdown-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid #CFDEDD;
+  border-radius: 8px;
+  background: #FFFFFF;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s, border-radius 0.15s;
+}
+
+.post-role-dropdown-display:hover {
+  border-color: var(--card-border);
+}
+
+.post-role-dropdown.open .post-role-dropdown-display {
+  border-color: var(--card-border);
+  border-radius: 8px 8px 0 0;
+}
+
+.post-role-dropdown.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.post-role-dropdown-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-role-dropdown-text.placeholder {
+  color: #AABFC2;
+}
+
+.post-role-dropdown-panel {
+  display: none;
+  border: 1px solid var(--card-border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background: #FFFFFF;
+  padding: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.post-role-dropdown-panel::-webkit-scrollbar {
+  display: none;
+}
+
+.post-role-dropdown-panel.open {
+  display: block;
+}
+
+.post-role-group-label {
+  padding: 6px 8px 4px;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--tag-pill-text);
+}
+
+.post-role-option {
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.post-role-option:hover {
+  background: var(--tag-pill-bg);
+}
+
+.post-role-option.selected {
+  background: var(--tag-pill-bg);
+  font-weight: bold;
+}
+
+/* .form-group input の width:100% を上書きするため、
+   募集期限の入力欄と同じくセレクタを強めにしている */
 .post-role-row .post-role-need {
   width: 64px;
+  height: 44px;
   flex-shrink: 0;
   padding: 10px 8px;
 }
 
 .post-role-unit {
   flex-shrink: 0;
+  line-height: 44px;
   font-size: 13px;
   color: var(--text-dark);
 }
 
 .post-role-remove {
   flex-shrink: 0;
+  /* 44pxの入力欄に対して縦中央に置く */
+  margin-top: 8px;
   width: 28px;
   height: 28px;
   border: none;
@@ -3348,6 +3443,14 @@ button {
 .deadline-unit {
   font-size: 14px;
   color: var(--text-dark);
+}
+
+/* 期限切れの募集を出し直すときだけ出す説明 */
+.post-repost-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--tag-pill-text);
 }
 
 /* 期限切れ募集一覧 */

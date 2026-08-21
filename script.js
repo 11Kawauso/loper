@@ -205,6 +205,7 @@ let previewUrls = [];
 let postExistingImages = [];
 let postExistingFiles = [];
 let editingPostId = null;
+let editingIsRepost = false;     // 期限切れ・締め切り済みの募集を編集して出し直しているか
 let editingDeadlinePostId = null;
 let mySettingsPosts = [];        // マイページ「投稿済み募集」「期限切れ募集」用に取得した自分の全投稿
 let mySettingsPostsLoaded = false; // 上記を今回のマイページ表示中に取得済みか
@@ -414,6 +415,7 @@ function cacheElements() {
   els.postAddRoleBtn = document.getElementById('postAddRoleBtn');
   els.postDeadlineInput = document.getElementById('postDeadlineInput');
   els.postDeadlineGroup = document.getElementById('postDeadlineGroup');
+  els.postRepostHint = document.getElementById('postRepostHint');
   els.postModalTitle = document.getElementById('postModalTitle');
   els.postSubmitBtn = document.getElementById('postSubmitBtn');
 
@@ -1890,6 +1892,7 @@ function setupPostButton() {
     els.postModalTitle.textContent = '投稿を作成';
     els.postSubmitBtn.textContent = '投稿する';
     els.postDeadlineGroup.style.display = '';
+    els.postRepostHint.style.display = 'none';
     els.postModalOverlay.classList.add('show');
   });
 }
@@ -1955,6 +1958,7 @@ function clearPostDraft() {
 /* フォームを新規投稿用の初期状態にリセット */
 function resetPostForm() {
   editingPostId = null;
+  editingIsRepost = false;
   els.postForm.reset();
   els.postSubmitBtn.disabled = false;
   postSelectedTags = new Set();
@@ -2005,9 +2009,23 @@ function openEditPostModal(post) {
   updateImagePreviews();
   updateFileInputDisplay();
 
-  els.postModalTitle.textContent = '投稿を編集';
-  els.postSubmitBtn.textContent = '更新する';
-  els.postDeadlineGroup.style.display = 'none';
+  // 期限切れ・締め切り済みの募集は、そのまま出し直せるように期限欄を出す。
+  // まだ募集中のものは、期限を勝手に延ばせないよう今まで通り隠しておく
+  // （期限の変更は投稿詳細の「期限変更」から行う）。
+  editingIsRepost = isPostExpired(post);
+
+  if (editingIsRepost) {
+    els.postModalTitle.textContent = '募集を再投稿';
+    els.postSubmitBtn.textContent = '再投稿する';
+    els.postDeadlineInput.value = post.deadlineDays || 30;
+    els.postDeadlineGroup.style.display = '';
+    els.postRepostHint.style.display = '';
+  } else {
+    els.postModalTitle.textContent = '投稿を編集';
+    els.postSubmitBtn.textContent = '更新する';
+    els.postDeadlineGroup.style.display = 'none';
+    els.postRepostHint.style.display = 'none';
+  }
 
   els.postModalOverlay.classList.add('show');
 }
@@ -2197,15 +2215,23 @@ function setupPostModal() {
           .find(Boolean);
         const roles = collectPostRoles(editingPost && editingPost.roles);
 
+        // 再投稿のときだけ、投稿日時を今に戻して募集期限をかけ直す。
+        // 「締め切り済み」も解除して、また一覧に出るようにする。
+        const repost = editingIsRepost;
+        const repostDays = Math.min(365, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
+
         await fb.updateDoc(fb.doc(fb.db, 'posts', String(postId)), {
           category, title, description, tags: tagsToSave, contact, images, files,
           roles,
           edited: true,
+          ...(repost ? { createdAt: fb.serverTimestamp(), deadlineDays: repostDays, closed: false } : {}),
         });
 
-        // 一覧・マイページの双方が同じ投稿を保持しているため、両方に反映する
-        [state.allPosts, mySettingsPosts].forEach((list) => {
-          const post = list.find((p) => p.id === postId);
+        const repostCreatedAt = new Date();
+
+        // 一覧・マイページ・ピン止めが同じ投稿をそれぞれ保持しているため、すべてに反映する
+        [state.allPosts, mySettingsPosts, pinnedPosts].forEach((list) => {
+          const post = (list || []).find((p) => p.id === postId);
           if (!post) return;
           post.category = category;
           post.title = title;
@@ -2216,13 +2242,31 @@ function setupPostModal() {
           post.files = files;
           post.roles = roles.map((r) => ({ ...r }));
           post.edited = true;
+          if (repost) {
+            post.createdAt = repostCreatedAt;
+            post.date = formatDate(repostCreatedAt);
+            post.deadlineDays = repostDays;
+            post.closed = false;
+          }
         });
+
+        // 再投稿した募集は投稿日時が今になるため、一覧の先頭へ移す。
+        // 期限切れのあいだは一覧に載っていないこともあるので、その場合は追加する。
+        if (repost) {
+          const revived = state.allPosts.find((p) => p.id === postId)
+            || mySettingsPosts.find((p) => p.id === postId);
+          state.allPosts = state.allPosts.filter((p) => p.id !== postId);
+          if (revived) state.allPosts.unshift(revived);
+        }
+
         editingPostId = null;
+        editingIsRepost = false;
         renderPosts();
         renderMyPosts();
         renderExpiredPosts();
+        updatePostCounts();
         closePostModal();
-        showToast('投稿を更新しました');
+        showToast(repost ? '募集を再投稿しました' : '投稿を更新しました');
         return;
       }
 
@@ -2273,7 +2317,7 @@ function setupPostModal() {
 
     const uid = state.currentUser.uid;
     els.postSubmitBtn.disabled = true;
-    els.postSubmitBtn.textContent = isEditing ? '更新中…' : '投稿中…';
+    els.postSubmitBtn.textContent = isEditing ? (editingIsRepost ? '再投稿中…' : '更新中…') : '投稿中…';
 
     try {
       const [images, files] = await Promise.all([
@@ -2285,16 +2329,18 @@ function setupPostModal() {
       console.error('投稿の保存に失敗しました:', err);
       showToast('投稿に失敗しました。もう一度お試しください');
       els.postSubmitBtn.disabled = false;
-      els.postSubmitBtn.textContent = isEditing ? '更新する' : '投稿する';
+      els.postSubmitBtn.textContent = isEditing ? (editingIsRepost ? '再投稿する' : '更新する') : '投稿する';
     }
   });
 }
 
 function closePostModal() {
   els.postModalOverlay.classList.remove('show');
+  closeAllRoleDropdowns();
   els.postTagDropdownPanel.classList.remove('open');
   els.postTagDropdown.classList.remove('open');
   editingPostId = null;
+  editingIsRepost = false;
 }
 
 function updatePostModalBorder() {
@@ -2823,37 +2869,84 @@ function createPostRolesDetail(post) {
 
 /* ---------------- 投稿フォームの役割入力 ---------------- */
 
-/* 選択肢を組み立てる。いま選んでいるカテゴリでよく使う役割を上に、
-   それ以外を下にまとめる（ゲームでイラストを募集したい場合などがあるため）。 */
-function fillRoleSelect(select, categoryOptions, current) {
+function closeAllRoleDropdowns() {
+  document.querySelectorAll('.post-role-dropdown.open').forEach((el) => el.classList.remove('open'));
+  document.querySelectorAll('.post-role-dropdown-panel.open').forEach((el) => el.classList.remove('open'));
+}
+
+/* 役割の選択欄。
+   ネイティブの<select>だと選択肢の一覧がモーダルの外・画面の外まで
+   飛び出してしまうため、タグ選択と同じ形の自前のプルダウンにしている。
+   いま選んでいるカテゴリでよく使う役割を上に、それ以外を下にまとめる
+   （ゲームでイラストを募集したい場合などがあるため）。 */
+function createRoleDropdown(index, role, categoryOptions) {
   const allOptions = getRoleOptions('all');
   const others = allOptions.filter((r) => !categoryOptions.includes(r));
 
+  const wrap = document.createElement('div');
+  wrap.className = 'post-role-dropdown';
+
+  const display = document.createElement('div');
+  display.className = 'post-role-dropdown-display';
+
+  const text = document.createElement('span');
+  text.className = 'post-role-dropdown-text' + (role.name ? '' : ' placeholder');
+  text.textContent = role.name || '選択してください';
+  display.appendChild(text);
+
+  const arrow = document.createElement('span');
+  arrow.className = 'dropdown-arrow';
+  arrow.textContent = '▽';
+  display.appendChild(arrow);
+  wrap.appendChild(display);
+
+  const panel = document.createElement('div');
+  panel.className = 'post-role-dropdown-panel';
+
   const addGroup = (label, list) => {
     if (list.length === 0) return;
-    const group = document.createElement('optgroup');
-    group.label = label;
+    const heading = document.createElement('div');
+    heading.className = 'post-role-group-label';
+    heading.textContent = label;
+    panel.appendChild(heading);
+
     list.forEach((name) => {
-      const opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;
-      group.appendChild(opt);
+      const option = document.createElement('div');
+      option.className = 'post-role-option' + (name === role.name ? ' selected' : '');
+      option.textContent = name;
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        postRoles[index].name = name;
+        closeAllRoleDropdowns();
+        renderPostRolesEditor();
+      });
+      panel.appendChild(option);
     });
-    select.appendChild(group);
   };
 
   addGroup('このカテゴリでよくある役割', categoryOptions);
   addGroup('その他の役割', others);
 
   // 選択肢から消えた役割を持つ古い投稿を編集しても、値が飛ばないようにする
-  if (current && !allOptions.includes(current)) {
-    const opt = document.createElement('option');
-    opt.value = current;
-    opt.textContent = current;
-    select.appendChild(opt);
+  if (role.name && !allOptions.includes(role.name)) {
+    addGroup('この募集で使っている役割', [role.name]);
   }
 
-  select.value = current || categoryOptions[0] || allOptions[0] || '';
+  wrap.appendChild(panel);
+
+  display.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = !wrap.classList.contains('open');
+    closeAllRoleDropdowns();
+    if (willOpen) {
+      wrap.classList.add('open');
+      panel.classList.add('open');
+      // モーダルの下の方で開いたときに、一覧が隠れたままにならないようにする
+      panel.scrollIntoView({ block: 'nearest' });
+    }
+  });
+
+  return wrap;
 }
 
 function renderPostRolesEditor() {
@@ -2866,11 +2959,7 @@ function renderPostRolesEditor() {
     const row = document.createElement('div');
     row.className = 'post-role-row';
 
-    const select = document.createElement('select');
-    select.className = 'post-role-select';
-    fillRoleSelect(select, categoryOptions, role.name);
-    select.addEventListener('change', () => { postRoles[index].name = select.value; });
-    row.appendChild(select);
+    row.appendChild(createRoleDropdown(index, role, categoryOptions));
 
     const need = document.createElement('input');
     need.type = 'number';
@@ -2907,6 +2996,11 @@ function renderPostRolesEditor() {
 
 function setupPostRoles() {
   if (!els.postAddRoleBtn) return;
+
+  // プルダウンの外側をクリックしたら閉じる
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest || !e.target.closest('.post-role-dropdown')) closeAllRoleDropdowns();
+  });
 
   els.postAddRoleBtn.addEventListener('click', () => {
     if (postRoles.length >= MAX_POST_ROLES) return;
@@ -4295,8 +4389,9 @@ function createMyPostDetail(post, key) {
       renderPinnedPosts();
     });
   } else {
-    // 編集ボタン。マイページを閉じて、メイン画面側の投稿編集フォームへ移る
-    actionBtn.textContent = '編集する';
+    // 編集ボタン。マイページを閉じて、メイン画面側の投稿編集フォームへ移る。
+    // 期限切れ・締め切り済みの募集は、ここから出し直せる
+    actionBtn.textContent = isPostExpired(post) ? '編集して再投稿' : '編集する';
     actionBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       closeMyPage();
