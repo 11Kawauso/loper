@@ -40,6 +40,10 @@ service cloud.firestore {
           // 選択できるタグは100種類。自由記入分も考慮して余裕をもたせている
           && d.tags is list && d.tags.size() <= 150
           && d.images is list && d.images.size() <= 4
+          // 募集する役割。あとから追加した項目のため、持っていない投稿も許容する。
+          // 中身（名前・人数）はルール側では1件ずつ検証できないので、
+          // 読み込み時に normalizeRoles() でそろえている
+          && (!('roles' in d) || (d.roles is list && d.roles.size() <= 6))
           && d.files is list && d.files.size() <= 4
           && d.deadlineDays is number && d.deadlineDays >= 1 && d.deadlineDays <= 365
           && d.authorName is string && d.authorName.size() <= 20

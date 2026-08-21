@@ -33,6 +33,10 @@
           <input type="checkbox" id="searchIncludeBody">
           本文も含めて検索する
         </label>
+        <label class="search-option-item">
+          <input type="checkbox" id="searchHideFull">
+          メンバーが揃った募集を隠す
+        </label>
       </div>
     </div>
 
@@ -185,6 +189,8 @@
 
           <div class="post-tags modal-tags" id="detailTags"></div>
 
+          <div class="detail-roles" id="detailRoles"></div>
+
           <div class="detail-contact" id="detailContact">
             <span class="detail-contact-label">連絡先</span>
             <span class="detail-contact-value" id="detailContactValue"></span>
@@ -254,6 +260,13 @@
       <div class="form-group">
         <label for="postTagsInput">タグ（自由記入・カンマ区切り）</label>
         <input type="text" id="postTagsInput" placeholder="例：チーム募集,週末開発">
+      </div>
+
+      <div class="form-group" id="postRolesGroup">
+        <label>募集する役割（任意・最大6）</label>
+        <div class="post-roles-editor" id="postRolesEditor"></div>
+        <button type="button" class="profile-add-link-btn" id="postAddRoleBtn">＋ 役割を追加</button>
+        <p class="post-roles-hint">埋まった人数は、投稿したあとにマイページの「投稿済み募集」から変えられます。</p>
       </div>
 
       <div class="form-group">

@@ -39,6 +39,9 @@
   --profile-bg: #79B7B5;
   --profile-name-color: #FFFFFF;
   --profile-field-bg: #EAF8F8;
+
+  /* 募集する役割（枠）の埋まり具合バー */
+  --role-fill: #CDE9E5;
 }
 
 * {
@@ -2600,6 +2603,287 @@ button {
 .profile-add-link-btn:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+/* ================= 募集する役割（枠） ================= */
+
+/* --- 募集カード上の表示 --- */
+.post-roles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.post-roles::-webkit-scrollbar {
+  display: none;
+}
+
+/* 埋まり具合はチップの背景バーで見せる。文字はバーより前面に置く */
+.post-role-chip {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid var(--content-box-border);
+  border-radius: 10px;
+  background: #FFFFFF;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--tag-pill-text);
+}
+
+.post-role-chip-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: var(--role-fill);
+  transition: width 0.2s;
+}
+
+.post-role-chip-name,
+.post-role-chip-count {
+  position: relative;
+}
+
+.post-role-chip-count {
+  font-weight: bold;
+}
+
+/* 枠が埋まった役割は、まだ空いている役割より目立たなくする */
+.post-role-chip.filled {
+  opacity: 0.6;
+}
+
+.post-role-remaining {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--header-bg);
+  white-space: nowrap;
+}
+
+.post-role-remaining.near {
+  color: #C77A2E;
+}
+
+.post-role-remaining.done {
+  color: var(--tag-pill-text);
+  font-weight: normal;
+}
+
+/* --- 投稿詳細の表示 --- */
+.detail-roles:empty {
+  display: none;
+}
+
+.detail-roles-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--content-box-border);
+  border-radius: 14px;
+  background: var(--content-box-bg);
+  padding: 14px 16px;
+}
+
+.detail-roles-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.detail-roles-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--text-dark);
+}
+
+.detail-role-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 8em) 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-role-row.filled {
+  opacity: 0.6;
+}
+
+.detail-role-name {
+  font-size: 12px;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-role-bar {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--tag-pill-bg);
+  overflow: hidden;
+}
+
+.detail-role-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--header-bg);
+  transition: width 0.2s;
+}
+
+.detail-role-count {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--tag-pill-text);
+  white-space: nowrap;
+}
+
+/* --- 投稿フォームの入力欄 --- */
+.post-roles-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.post-role-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* .form-group input / select の width:100% を上書きするため、
+   募集期限の入力欄と同じくセレクタを強めにしている */
+.post-role-row .post-role-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.post-role-row .post-role-need {
+  width: 64px;
+  flex-shrink: 0;
+  padding: 10px 8px;
+}
+
+.post-role-unit {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-dark);
+}
+
+.post-role-remove {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: var(--tag-pill-bg);
+  color: var(--tag-pill-text);
+  font-size: 15px;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.post-role-remove:hover {
+  filter: brightness(0.94);
+}
+
+.post-roles-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--tag-pill-text);
+}
+
+/* --- マイページ「投稿済み募集」での増減 --- */
+.my-post-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--content-box-border);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.my-post-roles-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.my-post-roles-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text-dark);
+}
+
+.my-post-role-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.my-post-role-name {
+  font-size: 12px;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-post-role-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.my-post-role-step-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--content-box-border);
+  border-radius: 50%;
+  background: #FFFFFF;
+  color: var(--tag-pill-text);
+  font-size: 13px;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.my-post-role-step-btn:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.my-post-role-step-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.my-post-role-count {
+  min-width: 46px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--tag-pill-text);
+}
+
+.my-post-roles-hint {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--tag-pill-text);
 }
 
 /* ================= GitHub連携 ================= */

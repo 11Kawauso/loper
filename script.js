@@ -182,6 +182,7 @@ const state = {
   activeTags: new Set(),
   searchKeyword: '',
   searchIncludeBody: false,
+  hideFullPosts: false,   // メンバーが揃った募集を隠すか
   loading: false,
   loadError: false,
   reachedEnd: false,
@@ -198,6 +199,7 @@ const state = {
 };
 
 let postSelectedTags = new Set();
+let postRoles = [];              // 投稿フォームで入力中の役割（{name, need}）
 let postSelectedFiles = [];
 let previewUrls = [];
 let postExistingImages = [];
@@ -352,6 +354,7 @@ function cacheElements() {
   els.searchBtn = document.getElementById('searchBtn');
   els.searchOptionsPanel = document.getElementById('searchOptionsPanel');
   els.searchIncludeBody = document.getElementById('searchIncludeBody');
+  els.searchHideFull = document.getElementById('searchHideFull');
 
   els.selectedTagsDropdown = document.getElementById('selectedTagsDropdown');
   els.selectedTagsLabel = document.getElementById('selectedTagsLabel');
@@ -380,6 +383,7 @@ function cacheElements() {
   els.lightboxImage = document.getElementById('lightboxImage');
   els.detailDesc = document.getElementById('detailDesc');
   els.detailTags = document.getElementById('detailTags');
+  els.detailRoles = document.getElementById('detailRoles');
   els.detailContact = document.getElementById('detailContact');
   els.detailContactValue = document.getElementById('detailContactValue');
   els.detailDate = document.getElementById('detailDate');
@@ -405,6 +409,9 @@ function cacheElements() {
   els.postTagDisplayText = document.getElementById('postTagDisplayText');
   els.postTagSelector = document.getElementById('postTagSelector');
   els.postTagsInput = document.getElementById('postTagsInput');
+  els.postRolesGroup = document.getElementById('postRolesGroup');
+  els.postRolesEditor = document.getElementById('postRolesEditor');
+  els.postAddRoleBtn = document.getElementById('postAddRoleBtn');
   els.postDeadlineInput = document.getElementById('postDeadlineInput');
   els.postDeadlineGroup = document.getElementById('postDeadlineGroup');
   els.postModalTitle = document.getElementById('postModalTitle');
@@ -535,6 +542,7 @@ function init() {
   applyProfileAvatar();
   setupDetailModal();
   setupPostModal();
+  setupPostRoles();
   setupInfiniteScroll();
   setupGenericConfirm();
   setupDeadlineEditModal();
@@ -556,6 +564,7 @@ function docToPost(docSnap) {
     title: data.title,
     description: data.description,
     tags: data.tags || [],
+    roles: normalizeRoles(data.roles),
     date: formatDate(createdAt),
     createdAt: createdAt,
     deadlineDays: data.deadlineDays,
@@ -579,6 +588,17 @@ function docToPost(docSnap) {
    投稿は必ずログイン中の本人名義になる（Firestoreのルール上、
    投稿者なしでの作成は許可していないため）。
    ========================================================= */
+/* テスト投稿用。テンプレートの「〇〇募集」タグから役割の枠を作る */
+function rolesFromTemplateTags(tags) {
+  return (tags || [])
+    .filter((t) => t.endsWith('募集') && !ROLE_TAG_EXCLUDE.includes(t))
+    .slice(0, MAX_POST_ROLES)
+    .map((t, idx) => {
+      const need = (idx % 3) + 1;
+      return { name: t.slice(0, -2), need, filled: Math.min(need, idx % 2) };
+    });
+}
+
 async function createTestPosts(count = 20) {
   if (!state.currentUser) {
     console.warn('先にログインしてから実行してください。');
@@ -599,6 +619,7 @@ async function createTestPosts(count = 20) {
         title: title,
         description: template.description,
         tags: template.tags.slice(),
+        roles: rolesFromTemplateTags(template.tags),
         contact: '',
         images: [],
         files: [],
@@ -695,6 +716,7 @@ function getFilteredPosts() {
 
   const filtered = state.allPosts.filter((post) => {
     if (isPostExpired(post)) return false;
+    if (state.hideFullPosts && isPostFull(post)) return false;
 
     if (keyword) {
       const inTitle = post.title.toLowerCase().includes(keyword);
@@ -894,6 +916,10 @@ function createPostCard(post) {
     tagsWrap.appendChild(pill);
   });
   card.appendChild(tagsWrap);
+
+  // 募集している役割（設定されている投稿だけ）
+  const rolesWrap = createPostRolesSummary(post);
+  if (rolesWrap) card.appendChild(rolesWrap);
 
   // 投稿日時
   const footer = document.createElement('div');
@@ -1594,6 +1620,13 @@ function setupSearch() {
     }
   });
 
+  // 「メンバーが揃った募集を隠す」の切り替え
+  els.searchHideFull.addEventListener('change', () => {
+    state.hideFullPosts = els.searchHideFull.checked;
+    renderPosts();
+    els.postsPane.scrollTop = 0;
+  });
+
   // 「本文も含める」の切り替え。検索中なら即座に結果へ反映する
   els.searchIncludeBody.addEventListener('change', () => {
     state.searchIncludeBody = els.searchIncludeBody.checked;
@@ -1792,6 +1825,10 @@ function openDetailModal(post) {
     els.detailTags.appendChild(pill);
   });
 
+  els.detailRoles.innerHTML = '';
+  const detailRolesBox = createPostRolesDetail(post);
+  if (detailRolesBox) els.detailRoles.appendChild(detailRolesBox);
+
   // 連絡先（未入力なら非表示）
   if (post.contact && post.contact.trim()) {
     fillContactValue(els.detailContactValue, post.contact);
@@ -1871,10 +1908,11 @@ function savePostDraft() {
     contact: els.postContactInput.value,
     freeTags: els.postTagsInput.value,
     selectedTags: [...postSelectedTags],
+    roles: postRoles.map((r) => ({ name: r.name, need: r.need })),
     deadline: els.postDeadlineInput.value,
   };
   const hasContent = draft.title.trim() || draft.description.trim() || draft.contact.trim()
-    || draft.freeTags.trim() || draft.selectedTags.length > 0;
+    || draft.freeTags.trim() || draft.selectedTags.length > 0 || draft.roles.length > 0;
   try {
     if (hasContent) {
       localStorage.setItem(POST_DRAFT_KEY, JSON.stringify(draft));
@@ -1902,6 +1940,8 @@ function restorePostDraft() {
   els.postTagsInput.value = draft.freeTags || '';
   postSelectedTags = new Set(draft.selectedTags || []);
   renderPostTagSelector();
+  postRoles = normalizeRoles(draft.roles).map((r) => ({ name: r.name, need: r.need }));
+  renderPostRolesEditor();
   if (draft.deadline) els.postDeadlineInput.value = draft.deadline;
   return true;
 }
@@ -1918,6 +1958,7 @@ function resetPostForm() {
   els.postForm.reset();
   els.postSubmitBtn.disabled = false;
   postSelectedTags = new Set();
+  postRoles = [];
   postSelectedFiles = [];
   postExistingImages = [];
   postExistingFiles = [];
@@ -1931,6 +1972,7 @@ function resetPostForm() {
   updateFileInputDisplay();
   updatePostModalBorder();
   renderPostTagSelector();
+  renderPostRolesEditor();
 }
 
 /* 既存の投稿を編集モードでフォームに反映 */
@@ -1954,6 +1996,9 @@ function openEditPostModal(post) {
   postSelectedTags = new Set(knownTags);
   els.postTagsInput.value = freeTags.join(',');
   renderPostTagSelector();
+
+  postRoles = (post.roles || []).map((r) => ({ name: r.name, need: r.need }));
+  renderPostRolesEditor();
 
   postExistingImages = (post.images || []).slice();
   postExistingFiles = (post.files || []).slice();
@@ -2071,7 +2116,10 @@ function setupPostModal() {
   });
 
   // カテゴリ変更 → モーダル枠色切替
-  els.postCategoryInput.addEventListener('change', updatePostModalBorder);
+  els.postCategoryInput.addEventListener('change', () => {
+    updatePostModalBorder();
+    renderPostRolesEditor();
+  });
 
   // タイトル文字数カウンター
   els.postTitleInput.addEventListener('input', () => {
@@ -2143,8 +2191,15 @@ function setupPostModal() {
 
       if (isEditing) {
         const postId = editingPostId;
+        // 編集前の投稿から、すでに埋まっている人数を引き継ぐ
+        const editingPost = [state.allPosts, mySettingsPosts, pinnedPosts]
+          .map((list) => (list || []).find((p) => p.id === postId))
+          .find(Boolean);
+        const roles = collectPostRoles(editingPost && editingPost.roles);
+
         await fb.updateDoc(fb.doc(fb.db, 'posts', String(postId)), {
           category, title, description, tags: tagsToSave, contact, images, files,
+          roles,
           edited: true,
         });
 
@@ -2159,6 +2214,7 @@ function setupPostModal() {
           post.contact = contact;
           post.images = images;
           post.files = files;
+          post.roles = roles.map((r) => ({ ...r }));
           post.edited = true;
         });
         editingPostId = null;
@@ -2171,8 +2227,10 @@ function setupPostModal() {
       }
 
       const deadlineDays = Math.min(365, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
+      const roles = collectPostRoles(null);
       const docData = {
         category, title, description, tags: tagsToSave, contact, images, files,
+        roles,
         deadlineDays,
         createdAt: fb.serverTimestamp(),
         pinnedBy: [],
@@ -2187,6 +2245,7 @@ function setupPostModal() {
       const newPost = {
         id: docRef.id,
         category, title, description, tags: tagsToSave, contact, images, files,
+        roles,
         date: formatDate(new Date()),
         createdAt: new Date(),
         deadlineDays,
@@ -2607,6 +2666,381 @@ function renderPublicProfile(data) {
     a.textContent = safe;
     els.publicProfileLinks.appendChild(a);
   });
+}
+
+/* =========================================================
+   募集する役割（枠）
+   募集を文章だけで伝えるのではなく、「どの役割が何人必要で、
+   いま何人埋まっているか」を枠として持たせる。
+   応募のやり取り自体はサイトの外（X・Discordなど）で行うため、
+   埋まった人数は投稿者がマイページから自分で更新する。
+   ========================================================= */
+
+const MAX_POST_ROLES = 6;   // 1つの募集に置ける役割の数
+const MAX_ROLE_NEED = 9;    // 1つの役割で募集できる人数
+
+/* 役割名は「〇〇募集」タグから作る。タグを増やせば選択肢も増える。
+   「経験者募集」は役割ではなく条件なので、ここからは外す。 */
+const ROLE_TAG_EXCLUDE = ['経験者募集'];
+
+function getRoleOptions(category) {
+  const tags = CATEGORY_TAGS[category] || CATEGORY_TAGS.all || [];
+  return [...new Set(
+    tags.filter((t) => t.endsWith('募集') && !ROLE_TAG_EXCLUDE.includes(t))
+        .map((t) => t.slice(0, -2))
+  )];
+}
+
+/* 保存されている役割を、表示に使える形へそろえる。
+   古い投稿や壊れたデータが混ざっていても落ちないようにする。 */
+function normalizeRoles(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((r) => {
+      if (!r || typeof r.name !== 'string') return null;
+      const name = r.name.trim().slice(0, 20);
+      if (!name) return null;
+      const need = Math.min(MAX_ROLE_NEED, Math.max(1, Math.floor(Number(r.need)) || 1));
+      const filled = Math.min(need, Math.max(0, Math.floor(Number(r.filled)) || 0));
+      return { name, need, filled };
+    })
+    .filter(Boolean)
+    .slice(0, MAX_POST_ROLES);
+}
+
+function getRoleTotals(post) {
+  const roles = (post && post.roles) || [];
+  const need = roles.reduce((sum, r) => sum + r.need, 0);
+  const filled = roles.reduce((sum, r) => sum + r.filled, 0);
+  return { need, filled, remaining: Math.max(0, need - filled) };
+}
+
+/* 役割を設定していて、かつ全部埋まっている募集か */
+function isPostFull(post) {
+  const roles = (post && post.roles) || [];
+  return roles.length > 0 && getRoleTotals(post).remaining === 0;
+}
+
+function roleFillPercent(role) {
+  if (!role || !role.need) return 0;
+  return Math.min(100, Math.round((role.filled / role.need) * 100));
+}
+
+/* 残り人数の見出し。「あと1人」で始動できることが伝わるようにする */
+function createRoleRemainingBadge(post) {
+  const totals = getRoleTotals(post);
+  const badge = document.createElement('span');
+  badge.className = 'post-role-remaining';
+  if (totals.remaining === 0) {
+    badge.classList.add('done');
+    badge.textContent = 'メンバーが揃いました';
+  } else {
+    if (totals.remaining <= 2) badge.classList.add('near');
+    badge.textContent = 'あと' + totals.remaining + '人';
+  }
+  return badge;
+}
+
+/* 募集カード用。埋まり具合をチップの背景バーで見せる */
+function createPostRolesSummary(post) {
+  const roles = (post && post.roles) || [];
+  if (roles.length === 0) return null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'post-roles';
+
+  roles.forEach((role) => {
+    const chip = document.createElement('span');
+    chip.className = 'post-role-chip' + (role.filled >= role.need ? ' filled' : '');
+
+    const bar = document.createElement('span');
+    bar.className = 'post-role-chip-bar';
+    bar.style.width = roleFillPercent(role) + '%';
+    chip.appendChild(bar);
+
+    const name = document.createElement('span');
+    name.className = 'post-role-chip-name';
+    name.textContent = role.name;
+    chip.appendChild(name);
+
+    const count = document.createElement('span');
+    count.className = 'post-role-chip-count';
+    count.textContent = role.filled + '/' + role.need;
+    chip.appendChild(count);
+
+    wrap.appendChild(chip);
+  });
+
+  wrap.appendChild(createRoleRemainingBadge(post));
+  return wrap;
+}
+
+/* 投稿詳細用。1行ずつバーを並べて、どの枠が空いているかを分かりやすくする */
+function createPostRolesDetail(post) {
+  const roles = (post && post.roles) || [];
+  if (roles.length === 0) return null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'detail-roles-box';
+
+  const head = document.createElement('div');
+  head.className = 'detail-roles-head';
+
+  const label = document.createElement('span');
+  label.className = 'detail-roles-label';
+  label.textContent = '募集している役割';
+  head.appendChild(label);
+  head.appendChild(createRoleRemainingBadge(post));
+  wrap.appendChild(head);
+
+  roles.forEach((role) => {
+    const row = document.createElement('div');
+    row.className = 'detail-role-row' + (role.filled >= role.need ? ' filled' : '');
+
+    const name = document.createElement('span');
+    name.className = 'detail-role-name';
+    name.textContent = role.name;
+    row.appendChild(name);
+
+    const bar = document.createElement('span');
+    bar.className = 'detail-role-bar';
+    const fill = document.createElement('span');
+    fill.className = 'detail-role-bar-fill';
+    fill.style.width = roleFillPercent(role) + '%';
+    bar.appendChild(fill);
+    row.appendChild(bar);
+
+    const count = document.createElement('span');
+    count.className = 'detail-role-count';
+    count.textContent = role.filled + ' / ' + role.need;
+    row.appendChild(count);
+
+    wrap.appendChild(row);
+  });
+
+  return wrap;
+}
+
+/* ---------------- 投稿フォームの役割入力 ---------------- */
+
+/* 選択肢を組み立てる。いま選んでいるカテゴリでよく使う役割を上に、
+   それ以外を下にまとめる（ゲームでイラストを募集したい場合などがあるため）。 */
+function fillRoleSelect(select, categoryOptions, current) {
+  const allOptions = getRoleOptions('all');
+  const others = allOptions.filter((r) => !categoryOptions.includes(r));
+
+  const addGroup = (label, list) => {
+    if (list.length === 0) return;
+    const group = document.createElement('optgroup');
+    group.label = label;
+    list.forEach((name) => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      group.appendChild(opt);
+    });
+    select.appendChild(group);
+  };
+
+  addGroup('このカテゴリでよくある役割', categoryOptions);
+  addGroup('その他の役割', others);
+
+  // 選択肢から消えた役割を持つ古い投稿を編集しても、値が飛ばないようにする
+  if (current && !allOptions.includes(current)) {
+    const opt = document.createElement('option');
+    opt.value = current;
+    opt.textContent = current;
+    select.appendChild(opt);
+  }
+
+  select.value = current || categoryOptions[0] || allOptions[0] || '';
+}
+
+function renderPostRolesEditor() {
+  if (!els.postRolesEditor) return;
+
+  const categoryOptions = getRoleOptions(els.postCategoryInput.value);
+  els.postRolesEditor.innerHTML = '';
+
+  postRoles.forEach((role, index) => {
+    const row = document.createElement('div');
+    row.className = 'post-role-row';
+
+    const select = document.createElement('select');
+    select.className = 'post-role-select';
+    fillRoleSelect(select, categoryOptions, role.name);
+    select.addEventListener('change', () => { postRoles[index].name = select.value; });
+    row.appendChild(select);
+
+    const need = document.createElement('input');
+    need.type = 'number';
+    need.className = 'post-role-need';
+    need.min = '1';
+    need.max = String(MAX_ROLE_NEED);
+    need.value = String(role.need);
+    need.addEventListener('input', () => {
+      postRoles[index].need = Math.min(MAX_ROLE_NEED, Math.max(1, parseInt(need.value, 10) || 1));
+    });
+    row.appendChild(need);
+
+    const unit = document.createElement('span');
+    unit.className = 'post-role-unit';
+    unit.textContent = '人';
+    row.appendChild(unit);
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'post-role-remove';
+    remove.textContent = '×';
+    remove.setAttribute('aria-label', 'この役割を削除');
+    remove.addEventListener('click', () => {
+      postRoles.splice(index, 1);
+      renderPostRolesEditor();
+    });
+    row.appendChild(remove);
+
+    els.postRolesEditor.appendChild(row);
+  });
+
+  els.postAddRoleBtn.disabled = postRoles.length >= MAX_POST_ROLES;
+}
+
+function setupPostRoles() {
+  if (!els.postAddRoleBtn) return;
+
+  els.postAddRoleBtn.addEventListener('click', () => {
+    if (postRoles.length >= MAX_POST_ROLES) return;
+    const options = getRoleOptions(els.postCategoryInput.value);
+    // まだ使っていない役割を初期値にしておくと、続けて追加しやすい
+    const unused = options.find((r) => !postRoles.some((x) => x.name === r));
+    postRoles.push({ name: unused || options[0] || '', need: 1 });
+    renderPostRolesEditor();
+  });
+}
+
+/* フォームの入力内容を保存用の形にまとめる。
+   同じ役割を2回選んでいたら人数を足して1つにする。
+   編集のときは、すでに埋まっている人数を引き継ぐ。 */
+function collectPostRoles(existingRoles) {
+  const byName = new Map();
+  postRoles.forEach((r) => {
+    const name = String(r.name || '').trim().slice(0, 20);
+    if (!name) return;
+    const need = Math.min(MAX_ROLE_NEED, Math.max(1, Math.floor(Number(r.need)) || 1));
+    const prev = byName.get(name);
+    byName.set(name, { name, need: Math.min(MAX_ROLE_NEED, (prev ? prev.need : 0) + need) });
+  });
+
+  const filledByName = new Map((existingRoles || []).map((r) => [r.name, r.filled]));
+  return [...byName.values()].slice(0, MAX_POST_ROLES).map((r) => ({
+    name: r.name,
+    need: r.need,
+    filled: Math.min(r.need, filledByName.get(r.name) || 0),
+  }));
+}
+
+/* ---------------- 投稿者による埋まり具合の更新 ---------------- */
+
+/* ＋／−を連打しても書き込みが増えないよう、少し待ってからまとめて保存する */
+const roleSaveTimers = new Map();
+
+function savePostRoles(post) {
+  const fb = window._firebase;
+  if (!fb || !post) return;
+
+  clearTimeout(roleSaveTimers.get(post.id));
+  roleSaveTimers.set(post.id, setTimeout(async () => {
+    roleSaveTimers.delete(post.id);
+    try {
+      await fb.updateDoc(fb.doc(fb.db, 'posts', String(post.id)), { roles: post.roles });
+    } catch (err) {
+      console.error('役割の更新に失敗しました:', err);
+      showToast('役割の更新に失敗しました');
+    }
+  }, 700));
+}
+
+/* 同じ投稿を一覧・マイページ・ピン止めがそれぞれ持っているため、まとめて反映する */
+function applyRolesToLists(postId, roles) {
+  [state.allPosts, mySettingsPosts, pinnedPosts].forEach((list) => {
+    const target = (list || []).find((p) => p.id === postId);
+    if (target) target.roles = roles.map((r) => ({ ...r }));
+  });
+}
+
+/* マイページの「投稿済み募集」で、埋まった人数を増減する欄 */
+function createMyPostRoleEditor(post) {
+  const roles = (post && post.roles) || [];
+  if (roles.length === 0) return null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'my-post-roles';
+
+  const head = document.createElement('div');
+  head.className = 'my-post-roles-head';
+
+  const label = document.createElement('span');
+  label.className = 'my-post-roles-label';
+  label.textContent = '役割の埋まり具合';
+  head.appendChild(label);
+  head.appendChild(createRoleRemainingBadge(post));
+  wrap.appendChild(head);
+
+  roles.forEach((role, index) => {
+    const row = document.createElement('div');
+    row.className = 'my-post-role-row';
+
+    const name = document.createElement('span');
+    name.className = 'my-post-role-name';
+    name.textContent = role.name;
+    row.appendChild(name);
+
+    const stepper = document.createElement('div');
+    stepper.className = 'my-post-role-stepper';
+
+    const makeBtn = (text, delta, aria) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'my-post-role-step-btn';
+      btn.textContent = text;
+      btn.setAttribute('aria-label', role.name + aria);
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const next = Math.min(role.need, Math.max(0, post.roles[index].filled + delta));
+        if (next === post.roles[index].filled) return;
+        post.roles[index].filled = next;
+        applyRolesToLists(post.id, post.roles);
+        savePostRoles(post);
+        renderOwnPostList('myposts');
+        renderExpiredPosts();
+        renderPosts();
+      });
+      return btn;
+    };
+
+    const minus = makeBtn('−', -1, 'を1人減らす');
+    minus.disabled = role.filled <= 0;
+    stepper.appendChild(minus);
+
+    const count = document.createElement('span');
+    count.className = 'my-post-role-count';
+    count.textContent = role.filled + ' / ' + role.need;
+    stepper.appendChild(count);
+
+    const plus = makeBtn('＋', 1, 'を1人増やす');
+    plus.disabled = role.filled >= role.need;
+    stepper.appendChild(plus);
+
+    row.appendChild(stepper);
+    wrap.appendChild(row);
+  });
+
+  const hint = document.createElement('p');
+  hint.className = 'my-post-roles-hint';
+  hint.textContent = '人が決まったらここを増やすと、募集カードの表示に反映されます。';
+  wrap.appendChild(hint);
+
+  return wrap;
 }
 
 /* =========================================================
@@ -3840,6 +4274,12 @@ function createMyPostDetail(post, key) {
   }
 
   card.appendChild(footer);
+
+  // 自分の募集（投稿済み・期限切れ）では、埋まった人数をここで更新できる
+  if (POST_LIST_VIEWS[key].detailAction !== 'unpin') {
+    const roleEditor = createMyPostRoleEditor(post);
+    if (roleEditor) card.appendChild(roleEditor);
+  }
 
   const actionBtn = document.createElement('button');
   actionBtn.type = 'button';
