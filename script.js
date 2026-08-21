@@ -546,6 +546,7 @@ function init() {
   setupPostModal();
   setupPostRoles();
   setupInfiniteScroll();
+  watchPostsGridWidth();
   setupGenericConfirm();
   setupDeadlineEditModal();
   setupFirebase();
@@ -826,6 +827,7 @@ function renderPosts() {
     els.postsGrid.appendChild(end);
   }
 
+  clampPostCardRows();
   fillPostsIfNeeded();
 }
 
@@ -837,6 +839,82 @@ function fillPostsIfNeeded() {
   const el = els.postsPane;
   if (el.clientHeight > 0 && el.scrollHeight <= el.clientHeight + 1) {
     loadMorePosts();
+  }
+}
+
+/* 編集フォームの内容が、いま保存されている投稿と同じかどうかを調べる。
+   同じなら「編集済み」を付けず、Firestoreへの書き込みも省く。
+   タグは並び替えただけなら変更とみなさない。 */
+function isSamePostContent(post, next) {
+  if (!post) return false; // 元の投稿が手元に無いときは、念のため変更ありとして扱う
+
+  const sameList = (a, b, equal) => {
+    const x = a || [];
+    const y = b || [];
+    return x.length === y.length && x.every((v, i) => equal(v, y[i]));
+  };
+  const sorted = (list) => [...(list || [])].sort();
+
+  return post.category === next.category
+    && post.title === next.title
+    && post.description === next.description
+    && (post.contact || '') === next.contact
+    && sameList(sorted(post.tags), sorted(next.tags), (a, b) => a === b)
+    && sameList(post.images, next.images, (a, b) => a === b)
+    && sameList(post.files, next.files, (a, b) => !!a && !!b && a.name === b.name && a.url === b.url)
+    && sameList(post.roles, next.roles,
+        (a, b) => !!a && !!b && a.name === b.name && a.need === b.need && a.filled === b.filled);
+}
+
+/* 横1行に収まらない分を隠して、最後に「+3」とまとめて示す。
+   カードは高さをそろえたいので折り返さず、ここで畳んでしまう。
+   隠れた分は、カードを開けば投稿詳細ですべて見られる。 */
+function clampRowItems(row) {
+  const more = row.querySelector('[data-overflow-count]');
+  if (!more) return;
+
+  const items = [...row.children].filter((el) => el !== more);
+
+  // 幅が変わったときにやり直せるよう、いったん全部戻してから測る
+  items.forEach((el) => { el.style.display = ''; });
+  more.style.display = 'none';
+  if (row.scrollWidth <= row.clientWidth) return;
+
+  // 「+3」自体にも幅が要るので、先に出しておいてから縮めていく
+  more.style.display = '';
+  let hidden = 0;
+  for (let i = items.length - 1; i >= 0; i--) {
+    items[i].style.display = 'none';
+    hidden++;
+    more.textContent = '+' + hidden;
+    if (row.scrollWidth <= row.clientWidth) break;
+  }
+}
+
+/* 一覧のカードのうち、畳む対象の行をまとめて処理する */
+function clampPostCardRows() {
+  els.postsGrid.querySelectorAll('[data-overflow-row]').forEach(clampRowItems);
+}
+
+/* 一覧の幅が変わると入る個数も変わるため、そのつど測り直す。
+   高さの変化で無限に呼ばれないよう、幅が実際に変わったときだけ動かす。 */
+let lastPostsGridWidth = -1;
+let postsGridObserver = null;   // 変数に持っておかないと回収されて監視が止まる
+function watchPostsGridWidth() {
+  const onWidthChange = () => {
+    const width = Math.round(els.postsGrid.clientWidth);
+    if (width === lastPostsGridWidth) return;
+    lastPostsGridWidth = width;
+    clampPostCardRows();
+  };
+
+  // 画面サイズの変更。実際に幅が変わったときだけ測り直す
+  window.addEventListener('resize', onWidthChange);
+
+  // 画面サイズ以外の理由で一覧の幅が変わった場合も拾う
+  if (typeof ResizeObserver !== 'undefined') {
+    postsGridObserver = new ResizeObserver(onWidthChange);
+    postsGridObserver.observe(els.postsGrid);
   }
 }
 
@@ -907,6 +985,7 @@ function createPostCard(post) {
   // タグ（横スクロールで表示。クリックでそのタグを検索）
   const tagsWrap = document.createElement('div');
   tagsWrap.className = 'post-tags';
+  tagsWrap.dataset.overflowRow = '';
   post.tags.forEach((tag) => {
     const pill = document.createElement('span');
     pill.className = 'tag-pill';
@@ -917,6 +996,12 @@ function createPostCard(post) {
     });
     tagsWrap.appendChild(pill);
   });
+  // 入りきらないタグの件数をここにまとめる（クリックはカードの詳細表示に任せる）
+  const tagsMore = document.createElement('span');
+  tagsMore.className = 'tag-pill tag-pill-more';
+  tagsMore.dataset.overflowCount = '';
+  tagsMore.style.display = 'none';
+  tagsWrap.appendChild(tagsMore);
   card.appendChild(tagsWrap);
 
   // 募集している役割（設定されている投稿だけ）
@@ -2220,10 +2305,25 @@ function setupPostModal() {
         const repost = editingIsRepost;
         const repostDays = Math.min(365, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
 
+        // 何も直さずに保存したときに「編集済み」が付かないようにする
+        const changed = !isSamePostContent(editingPost, {
+          category, title, description, contact, tags: tagsToSave, images, files, roles,
+        });
+
+        // 内容も変わっておらず再投稿でもないなら、書き込む必要がない
+        if (!changed && !repost) {
+          editingPostId = null;
+          editingIsRepost = false;
+          closePostModal();
+          showToast('変更はありませんでした');
+          return;
+        }
+
         await fb.updateDoc(fb.doc(fb.db, 'posts', String(postId)), {
           category, title, description, tags: tagsToSave, contact, images, files,
           roles,
-          edited: true,
+          // 内容が変わっていないなら、editedは今のままにしておく
+          ...(changed ? { edited: true } : {}),
           ...(repost ? { createdAt: fb.serverTimestamp(), deadlineDays: repostDays, closed: false } : {}),
         });
 
@@ -2241,7 +2341,7 @@ function setupPostModal() {
           post.images = images;
           post.files = files;
           post.roles = roles.map((r) => ({ ...r }));
-          post.edited = true;
+          if (changed) post.edited = true;
           if (repost) {
             post.createdAt = repostCreatedAt;
             post.date = formatDate(repostCreatedAt);
@@ -2795,6 +2895,12 @@ function createPostRolesSummary(post) {
   const wrap = document.createElement('div');
   wrap.className = 'post-roles';
 
+  // チップだけを畳む。残り人数は常に見えるようにこの外へ置く
+  const chips = document.createElement('div');
+  chips.className = 'post-roles-chips';
+  chips.dataset.overflowRow = '';
+  wrap.appendChild(chips);
+
   roles.forEach((role) => {
     const chip = document.createElement('span');
     chip.className = 'post-role-chip' + (role.filled >= role.need ? ' filled' : '');
@@ -2814,8 +2920,14 @@ function createPostRolesSummary(post) {
     count.textContent = role.filled + '/' + role.need;
     chip.appendChild(count);
 
-    wrap.appendChild(chip);
+    chips.appendChild(chip);
   });
+
+  const chipsMore = document.createElement('span');
+  chipsMore.className = 'post-role-chip-more';
+  chipsMore.dataset.overflowCount = '';
+  chipsMore.style.display = 'none';
+  chips.appendChild(chipsMore);
 
   wrap.appendChild(createRoleRemainingBadge(post));
   return wrap;
