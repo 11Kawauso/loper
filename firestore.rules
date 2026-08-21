@@ -96,7 +96,19 @@ service cloud.firestore {
         && request.resource.data.avatarUrl is string && request.resource.data.avatarUrl.size() <= 400000
         && request.resource.data.bio is string && request.resource.data.bio.size() <= 1000
         && request.resource.data.contact is string && request.resource.data.contact.size() <= 50
-        && request.resource.data.links is list && request.resource.data.links.size() <= 10;
+        && request.resource.data.links is list && request.resource.data.links.size() <= 10
+        // GitHub連携（未連携・非表示のときはnull）。中身はクライアントが
+        // GitHubの公開APIから取ってきたものなので、形と大きさだけ確認する
+        && (!('github' in request.resource.data) || request.resource.data.github == null || (
+             request.resource.data.github is map
+             && request.resource.data.github.keys().hasOnly(['login', 'languages', 'repos', 'fetchedAt'])
+             && request.resource.data.github.login is string
+             && request.resource.data.github.login.size() <= 39
+             && request.resource.data.github.languages is list
+             && request.resource.data.github.languages.size() <= 5
+             && request.resource.data.github.repos is list
+             && request.resource.data.github.repos.size() <= 3
+           ));
       // アカウント削除時に本人が自分のデータを消せるようにする
       allow delete: if request.auth != null && request.auth.uid == uid;
     }

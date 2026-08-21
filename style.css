@@ -2602,6 +2602,154 @@ button {
   cursor: default;
 }
 
+/* ================= GitHub連携 ================= */
+.profile-github {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  flex-shrink: 0;
+}
+
+.profile-github-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.profile-github-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #FFFFFF;
+}
+
+.profile-github-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+}
+
+.profile-github-toggle input {
+  cursor: pointer;
+}
+
+.profile-github-note {
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* カード本体（マイページ・他人のプロフィールで共通） */
+.github-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 16px;
+  background: var(--profile-field-bg);
+  padding: 14px 16px;
+  flex-shrink: 0;
+}
+
+.github-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tag-pill-text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.github-card-head:hover .github-card-login {
+  text-decoration: underline;
+}
+
+.github-card-mark {
+  flex-shrink: 0;
+}
+
+.github-card-login {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.github-card-label {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--tag-pill-text);
+  opacity: 0.75;
+}
+
+/* よく使っている言語（数は出さず、並べるだけ） */
+.github-langs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.github-lang {
+  border-radius: 12px;
+  background: #FFFFFF;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--tag-pill-text);
+}
+
+/* 最近つくったもの */
+.github-repos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.github-repo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 12px;
+  background: #FFFFFF;
+  padding: 8px 12px;
+  text-decoration: none;
+  transition: filter 0.15s;
+}
+
+.github-repo:hover {
+  filter: brightness(0.97);
+}
+
+.github-repo-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--tag-pill-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.github-repo-desc {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dark);
+  opacity: 0.8;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.github-empty {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--tag-pill-text);
+  opacity: 0.8;
+}
+
 /* ================= ログインセクション ================= */
 .mypage-login-section {
   display: flex;

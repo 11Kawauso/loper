@@ -496,6 +496,19 @@
 
         <div class="profile-links" id="profileLinks"></div>
         <button class="profile-add-link-btn" id="profileAddLinkBtn" type="button">＋ リンクを追加</button>
+
+        <!-- GitHub連携（GitHubでログインしている人だけ中身が入る） -->
+        <div class="profile-github" id="profileGithubSection">
+          <div class="profile-github-head">
+            <span class="profile-github-title">GitHub</span>
+            <label class="profile-github-toggle" id="profileGithubToggleWrap" style="display:none;">
+              <input type="checkbox" id="profileGithubVisible" checked>
+              プロフィールに表示する
+            </label>
+          </div>
+          <div class="github-card" id="profileGithubCard" style="display:none;"></div>
+          <p class="profile-github-note" id="profileGithubNote"></p>
+        </div>
       </div>
 
       <!-- メッセージ -->
@@ -584,6 +597,7 @@
       </div>
       <div class="public-profile-bio" id="publicProfileBio"></div>
       <div class="public-profile-links" id="publicProfileLinks"></div>
+      <div class="github-card" id="publicProfileGithub" style="display:none;"></div>
 
       <p class="public-profile-blocked-note" id="publicProfileBlockedNote" style="display:none;">
         このユーザーをブロックしています。相手からのメッセージは届きません。
@@ -620,7 +634,7 @@
 <script src="script.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-  import { getAuth, GithubAuthProvider, TwitterAuthProvider, signInWithPopup, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+  import { getAuth, GithubAuthProvider, TwitterAuthProvider, signInWithPopup, signOut, onAuthStateChanged, deleteUser, getAdditionalUserInfo } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
   import {
     getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc,
     query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, arrayRemove,
@@ -642,7 +656,7 @@
 
   window._firebase = {
     auth, db,
-    GithubAuthProvider, TwitterAuthProvider, signInWithPopup, signOut, onAuthStateChanged, deleteUser,
+    GithubAuthProvider, TwitterAuthProvider, signInWithPopup, signOut, onAuthStateChanged, deleteUser, getAdditionalUserInfo,
     doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc,
     query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, arrayRemove,
   };

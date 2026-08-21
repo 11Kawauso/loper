@@ -192,6 +192,8 @@ const state = {
     bio: '',
     contact: '',
     links: [''],
+    github: null,          // GitHubから取得した公開情報（下のGitHub連携を参照）
+    githubVisible: true,   // 他の人のプロフィール画面に出すかどうか
   },
 };
 
@@ -457,6 +459,11 @@ function cacheElements() {
   els.profileBio = document.getElementById('profileBio');
   els.profileLinksContainer = document.getElementById('profileLinks');
   els.profileAddLinkBtn = document.getElementById('profileAddLinkBtn');
+  els.profileGithubSection = document.getElementById('profileGithubSection');
+  els.profileGithubToggleWrap = document.getElementById('profileGithubToggleWrap');
+  els.profileGithubVisible = document.getElementById('profileGithubVisible');
+  els.profileGithubCard = document.getElementById('profileGithubCard');
+  els.profileGithubNote = document.getElementById('profileGithubNote');
   els.myPageLoginSection = document.getElementById('myPageLoginSection');
   els.myPageContent = document.getElementById('myPageContent');
   els.githubLoginBtn = document.getElementById('githubLoginBtn');
@@ -472,6 +479,7 @@ function cacheElements() {
   els.publicProfileContactValue = document.getElementById('publicProfileContactValue');
   els.publicProfileBio = document.getElementById('publicProfileBio');
   els.publicProfileLinks = document.getElementById('publicProfileLinks');
+  els.publicProfileGithub = document.getElementById('publicProfileGithub');
   els.publicProfileMessageBtn = document.getElementById('publicProfileMessageBtn');
   els.publicProfileActions = document.getElementById('publicProfileActions');
   els.publicProfileReportBtn = document.getElementById('publicProfileReportBtn');
@@ -521,6 +529,7 @@ function init() {
   setupAvatarCrop();
   setupMyPage();
   setupPublicProfile();
+  setupProfileGithub();
   setupMessageCompose();
   setupUserReport();
   applyProfileAvatar();
@@ -2583,6 +2592,9 @@ function renderPublicProfile(data) {
 
   els.publicProfileBio.textContent = data.bio || '';
 
+  const hasGithub = renderGithubCard(els.publicProfileGithub, data.github);
+  els.publicProfileGithub.style.display = hasGithub ? '' : 'none';
+
   els.publicProfileLinks.innerHTML = '';
   (data.links || []).forEach((url) => {
     const safe = toSafeLinkUrl(url);
@@ -2594,6 +2606,226 @@ function renderPublicProfile(data) {
     a.rel = 'noopener noreferrer';
     a.textContent = safe;
     els.publicProfileLinks.appendChild(a);
+  });
+}
+
+/* =========================================================
+   GitHub連携
+   GitHubでログインしたときだけ、公開リポジトリから
+   「よく使っている言語」と「最近つくったもの」を取り出して
+   プロフィールに自動で載せる。
+   スター数・コミット数・草のような優劣がつく数字は、
+   経験の浅い人が萎縮しないよう意図的に出さない。
+   ========================================================= */
+
+const GITHUB_LANG_LIMIT = 5;                    // 表示する言語の数
+const GITHUB_REPO_LIMIT = 3;                    // 表示するリポジトリの数
+const GITHUB_REFRESH_MS = 24 * 60 * 60 * 1000;  // 取得しなおす間隔（1日）
+
+const GITHUB_MARK_SVG = '<svg class="github-card-mark" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>';
+
+let pendingGithubUsername = null;  // ログイン直後に受け取ったGitHubのユーザー名
+let profileLoading = false;        // onFirebaseLoginの処理中か（保存の競合を防ぐ）
+
+/* GitHubのユーザー名として成り立つ文字列だけを通す。
+   そのままURLの一部にするので、ここで弾いておく。 */
+function toSafeGithubLogin(login) {
+  if (typeof login !== 'string') return null;
+  const trimmed = login.trim();
+  return /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(trimmed) ? trimmed : null;
+}
+
+/* ログイン直後に受け取ったユーザー名を使ってリポジトリを取得する。
+   signInWithPopupの完了とonFirebaseLoginは前後する可能性があるため、
+   両方から呼んで、条件がそろっている側だけが実行する。 */
+async function consumePendingGithubUsername() {
+  if (!pendingGithubUsername || !state.currentUser || profileLoading) return;
+  const login = pendingGithubUsername;
+  pendingGithubUsername = null;
+  await refreshGithubProfile(login, true);
+}
+
+/* このチェックが入る前からGitHubでログインしていた人向け。
+   ログイン結果を取り逃していても、providerDataに残っているGitHubの数値IDから
+   ユーザー名を引き直せるので、ログインし直さなくても連携できるようにする。 */
+async function resolveGithubLoginFromUser(user) {
+  const gh = (user.providerData || []).find((pd) => pd && pd.providerId === 'github.com');
+  if (!gh || !/^[0-9]{1,20}$/.test(String(gh.uid || ''))) return null;
+
+  try {
+    const res = await fetch('https://api.github.com/user/' + gh.uid);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return toSafeGithubLogin(data && data.login);
+  } catch (err) {
+    console.error('GitHubのユーザー名を取得できませんでした:', err);
+    return null;
+  }
+}
+
+/* GitHubの公開APIから自分のリポジトリを取得してまとめ、プロフィールに保存する。
+   取得するのは本人のブラウザからだけで、他の人が見るときは
+   publicProfilesに保存されたこの結果を読むだけにする
+   （閲覧のたびにAPIを叩くと、すぐに回数制限に当たるため）。 */
+async function refreshGithubProfile(login, force) {
+  const safeLogin = toSafeGithubLogin(login);
+  if (!safeLogin || !state.currentUser) return;
+
+  // 1日以内に取得済みならそのまま使う
+  const current = state.profile.github;
+  if (!force && current && current.fetchedAt) {
+    const age = Date.now() - new Date(current.fetchedAt).getTime();
+    if (age >= 0 && age < GITHUB_REFRESH_MS) return;
+  }
+
+  let repos;
+  try {
+    const res = await fetch('https://api.github.com/users/' + encodeURIComponent(safeLogin)
+      + '/repos?type=owner&sort=pushed&per_page=100');
+    if (!res.ok) throw new Error('GitHub API ' + res.status);
+    repos = await res.json();
+  } catch (err) {
+    console.error('GitHubの情報を取得できませんでした:', err);
+    return;
+  }
+  if (!Array.isArray(repos)) return;
+
+  // フォークやアーカイブ済みは「自分が作ったもの」ではないので除く
+  const own = repos.filter((r) => r && !r.fork && !r.archived && !r.private);
+
+  // 言語は使っているリポジトリが多い順。件数そのものは表示しない
+  const langCount = new Map();
+  own.forEach((r) => {
+    if (!r.language) return;
+    langCount.set(r.language, (langCount.get(r.language) || 0) + 1);
+  });
+  const languages = [...langCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, GITHUB_LANG_LIMIT)
+    .map(([lang]) => String(lang).slice(0, 30));
+
+  // APIがpushedの新しい順で返すので、先頭から数件をそのまま使う
+  const recentRepos = own.slice(0, GITHUB_REPO_LIMIT).map((r) => ({
+    name: String(r.name || '').slice(0, 100),
+    description: String(r.description || '').slice(0, 120),
+    url: toSafeLinkUrl(r.html_url) || ('https://github.com/' + safeLogin),
+  }));
+
+  state.profile.github = {
+    login: safeLogin,
+    languages,
+    repos: recentRepos,
+    fetchedAt: new Date().toISOString(),
+  };
+
+  renderMyGithubSection();
+  await saveProfileToFirestore();
+}
+
+function githubCardLabel(text) {
+  const el = document.createElement('div');
+  el.className = 'github-card-label';
+  el.textContent = text;
+  return el;
+}
+
+/* GitHubカードの中身を組み立てる。
+   マイページと他人のプロフィールの両方から使う。
+   表示するものが無ければfalseを返す。 */
+function renderGithubCard(container, data) {
+  if (!container) return false;
+  container.innerHTML = '';
+
+  const login = data && toSafeGithubLogin(data.login);
+  if (!login) return false;
+
+  const head = document.createElement('a');
+  head.className = 'github-card-head';
+  head.href = 'https://github.com/' + login;
+  head.target = '_blank';
+  head.rel = 'noopener noreferrer';
+  head.innerHTML = GITHUB_MARK_SVG;
+  const loginEl = document.createElement('span');
+  loginEl.className = 'github-card-login';
+  loginEl.textContent = '@' + login;
+  head.appendChild(loginEl);
+  container.appendChild(head);
+
+  const languages = (Array.isArray(data.languages) ? data.languages : [])
+    .filter((l) => typeof l === 'string' && l.trim() !== '')
+    .slice(0, GITHUB_LANG_LIMIT);
+  if (languages.length > 0) {
+    container.appendChild(githubCardLabel('よく使っている言語'));
+    const langWrap = document.createElement('div');
+    langWrap.className = 'github-langs';
+    languages.forEach((lang) => {
+      const pill = document.createElement('span');
+      pill.className = 'github-lang';
+      pill.textContent = lang;
+      langWrap.appendChild(pill);
+    });
+    container.appendChild(langWrap);
+  }
+
+  const repos = (Array.isArray(data.repos) ? data.repos : [])
+    .filter((r) => r && r.name && toSafeLinkUrl(r.url))
+    .slice(0, GITHUB_REPO_LIMIT);
+  if (repos.length > 0) {
+    container.appendChild(githubCardLabel('最近つくったもの'));
+    const list = document.createElement('div');
+    list.className = 'github-repos';
+    repos.forEach((r) => {
+      const a = document.createElement('a');
+      a.className = 'github-repo';
+      a.href = toSafeLinkUrl(r.url);
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'github-repo-name';
+      nameEl.textContent = r.name;
+      a.appendChild(nameEl);
+
+      const desc = String(r.description || '').trim();
+      if (desc) {
+        const descEl = document.createElement('span');
+        descEl.className = 'github-repo-desc';
+        descEl.textContent = desc;
+        a.appendChild(descEl);
+      }
+      list.appendChild(a);
+    });
+    container.appendChild(list);
+  }
+
+  // まだ何も公開していない人向け。GitHubへのリンクだけは残す
+  if (languages.length === 0 && repos.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'github-empty';
+    empty.textContent = '公開しているリポジトリはまだありません。';
+    container.appendChild(empty);
+  }
+  return true;
+}
+
+/* マイページのGitHub欄。GitHubでログインしていない人には案内文だけを出す */
+function renderMyGithubSection() {
+  if (!els.profileGithubCard) return;
+
+  const hasData = renderGithubCard(els.profileGithubCard, state.profile.github);
+  els.profileGithubCard.style.display = hasData ? '' : 'none';
+  els.profileGithubToggleWrap.style.display = hasData ? '' : 'none';
+  els.profileGithubVisible.checked = state.profile.githubVisible !== false;
+  els.profileGithubNote.textContent = hasData
+    ? '1日に1回、GitHubの公開リポジトリから自動で更新されます。'
+    : 'GitHubでログインすると、公開リポジトリからここが自動で作られます。';
+}
+
+function setupProfileGithub() {
+  if (!els.profileGithubVisible) return;
+  els.profileGithubVisible.addEventListener('change', () => {
+    state.profile.githubVisible = els.profileGithubVisible.checked;
+    saveProfileToFirestore();
   });
 }
 
@@ -3953,8 +4185,16 @@ async function loginWithGithub() {
   if (!fb) return;
   try {
     const provider = new fb.GithubAuthProvider();
-    await fb.signInWithPopup(fb.auth, provider);
+    const result = await fb.signInWithPopup(fb.auth, provider);
     setLastLoginProvider('github');
+
+    // GitHubのユーザー名はログイン結果からしか取れないので、ここで拾っておく
+    const info = fb.getAdditionalUserInfo ? fb.getAdditionalUserInfo(result) : null;
+    const ghLogin = info && info.username;
+    if (ghLogin) {
+      pendingGithubUsername = ghLogin;
+      consumePendingGithubUsername();
+    }
   } catch (err) {
     if (err.code !== 'auth/popup-closed-by-user') {
       showToast('ログインに失敗しました');
@@ -4034,6 +4274,7 @@ async function logoutFirebase() {
 
 async function onFirebaseLogin(user) {
   state.currentUser = user;
+  profileLoading = true;
 
   els.myPageLoginSection.style.display = 'none';
   els.myPageContent.style.display = 'flex';
@@ -4055,12 +4296,16 @@ async function onFirebaseLogin(user) {
       state.profile.bio = data.bio || '';
       state.profile.contact = data.contact || '';
       state.profile.links = data.links && data.links.length > 0 ? data.links : [''];
+      state.profile.github = data.github || null;
+      state.profile.githubVisible = data.githubVisible !== false;
     } else {
       state.profile.name = truncateName(user.displayName) || '名前';
       state.profile.avatarUrl = user.photoURL || '';
       state.profile.bio = '';
       state.profile.contact = '';
       state.profile.links = [''];
+      state.profile.github = null;
+      state.profile.githubVisible = true;
 
       await fb.setDoc(userRef, {
         name: state.profile.name,
@@ -4068,6 +4313,8 @@ async function onFirebaseLogin(user) {
         bio: state.profile.bio,
         contact: state.profile.contact,
         links: state.profile.links,
+        github: null,
+        githubVisible: true,
         authProvider: (user.providerData[0] && user.providerData[0].providerId) || 'unknown',
         authProviderUid: user.uid,
         authProviderName: user.displayName,
@@ -4089,7 +4336,23 @@ async function onFirebaseLogin(user) {
   applyProfileAvatar();
   applyMenuProfile();
   renderProfileLinks();
+  renderMyGithubSection();
   renderPosts();
+
+  profileLoading = false;
+
+  // ログイン直後ならそのユーザー名で取得し、そうでなければ古くなったものを取り直す。
+  // 表示はここで待たせず、取得できた時点で差し替える。
+  consumePendingGithubUsername().then(async () => {
+    const gh = state.profile.github;
+    if (gh && gh.login) {
+      refreshGithubProfile(gh.login, false);
+      return;
+    }
+    // まだ一度も取得していないGitHubユーザーは、ここで拾い直す
+    const login = await resolveGithubLoginFromUser(user);
+    if (login) refreshGithubProfile(login, true);
+  });
 }
 
 function onFirebaseLogout() {
@@ -4105,6 +4368,9 @@ function onFirebaseLogout() {
   state.profile.bio = '';
   state.profile.contact = '';
   state.profile.links = [''];
+  state.profile.github = null;
+  state.profile.githubVisible = true;
+  pendingGithubUsername = null;
 
   els.profileNameInput.textContent = state.profile.name;
   els.profileContactDisplay.value = state.profile.contact;
@@ -4112,6 +4378,7 @@ function onFirebaseLogout() {
   applyProfileAvatar();
   applyMenuProfile();
   renderProfileLinks();
+  renderMyGithubSection();
   renderPosts();
   closeDetailModal();
 
@@ -4148,6 +4415,8 @@ async function saveProfileToFirestore() {
       bio: state.profile.bio,
       contact: state.profile.contact,
       links: state.profile.links.filter(l => l.trim() !== ''),
+      github: state.profile.github || null,
+      githubVisible: state.profile.githubVisible !== false,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
     await savePublicProfileToFirestore();
@@ -4210,6 +4479,8 @@ async function savePublicProfileToFirestore() {
       bio: state.profile.bio || '',
       contact: state.profile.contact || '',
       links: state.profile.links.filter(l => l.trim() !== ''),
+      // 「プロフィールに表示する」を外している間は、他の人からは見えないようにする
+      github: state.profile.githubVisible !== false ? (state.profile.github || null) : null,
     });
   } catch (err) {
     console.error('公開プロフィールの保存に失敗しました:', err);
