@@ -101,6 +101,10 @@ service cloud.firestore {
         && request.resource.data.bio is string && request.resource.data.bio.size() <= 1000
         && request.resource.data.contact is string && request.resource.data.contact.size() <= 50
         && request.resource.data.links is list && request.resource.data.links.size() <= 10
+        // できる役割（あとから追加した項目のため、持っていないプロフィールも許容する）
+        && (!('roles' in request.resource.data) || (
+             request.resource.data.roles is list && request.resource.data.roles.size() <= 5
+           ))
         // GitHub連携（未連携・非表示のときはnull）。中身はクライアントが
         // GitHubの公開APIから取ってきたものなので、形と大きさだけ確認する
         && (!('github' in request.resource.data) || request.resource.data.github == null || (

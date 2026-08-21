@@ -154,6 +154,16 @@
 
         <!-- 投稿一覧 -->
         <div class="content-pane posts-pane" id="postsPane">
+
+          <!-- 役割での絞り込み中だけ出るバー -->
+          <div class="role-filter-bar" id="roleFilterBar" style="display:none;">
+            <div class="role-filter-head">
+              <span class="role-filter-label">募集中の役割</span>
+              <button type="button" class="role-filter-clear" id="roleFilterClear">すべて解除</button>
+            </div>
+            <div class="role-filter-chips" id="roleFilterChips"></div>
+          </div>
+
           <div class="posts-grid" id="postsGrid">
             <!-- 投稿カードはJSで生成 -->
           </div>
@@ -483,6 +493,7 @@
         </button>
       </div>
       <p class="last-login-hint" id="myPageLastLoginHint"></p>
+      <p class="login-prompt-legal">続行すると<a href="terms.html" target="_blank" rel="noopener">利用規約</a>および<a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意したことになります。</p>
     </div>
 
     <!-- ログイン後 -->
@@ -510,6 +521,16 @@
 
         <div class="profile-links" id="profileLinks"></div>
         <button class="profile-add-link-btn" id="profileAddLinkBtn" type="button">＋ リンクを追加</button>
+
+        <!-- できる役割（募集を探すときの手がかりになる） -->
+        <div class="profile-roles" id="profileRolesSection">
+          <div class="profile-roles-head">
+            <span class="profile-roles-title">できる役割</span>
+            <button type="button" class="profile-roles-search-btn" id="profileRolesSearchBtn">この役割で募集を探す</button>
+          </div>
+          <div class="profile-roles-picker" id="profileRolesPicker"></div>
+          <p class="profile-roles-note" id="profileRolesNote"></p>
+        </div>
 
         <!-- GitHub連携（GitHubでログインしている人だけ中身が入る） -->
         <div class="profile-github" id="profileGithubSection">
@@ -610,6 +631,7 @@
         <span class="public-profile-contact-value" id="publicProfileContactValue"></span>
       </div>
       <div class="public-profile-bio" id="publicProfileBio"></div>
+      <div class="public-profile-roles" id="publicProfileRoles" style="display:none;"></div>
       <div class="public-profile-links" id="publicProfileLinks"></div>
       <div class="github-card" id="publicProfileGithub" style="display:none;"></div>
 

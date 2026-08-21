@@ -3008,6 +3008,221 @@ button {
   color: var(--tag-pill-text);
 }
 
+/* ================= 役割での絞り込み ================= */
+
+/* 投稿一覧の上に出る「いま何で絞っているか」のバー */
+.role-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+  border: 1px solid var(--content-box-border);
+  border-radius: 14px;
+  background: var(--content-box-bg);
+  padding: 12px 16px;
+}
+
+.role-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.role-filter-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text-dark);
+}
+
+/* チップは常に見出しの下で、1行まるごと使って折り返す */
+.role-filter-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.role-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 12px;
+  background: var(--header-bg);
+  color: #FFFFFF;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.role-filter-chip:hover {
+  filter: brightness(1.08);
+}
+
+.role-filter-chip-remove {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.role-filter-clear {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--tag-pill-text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: opacity 0.15s;
+}
+
+.role-filter-clear:hover {
+  opacity: 0.7;
+}
+
+/* 空きのある役割は押して絞り込める */
+.post-role-chip.clickable {
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.post-role-chip.clickable:hover {
+  border-color: var(--header-bg);
+}
+
+.detail-role-row.clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  transition: background 0.15s;
+}
+
+.detail-role-row.clickable:hover {
+  background: var(--tag-pill-bg);
+}
+
+/* ================= プロフィールの「できる役割」 ================= */
+.profile-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  flex-shrink: 0;
+}
+
+.profile-roles-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.profile-roles-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #FFFFFF;
+}
+
+.profile-roles-search-btn {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 14px;
+  background: transparent;
+  color: #FFFFFF;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.profile-roles-search-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.profile-roles-search-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.profile-roles-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-radius: 14px;
+  background: var(--profile-field-bg);
+  padding: 12px;
+}
+
+.profile-role-pill {
+  border-radius: 12px;
+  background: #FFFFFF;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--tag-pill-text);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.profile-role-pill:hover {
+  background: var(--tag-pill-bg);
+}
+
+.profile-role-pill.selected {
+  background: var(--header-bg);
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+.profile-roles-note {
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* 他の人のプロフィールに出す役割 */
+.public-profile-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.public-profile-roles-label {
+  font-size: 11px;
+  color: var(--tag-pill-text);
+  opacity: 0.85;
+}
+
+.public-profile-roles-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.public-profile-role-pill {
+  border: none;
+  border-radius: 12px;
+  background: var(--profile-field-bg);
+  color: var(--tag-pill-text);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.public-profile-role-pill:hover {
+  background: var(--header-bg);
+  color: #FFFFFF;
+}
+
 /* ================= GitHub連携 ================= */
 .profile-github {
   display: flex;

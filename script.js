@@ -180,6 +180,7 @@ const state = {
   currentCategory: 'all',
   tagBarCategory: 'all',
   activeTags: new Set(),
+  activeRoles: new Set(),   // 「この役割を募集中」で絞り込む
   searchKeyword: '',
   searchIncludeBody: false,
   hideFullPosts: false,   // メンバーが揃った募集を隠すか
@@ -193,6 +194,7 @@ const state = {
     bio: '',
     contact: '',
     links: [''],
+    roles: [],             // できる役割（募集を探す・見つけてもらう手がかり）
     github: null,          // GitHubから取得した公開情報（下のGitHub連携を参照）
     githubVisible: true,   // 他の人のプロフィール画面に出すかどうか
   },
@@ -348,6 +350,9 @@ function cacheElements() {
   els.contentSlider = document.getElementById('contentSlider');
   els.postsPane = document.getElementById('postsPane');
   els.postsGrid = document.getElementById('postsGrid');
+  els.roleFilterBar = document.getElementById('roleFilterBar');
+  els.roleFilterChips = document.getElementById('roleFilterChips');
+  els.roleFilterClear = document.getElementById('roleFilterClear');
   els.logoHomeBtn = document.getElementById('logoHomeBtn');
 
   els.searchArea = document.getElementById('searchArea');
@@ -468,6 +473,10 @@ function cacheElements() {
   els.profileBio = document.getElementById('profileBio');
   els.profileLinksContainer = document.getElementById('profileLinks');
   els.profileAddLinkBtn = document.getElementById('profileAddLinkBtn');
+  els.profileRolesSection = document.getElementById('profileRolesSection');
+  els.profileRolesPicker = document.getElementById('profileRolesPicker');
+  els.profileRolesSearchBtn = document.getElementById('profileRolesSearchBtn');
+  els.profileRolesNote = document.getElementById('profileRolesNote');
   els.profileGithubSection = document.getElementById('profileGithubSection');
   els.profileGithubToggleWrap = document.getElementById('profileGithubToggleWrap');
   els.profileGithubVisible = document.getElementById('profileGithubVisible');
@@ -488,6 +497,7 @@ function cacheElements() {
   els.publicProfileContactValue = document.getElementById('publicProfileContactValue');
   els.publicProfileBio = document.getElementById('publicProfileBio');
   els.publicProfileLinks = document.getElementById('publicProfileLinks');
+  els.publicProfileRoles = document.getElementById('publicProfileRoles');
   els.publicProfileGithub = document.getElementById('publicProfileGithub');
   els.publicProfileMessageBtn = document.getElementById('publicProfileMessageBtn');
   els.publicProfileActions = document.getElementById('publicProfileActions');
@@ -538,6 +548,8 @@ function init() {
   setupAvatarCrop();
   setupMyPage();
   setupPublicProfile();
+  setupRoleFilter();
+  setupProfileRoles();
   setupProfileGithub();
   setupMessageCompose();
   setupUserReport();
@@ -720,6 +732,8 @@ function getFilteredPosts() {
   const filtered = state.allPosts.filter((post) => {
     if (isPostExpired(post)) return false;
     if (state.hideFullPosts && isPostFull(post)) return false;
+    // 役割の絞り込みは、キーワード検索中も外さずに効かせる（上のバーに出ているため）
+    if (state.activeRoles.size > 0 && !hasOpenRole(post, state.activeRoles)) return false;
 
     if (keyword) {
       const inTitle = post.title.toLowerCase().includes(keyword);
@@ -2797,6 +2811,8 @@ function renderPublicProfile(data) {
 
   els.publicProfileBio.textContent = data.bio || '';
 
+  renderPublicProfileRoles(data.roles);
+
   const hasGithub = renderGithubCard(els.publicProfileGithub, data.github);
   els.publicProfileGithub.style.display = hasGithub ? '' : 'none';
 
@@ -2920,6 +2936,17 @@ function createPostRolesSummary(post) {
     count.textContent = role.filled + '/' + role.need;
     chip.appendChild(count);
 
+    // まだ空きのある役割は、押すとその役割の募集だけに絞り込める。
+    // 埋まっている枠を押しても意味がないので、そちらは押せないままにする
+    if (role.filled < role.need) {
+      chip.classList.add('clickable');
+      chip.title = role.name + 'を募集している投稿を探す';
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleRoleFilter(role.name);
+      });
+    }
+
     chips.appendChild(chip);
   });
 
@@ -2972,6 +2999,12 @@ function createPostRolesDetail(post) {
     count.className = 'detail-role-count';
     count.textContent = role.filled + ' / ' + role.need;
     row.appendChild(count);
+
+    if (role.filled < role.need) {
+      row.classList.add('clickable');
+      row.title = role.name + 'を募集している投稿を探す';
+      row.addEventListener('click', () => toggleRoleFilter(role.name));
+    }
 
     wrap.appendChild(row);
   });
@@ -3247,6 +3280,169 @@ function createMyPostRoleEditor(post) {
   wrap.appendChild(hint);
 
   return wrap;
+}
+
+/* ---------------- 役割での絞り込み ---------------- */
+
+const MAX_PROFILE_ROLES = 5;   // プロフィールに登録できる「できる役割」の数
+
+/* その投稿が、指定された役割のどれかを「まだ空きのある状態で」募集しているか。
+   すでに埋まっている枠は募集中とは言えないので対象外にする。 */
+function hasOpenRole(post, names) {
+  return ((post && post.roles) || []).some((r) => names.has(r.name) && r.filled < r.need);
+}
+
+function toggleRoleFilter(name) {
+  const role = toSafeRoleName(name);
+  if (!role) return;
+  if (state.activeRoles.has(role)) {
+    state.activeRoles.delete(role);
+  } else {
+    state.activeRoles.add(role);
+  }
+  applyRoleFilter();
+}
+
+function setRoleFilter(names) {
+  state.activeRoles = new Set((names || []).map(toSafeRoleName).filter(Boolean));
+  applyRoleFilter();
+}
+
+/* 絞り込みを変えたら、一覧に戻して先頭から見せ直す */
+function applyRoleFilter() {
+  renderRoleFilterBar();
+  closeDetailModal();
+  renderPosts();
+  els.postsPane.scrollTop = 0;
+}
+
+function toSafeRoleName(name) {
+  if (typeof name !== 'string') return null;
+  const trimmed = name.trim().slice(0, 20);
+  return trimmed || null;
+}
+
+/* 選択中の役割を一覧の上に出す。何も選んでいなければバーごと隠す。 */
+function renderRoleFilterBar() {
+  if (!els.roleFilterBar) return;
+
+  const roles = [...state.activeRoles];
+  els.roleFilterBar.style.display = roles.length > 0 ? '' : 'none';
+  els.roleFilterChips.innerHTML = '';
+
+  roles.forEach((name) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'role-filter-chip';
+    chip.title = name + 'の絞り込みを外す';
+
+    const label = document.createElement('span');
+    label.textContent = name;
+    chip.appendChild(label);
+
+    const remove = document.createElement('span');
+    remove.className = 'role-filter-chip-remove';
+    remove.textContent = '×';
+    chip.appendChild(remove);
+
+    chip.addEventListener('click', () => toggleRoleFilter(name));
+    els.roleFilterChips.appendChild(chip);
+  });
+}
+
+function setupRoleFilter() {
+  if (!els.roleFilterClear) return;
+  els.roleFilterClear.addEventListener('click', () => setRoleFilter([]));
+}
+
+/* ---------------- プロフィールの「できる役割」 ---------------- */
+
+function normalizeProfileRoles(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  raw.forEach((name) => {
+    const role = toSafeRoleName(name);
+    if (role) seen.add(role);
+  });
+  return [...seen].slice(0, MAX_PROFILE_ROLES);
+}
+
+/* マイページのプロフィールで、できる役割を選ぶ欄。
+   投稿フォームと同じ語彙（「〇〇募集」タグ由来）から選ぶので、
+   募集側の枠とそのまま突き合わせられる。 */
+function renderProfileRolesPicker() {
+  if (!els.profileRolesPicker) return;
+
+  const selected = state.profile.roles || [];
+  els.profileRolesPicker.innerHTML = '';
+
+  getRoleOptions('all').forEach((name) => {
+    const pill = document.createElement('span');
+    pill.className = 'profile-role-pill' + (selected.includes(name) ? ' selected' : '');
+    pill.textContent = name;
+    pill.addEventListener('click', () => {
+      const current = state.profile.roles || [];
+      if (current.includes(name)) {
+        state.profile.roles = current.filter((r) => r !== name);
+      } else {
+        if (current.length >= MAX_PROFILE_ROLES) {
+          showToast('選べる役割は' + MAX_PROFILE_ROLES + 'つまでです');
+          return;
+        }
+        state.profile.roles = [...current, name];
+      }
+      renderProfileRolesPicker();
+      saveProfileToFirestore();
+    });
+    els.profileRolesPicker.appendChild(pill);
+  });
+
+  const count = (state.profile.roles || []).length;
+  els.profileRolesNote.textContent = count === 0
+    ? 'できることを選んでおくと、募集を探すときと、他の人から見つけてもらうときの手がかりになります。'
+    : count + ' / ' + MAX_PROFILE_ROLES + ' 選択中';
+  els.profileRolesSearchBtn.disabled = count === 0;
+}
+
+function setupProfileRoles() {
+  if (!els.profileRolesSearchBtn) return;
+  els.profileRolesSearchBtn.addEventListener('click', () => {
+    const roles = state.profile.roles || [];
+    if (roles.length === 0) return;
+    closeMyPage();
+    setRoleFilter(roles);
+  });
+}
+
+/* 他の人のプロフィールに出す役割。クリックするとその役割の募集を絞り込む。 */
+function renderPublicProfileRoles(roles) {
+  if (!els.publicProfileRoles) return;
+
+  const list = normalizeProfileRoles(roles);
+  els.publicProfileRoles.innerHTML = '';
+  els.publicProfileRoles.style.display = list.length > 0 ? '' : 'none';
+  if (list.length === 0) return;
+
+  const label = document.createElement('span');
+  label.className = 'public-profile-roles-label';
+  label.textContent = 'できる役割';
+  els.publicProfileRoles.appendChild(label);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'public-profile-roles-list';
+  list.forEach((name) => {
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'public-profile-role-pill';
+    pill.textContent = name;
+    pill.title = name + 'を募集している投稿を探す';
+    pill.addEventListener('click', () => {
+      closePublicProfile();
+      setRoleFilter([name]);
+    });
+    wrap.appendChild(pill);
+  });
+  els.publicProfileRoles.appendChild(wrap);
 }
 
 /* =========================================================
@@ -4943,6 +5139,7 @@ async function onFirebaseLogin(user) {
       state.profile.bio = data.bio || '';
       state.profile.contact = data.contact || '';
       state.profile.links = data.links && data.links.length > 0 ? data.links : [''];
+      state.profile.roles = normalizeProfileRoles(data.roles);
       state.profile.github = data.github || null;
       state.profile.githubVisible = data.githubVisible !== false;
     } else {
@@ -4951,6 +5148,7 @@ async function onFirebaseLogin(user) {
       state.profile.bio = '';
       state.profile.contact = '';
       state.profile.links = [''];
+      state.profile.roles = [];
       state.profile.github = null;
       state.profile.githubVisible = true;
 
@@ -4960,6 +5158,7 @@ async function onFirebaseLogin(user) {
         bio: state.profile.bio,
         contact: state.profile.contact,
         links: state.profile.links,
+        roles: [],
         github: null,
         githubVisible: true,
         authProvider: (user.providerData[0] && user.providerData[0].providerId) || 'unknown',
@@ -4983,6 +5182,7 @@ async function onFirebaseLogin(user) {
   applyProfileAvatar();
   applyMenuProfile();
   renderProfileLinks();
+  renderProfileRolesPicker();
   renderMyGithubSection();
   renderPosts();
 
@@ -5015,6 +5215,7 @@ function onFirebaseLogout() {
   state.profile.bio = '';
   state.profile.contact = '';
   state.profile.links = [''];
+  state.profile.roles = [];
   state.profile.github = null;
   state.profile.githubVisible = true;
   pendingGithubUsername = null;
@@ -5025,6 +5226,7 @@ function onFirebaseLogout() {
   applyProfileAvatar();
   applyMenuProfile();
   renderProfileLinks();
+  renderProfileRolesPicker();
   renderMyGithubSection();
   renderPosts();
   closeDetailModal();
@@ -5062,6 +5264,7 @@ async function saveProfileToFirestore() {
       bio: state.profile.bio,
       contact: state.profile.contact,
       links: state.profile.links.filter(l => l.trim() !== ''),
+      roles: state.profile.roles || [],
       github: state.profile.github || null,
       githubVisible: state.profile.githubVisible !== false,
       updatedAt: new Date().toISOString(),
@@ -5126,6 +5329,7 @@ async function savePublicProfileToFirestore() {
       bio: state.profile.bio || '',
       contact: state.profile.contact || '',
       links: state.profile.links.filter(l => l.trim() !== ''),
+      roles: state.profile.roles || [],
       // 「プロフィールに表示する」を外している間は、他の人からは見えないようにする
       github: state.profile.githubVisible !== false ? (state.profile.github || null) : null,
     });
