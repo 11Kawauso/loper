@@ -278,6 +278,12 @@ const INITIAL_PAGE_SIZE = 12; // 初回表示件数
 const PAGE_SIZE = 16;       // 1回のスクロールで読み込む件数
 const ADS_EVERY = 20;       // 何件ごとに広告を挟むか
 
+/* 無限スクロールの先読み量（画面いくつ分手前で次を読み始めるか）。
+   一番下に着いてから読み始めると、通信を待つあいだ空白が見えてしまう。
+   件数ではなく画面の高さを基準にしているのは、カードの高さが
+   本文やタグの量で変わり、端末によって必要な先読み量が違うため。 */
+const PREFETCH_SCREENS = 1.5;
+
 /* 募集期限の上限（日）。長すぎると同じ募集が一覧に居座り続けて
    一覧が入れ替わらなくなるため、短めにしている。
    まだ募集したい場合は、期限切れから「編集して再投稿」で出し直す。
@@ -356,6 +362,7 @@ function cacheElements() {
   els.contentSlider = document.getElementById('contentSlider');
   els.postsPane = document.getElementById('postsPane');
   els.postsGrid = document.getElementById('postsGrid');
+  els.postsLoadingMore = document.getElementById('postsLoadingMore');
   els.roleFilterBar = document.getElementById('roleFilterBar');
   els.roleFilterChips = document.getElementById('roleFilterChips');
   els.roleFilterClear = document.getElementById('roleFilterClear');
@@ -687,6 +694,7 @@ async function loadMorePosts(count = PAGE_SIZE) {
 
   state.loading = true;
   state.loadError = false;
+  setLoadingMoreVisible(true);
   try {
     const constraints = [fb.orderBy('createdAt', 'desc'), fb.limit(count)];
     if (state.lastDoc) constraints.push(fb.startAfter(state.lastDoc));
@@ -708,8 +716,16 @@ async function loadMorePosts(count = PAGE_SIZE) {
     showToast('投稿の読み込みに失敗しました');
   } finally {
     state.loading = false;
+    setLoadingMoreVisible(false);
     renderPosts();
   }
+}
+
+/* 追加読み込み中の表示。まだ1件も出ていないときは一覧側が
+   「読み込み中…」を出すので、そちらに任せて二重に出さない。 */
+function setLoadingMoreVisible(visible) {
+  if (!els.postsLoadingMore) return;
+  els.postsLoadingMore.style.display = (visible && state.allPosts.length > 0) ? '' : 'none';
 }
 
 /* =========================================================
@@ -1790,13 +1806,25 @@ function scrollPostsToTop() {
 /* =========================================================
    無限スクロール
    ========================================================= */
+/* 次のページを読み始めるタイミングか。
+   一番下に着く手前、まだ画面PREFETCH_SCREENS個分の余裕があるうちに真を返す。 */
+function shouldPrefetchMore() {
+  const el = els.postsPane;
+  const remaining = el.scrollHeight - (el.scrollTop + el.clientHeight);
+  return remaining <= el.clientHeight * PREFETCH_SCREENS;
+}
+
 function setupInfiniteScroll() {
+  // スクロールのたびに位置を測ると描画の負荷になるため、1フレームに1回だけ調べる
+  let scrollCheckQueued = false;
+
   els.postsPane.addEventListener('scroll', () => {
-    const el = els.postsPane;
-    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 80;
-    if (nearBottom) {
-      loadMorePosts();
-    }
+    if (scrollCheckQueued) return;
+    scrollCheckQueued = true;
+    requestAnimationFrame(() => {
+      scrollCheckQueued = false;
+      if (shouldPrefetchMore()) loadMorePosts();
+    });
   });
 }
 

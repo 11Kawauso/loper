@@ -3008,6 +3008,14 @@ button {
   color: var(--tag-pill-text);
 }
 
+/* 追加読み込み中の表示 */
+.posts-loading-more {
+  padding: 18px 0 4px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--tag-pill-text);
+}
+
 /* ================= 役割での絞り込み ================= */
 
 /* 投稿一覧の上に出る「いま何で絞っているか」のバー */
