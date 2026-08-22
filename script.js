@@ -354,7 +354,10 @@ function cacheElements() {
   els.tagScrollHintRight = document.getElementById('tagScrollHintRight');
 
   els.sidebarCategoryItems = document.querySelectorAll('.category-list-section .category-item');
-  els.pulldownItems = document.querySelectorAll('.pulldown-item');
+  // .pulldown-item は並び替えのプルダウンでも同じ見た目のために使っている。
+  // カテゴリ側だけを対象にしないと、並び替えを押したときに
+  // カテゴリの選択処理まで走ってしまう
+  els.pulldownItems = document.querySelectorAll('#categoryPulldown .pulldown-item');
 
   els.sidebar = document.getElementById('sidebar');
   els.sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
