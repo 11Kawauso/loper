@@ -45,7 +45,12 @@ service cloud.firestore {
           // 読み込み時に normalizeRoles() でそろえている
           && (!('roles' in d) || (d.roles is list && d.roles.size() <= 6))
           && d.files is list && d.files.size() <= 4
-          && d.deadlineDays is number && d.deadlineDays >= 1 && d.deadlineDays <= 365
+          && d.deadlineDays is number && d.deadlineDays >= 1
+          // 上限を365日から下げたため、それ以前に作られた投稿がある。
+          // すでに保存されている値をそのまま持ち回る更新は通し、
+          // 古い投稿を編集も締め切りもできなくなるのを防ぐ
+          && (d.deadlineDays <= 90
+              || (resource != null && d.deadlineDays == resource.data.deadlineDays))
           && d.authorName is string && d.authorName.size() <= 20
           && d.authorAvatarUrl is string && d.authorAvatarUrl.size() <= 400000
           && d.pinnedBy is list

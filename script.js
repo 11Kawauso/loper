@@ -278,6 +278,12 @@ const INITIAL_PAGE_SIZE = 12; // 初回表示件数
 const PAGE_SIZE = 16;       // 1回のスクロールで読み込む件数
 const ADS_EVERY = 20;       // 何件ごとに広告を挟むか
 
+/* 募集期限の上限（日）。長すぎると同じ募集が一覧に居座り続けて
+   一覧が入れ替わらなくなるため、短めにしている。
+   まだ募集したい場合は、期限切れから「編集して再投稿」で出し直す。
+   index.htmlの入力欄のmax、firestore.rulesの上限と必ず揃えること。 */
+const MAX_DEADLINE_DAYS = 90;
+
 const MAX_NAME_LENGTH = 20; // 設定画面のname入力欄と同じ上限（index.htmlのmaxlengthと合わせること）
 
 /* ログインプロバイダの表示名は文字数制限が無い/緩いことがあるため、
@@ -2317,7 +2323,7 @@ function setupPostModal() {
         // 再投稿のときだけ、投稿日時を今に戻して募集期限をかけ直す。
         // 「締め切り済み」も解除して、また一覧に出るようにする。
         const repost = editingIsRepost;
-        const repostDays = Math.min(365, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
+        const repostDays = Math.min(MAX_DEADLINE_DAYS, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
 
         // 何も直さずに保存したときに「編集済み」が付かないようにする
         const changed = !isSamePostContent(editingPost, {
@@ -2384,7 +2390,7 @@ function setupPostModal() {
         return;
       }
 
-      const deadlineDays = Math.min(365, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
+      const deadlineDays = Math.min(MAX_DEADLINE_DAYS, Math.max(1, parseInt(els.postDeadlineInput.value) || 30));
       const roles = collectPostRoles(null);
       const docData = {
         category, title, description, tags: tagsToSave, contact, images, files,
@@ -5001,7 +5007,7 @@ function setupDeadlineEditModal() {
       closeDeadlineEditModal();
       return;
     }
-    const days = Math.min(365, Math.max(1, parseInt(els.deadlineEditInput.value) || 30));
+    const days = Math.min(MAX_DEADLINE_DAYS, Math.max(1, parseInt(els.deadlineEditInput.value) || 30));
     const fb = window._firebase;
     try {
       await fb.updateDoc(fb.doc(fb.db, 'posts', String(post.id)), {
