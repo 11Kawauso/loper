@@ -104,11 +104,16 @@ button {
   flex-shrink: 0;
 }
 
+/* 他のページ（利用規約・プライバシーポリシー・お知らせ）のヘッダー画像と
+   同じ大きさに揃えている。片方だけ変えないこと。 */
 .logo-icon {
-  width: 46px;
-  height: 46px;
+  width: 36px;
+  height: 36px;
   border-radius: 6px;
   object-fit: contain;
+  /* インライン画像のままだとベースラインの分だけ下にずれて、
+     隣のロゴと高さが揃わないためブロックにしている */
+  display: block;
 }
 
 /* ロゴはクリックで投稿一覧の先頭へ戻るボタンにしている */
