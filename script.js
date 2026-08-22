@@ -506,6 +506,7 @@ function cacheElements() {
   els.myPageContent = document.getElementById('myPageContent');
   els.githubLoginBtn = document.getElementById('githubLoginBtn');
   els.twitterLoginBtn = document.getElementById('twitterLoginBtn');
+  els.twitterSwitchBtn = document.getElementById('twitterSwitchBtn');
   els.myPageLogoutBtn = document.getElementById('myPageLogoutBtn');
   els.deleteAccountBtn = document.getElementById('deleteAccountBtn');
 
@@ -5029,7 +5030,9 @@ function setupFirebase() {
   });
 
   els.githubLoginBtn.addEventListener('click', loginWithGithub);
-  els.twitterLoginBtn.addEventListener('click', loginWithTwitter);
+  // 関数をそのまま渡すとClickEventが第1引数に入ってしまうので、包んで呼ぶ
+  els.twitterLoginBtn.addEventListener('click', () => loginWithTwitter());
+  els.twitterSwitchBtn.addEventListener('click', () => loginWithTwitter(true));
   els.myPageLogoutBtn.addEventListener('click', () => {
     showLogoutConfirm();
   });
@@ -5042,6 +5045,7 @@ function setupLoginPrompt() {
   const closeBtn = document.getElementById('loginPromptClose');
   const githubBtn = document.getElementById('loginPromptGithubBtn');
   const twitterBtn = document.getElementById('loginPromptTwitterBtn');
+  const twitterSwitchBtn = document.getElementById('loginPromptTwitterSwitchBtn');
 
   closeBtn.addEventListener('click', () => overlay.classList.remove('show'));
   overlay.addEventListener('click', (e) => {
@@ -5056,6 +5060,11 @@ function setupLoginPrompt() {
   twitterBtn.addEventListener('click', async () => {
     overlay.classList.remove('show');
     await loginWithTwitter();
+  });
+
+  twitterSwitchBtn.addEventListener('click', async () => {
+    overlay.classList.remove('show');
+    await loginWithTwitter(true);
   });
 }
 
@@ -5247,11 +5256,17 @@ async function loginWithGithub() {
   }
 }
 
-async function loginWithTwitter() {
+/* XはOAuth 1.0aのため、Googleのようなアカウント選択画面が用意されていない。
+   何もしないとブラウザで開いているXのアカウントがそのまま使われるので、
+   別のアカウントを使いたいときだけ force_login を付けてXのログイン画面を挟む。
+   （毎回付けると、アカウントが1つの人まで毎回ログインし直しになるため、
+     通常のボタンはこれまで通りにしてある） */
+async function loginWithTwitter(forceLogin) {
   const fb = window._firebase;
   if (!fb) return;
   try {
     const provider = new fb.TwitterAuthProvider();
+    if (forceLogin) provider.setCustomParameters({ force_login: 'true' });
     await fb.signInWithPopup(fb.auth, provider);
     setLastLoginProvider('twitter');
   } catch (err) {

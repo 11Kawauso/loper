@@ -3518,6 +3518,30 @@ button {
   box-shadow: 0 0 0 2px #3B82F6;
 }
 
+/* 「別のXアカウントを使う」。主導線ではないので控えめにする */
+.switch-account-btn {
+  align-self: center;
+  margin-top: -6px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-family: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: opacity 0.15s;
+}
+
+.switch-account-btn:hover {
+  opacity: 0.7;
+}
+
+/* ログイン促進モーダルは背景が白なので、文字色を落とす */
+.login-prompt-modal .switch-account-btn {
+  color: var(--tag-pill-text);
+}
+
 .last-login-hint {
   font-size: 13px;
   color: #3B82F6;
