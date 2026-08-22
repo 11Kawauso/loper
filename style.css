@@ -511,6 +511,17 @@ button {
   border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+/* お知らせの未読の印（メニューの「お知らせ」の右に付く赤い点） */
+.menu-news-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: #FF6B6B;
+  vertical-align: middle;
+}
+
 .menu-legal-link {
   padding: 6px 18px;
   font-size: 12px;

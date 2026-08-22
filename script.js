@@ -281,6 +281,12 @@ const ADS_EVERY = 20;       // 何件ごとに広告を挟むか
    本文やタグの量で変わり、端末によって必要な先読み量が違うため。 */
 const PREFETCH_SCREENS = 1.5;
 
+/* お知らせ（news.html）の最終更新日。
+   news.html にお知らせを追加したら、必ずここも同じ日付に書き換えること。
+   ここを見て「まだ読んでいないお知らせがあるか」を判定している。 */
+const LATEST_NEWS_DATE = '2026-08-22';
+const NEWS_SEEN_KEY = 'loper_newsSeen';
+
 /* 募集期限の上限（日）。長すぎると同じ募集が一覧に居座り続けて
    一覧が入れ替わらなくなるため、短めにしている。
    まだ募集したい場合は、期限切れから「編集して再投稿」で出し直す。
@@ -389,6 +395,8 @@ function cacheElements() {
   els.menuProfileName = document.getElementById('menuProfileName');
   els.menuProfileArea = document.querySelector('.menu-profile-area');
   els.menuProfileBtn = document.getElementById('menuProfileBtn');
+  els.menuNewsBtn = document.getElementById('menuNewsBtn');
+  els.menuNewsDot = document.getElementById('menuNewsDot');
   els.menuAuthBtn = document.getElementById('menuAuthBtn');
 
   els.detailPane = document.getElementById('detailPane');
@@ -553,6 +561,7 @@ function init() {
   setupAvatarCrop();
   setupMyPage();
   setupPublicProfile();
+  setupNews();
   setupRoleFilter();
   setupProfileRoles();
   setupProfileGithub();
@@ -2845,6 +2854,7 @@ function openMyPageTabFromMenu(tab, loginMessage) {
 
 function openMenu() {
   applyMenuProfile();
+  applyNewsDot();
   // メイン画面での操作（投稿の作成・締め切りなど）を反映するため、開くたびに取り直す
   refreshMyPostsAndPinned();
   els.menuOverlay.classList.add('show');
@@ -2852,6 +2862,32 @@ function openMenu() {
 
 function closeMenu() {
   els.menuOverlay.classList.remove('show');
+}
+
+/* 未読のお知らせがあるかを、localStorageに覚えた「最後に開いた日付」と見比べる。
+   Firestoreを使わないので、読み取りも書き込みも発生しない。 */
+function hasUnreadNews() {
+  try {
+    return (localStorage.getItem(NEWS_SEEN_KEY) || '') < LATEST_NEWS_DATE;
+  } catch (err) {
+    return false;   // localStorageが使えない環境では印を出さない
+  }
+}
+
+function applyNewsDot() {
+  if (!els.menuNewsDot) return;
+  els.menuNewsDot.style.display = hasUnreadNews() ? '' : 'none';
+}
+
+function setupNews() {
+  if (!els.menuNewsBtn) return;
+  // 開いた時点で既読にする（別タブで開くので、戻ってこなくても消えるようにする）
+  els.menuNewsBtn.addEventListener('click', () => {
+    try {
+      localStorage.setItem(NEWS_SEEN_KEY, LATEST_NEWS_DATE);
+    } catch (err) { /* localStorageが使えない環境では何もしない */ }
+    applyNewsDot();
+  });
 }
 
 function applyMenuProfile() {
