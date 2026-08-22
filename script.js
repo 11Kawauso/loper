@@ -2348,6 +2348,21 @@ async function uploadPostFile(file, uid) {
   return data.publicUrl;
 }
 
+/* トリムしたアイコンをStorageへ上げて、公開URLを返す。
+   アイコンは投稿・メッセージの一件ずつに複製されるため、
+   dataURI（base64）のままFirestoreに入れると1件あたり16KBほど増えてしまう。
+   URLにしておけば数百バイトで済む。 */
+async function uploadAvatarImage(blob, uid) {
+  const sb = window._supabase;
+  const path = uid + '/avatar_' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+  const { error } = await sb.storage
+    .from(SUPABASE_STORAGE_BUCKET)
+    .upload(path, blob, { contentType: 'image/jpeg' });
+  if (error) throw error;
+  const { data } = sb.storage.from(SUPABASE_STORAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 /* Supabaseの公開URLから、削除に必要なストレージ内パスを取り出す */
 function supabasePathFromUrl(url) {
   const marker = '/object/public/' + SUPABASE_STORAGE_BUCKET + '/';
@@ -4475,7 +4490,7 @@ function onCropTouchMove(e) {
   applyCropTransform();
 }
 
-function confirmAvatarCrop() {
+async function confirmAvatarCrop() {
   const img = els.avatarCropImage;
   const OUT = 256;
   const canvas = document.createElement('canvas');
@@ -4495,10 +4510,30 @@ function confirmAvatarCrop() {
   const srcSize = (r * 2) / cropState.scale;
   ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, OUT, OUT);
 
-  state.profile.avatarUrl = canvas.toDataURL('image/jpeg', 0.92);
+  // まず手元の画像で見た目を反映して、アップロードを待たせない
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  state.profile.avatarUrl = dataUrl;
   applyProfileAvatar();
   closeAvatarCrop();
-  debouncedSaveProfile();
+
+  const uid = state.currentUser && state.currentUser.uid;
+  if (!uid) return;   // 未ログインでは保存先が無いので、表示だけで終わる
+
+  // Storageへ上げてURLに差し替える。失敗したら、これまで通りdataURIのまま保存する
+  let uploadedUrl = null;
+  try {
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    if (blob) uploadedUrl = await uploadAvatarImage(blob, uid);
+  } catch (err) {
+    console.error('アイコンのアップロードに失敗しました:', err);
+  }
+
+  if (uploadedUrl) {
+    state.profile.avatarUrl = uploadedUrl;
+    applyProfileAvatar();
+  }
+
+  await saveProfileToFirestore();
   syncProfileToPosts();
 }
 
@@ -5249,10 +5284,11 @@ async function loginWithGithub() {
       consumePendingGithubUsername();
     }
   } catch (err) {
+    // ポップアップを閉じただけなら、利用者の操作なのでエラー扱いしない
     if (err.code !== 'auth/popup-closed-by-user') {
       showToast('ログインに失敗しました');
+      console.error(err);
     }
-    console.error(err);
   }
 }
 
@@ -5270,10 +5306,11 @@ async function loginWithTwitter(forceLogin) {
     await fb.signInWithPopup(fb.auth, provider);
     setLastLoginProvider('twitter');
   } catch (err) {
+    // ポップアップを閉じただけなら、利用者の操作なのでエラー扱いしない
     if (err.code !== 'auth/popup-closed-by-user') {
       showToast('ログインに失敗しました');
+      console.error(err);
     }
-    console.error(err);
   }
 }
 
