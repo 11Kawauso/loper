@@ -993,9 +993,13 @@ button {
   border: 3px solid var(--scrollbar-track);
 }
 
+/* 列数は幅に応じて自動で増やす（2列固定にすると、広い画面や
+   ブラウザを縮小表示したときにカードが間延びしてしまうため）。
+   min()で挟んでいるのは、カード1枚分に満たない幅のときに
+   はみ出さないようにするため。 */
 .posts-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
   gap: 28px;
   align-content: start;
 }
