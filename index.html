@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>loper - 開発メンバー募集サイト</title>
-<link rel="icon" href="images/loper_MainIcon.png">
+<link rel="icon" href="images/loper_MainIcon_64.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,9 +13,9 @@
   <!-- ヘッダー -->
   <header class="header">
     <div class="logo-area">
-      <a href="kurokamiroom.html"><img src="images/loper_MainIcon.png" alt="キャラクター" class="logo-icon"></a>
+      <a href="kurokamiroom.html"><img src="images/loper_MainIcon_128.webp" alt="キャラクター" class="logo-icon"></a>
       <button class="logo-home-btn" id="logoHomeBtn" type="button" aria-label="投稿一覧の先頭へ戻る" title="投稿一覧の先頭へ戻る">
-        <img src="images/loper_logo.png" alt="loper" class="logo-img">
+        <img src="images/loper_logo_360.webp" alt="loper" class="logo-img">
       </button>
     </div>
 
@@ -127,31 +127,31 @@
         <div class="category-list-header">カテゴリ 一覧</div>
 
         <div class="category-item active" data-category="all">
-          <img class="category-item-img" src="" alt="">
+          <span class="category-item-img" aria-hidden="true">🗂️</span>
           <span class="category-item-arrow left">❮</span>
           <span class="category-item-label">すべて</span>
           <span class="category-item-arrow right">❯</span>
         </div>
         <div class="category-item" data-category="game">
-          <img class="category-item-img" src="" alt="">
+          <span class="category-item-img" aria-hidden="true">🎮</span>
           <span class="category-item-arrow left">❮</span>
           <span class="category-item-label">ゲーム</span>
           <span class="category-item-arrow right">❯</span>
         </div>
         <div class="category-item" data-category="app">
-          <img class="category-item-img" src="" alt="">
+          <span class="category-item-img" aria-hidden="true">📱</span>
           <span class="category-item-arrow left">❮</span>
           <span class="category-item-label">アプリ</span>
           <span class="category-item-arrow right">❯</span>
         </div>
         <div class="category-item" data-category="site">
-          <img class="category-item-img" src="" alt="">
+          <span class="category-item-img" aria-hidden="true">🌐</span>
           <span class="category-item-arrow left">❮</span>
           <span class="category-item-label">サイト</span>
           <span class="category-item-arrow right">❯</span>
         </div>
         <div class="category-item" data-category="video">
-          <img class="category-item-img" src="" alt="">
+          <span class="category-item-img" aria-hidden="true">🎬</span>
           <span class="category-item-arrow left">❮</span>
           <span class="category-item-label">映像</span>
           <span class="category-item-arrow right">❯</span>
@@ -345,7 +345,7 @@
 <div class="confirm-overlay" id="logoutConfirmOverlay">
   <div class="confirm-modal">
     <p class="confirm-message">ログアウトしますか？</p>
-    <img class="confirm-image" src="images/loper_LogoutIcon.png" alt="">
+    <img class="confirm-image" src="images/loper_LogoutIcon_240.webp" alt="">
     <div class="confirm-actions">
       <button class="confirm-btn ok" id="logoutConfirmOk">OK</button>
       <button class="confirm-btn cancel" id="logoutConfirmCancel">キャンセル</button>
@@ -382,7 +382,7 @@
 <div class="confirm-overlay" id="iconDeleteConfirmOverlay">
   <div class="confirm-modal">
     <p class="confirm-message">アイコンを削除します。</p>
-    <img class="confirm-image" src="images/loper_IcondeleteIcon.png" alt="">
+    <img class="confirm-image" src="images/loper_IcondeleteIcon_240.webp" alt="">
     <div class="confirm-actions">
       <button class="confirm-btn ok" id="iconDeleteConfirmOk">OK</button>
       <button class="confirm-btn cancel" id="iconDeleteConfirmCancel">キャンセル</button>
@@ -397,7 +397,7 @@
 <div class="modal-overlay" id="loginPromptOverlay">
   <div class="login-prompt-modal">
     <button class="modal-close" id="loginPromptClose">×</button>
-    <img src="images/loper_logo.png" alt="loper" class="login-prompt-logo">
+    <img src="images/loper_logo_360.webp" alt="loper" class="login-prompt-logo">
     <h2 class="login-prompt-title">ログインが必要です</h2>
     <p class="login-prompt-message">投稿するにはログインしてください</p>
     <div class="login-btn-group">
@@ -445,9 +445,21 @@
 
     <div class="menu-section">
       <div class="menu-section-title">ツール</div>
-      <nav class="menu-list">
-        <a class="menu-list-item" href="https://11kawauso.github.io/loper-IdeaShare/" target="_blank" rel="noopener">アイデア</a>
-        <a class="menu-list-item" href="https://11kawauso.github.io/PixelArt/" target="_blank" rel="noopener">ドット絵ツール</a>
+      <nav class="menu-tool-list">
+        <a class="menu-tool-item" href="https://11kawauso.github.io/loper-IdeaShare/" target="_blank" rel="noopener">
+          <span class="menu-tool-icon" aria-hidden="true">💡</span>
+          <span class="menu-tool-text">
+            <span class="menu-tool-name">アイデア</span>
+            <span class="menu-tool-desc">作りたいものが浮かばないときに</span>
+          </span>
+        </a>
+        <a class="menu-tool-item" href="https://11kawauso.github.io/PixelArt/" target="_blank" rel="noopener">
+          <span class="menu-tool-icon" aria-hidden="true">🎨</span>
+          <span class="menu-tool-text">
+            <span class="menu-tool-name">ドット絵ツール</span>
+            <span class="menu-tool-desc">ブラウザで描いて保存・画像から変換</span>
+          </span>
+        </a>
       </nav>
     </div>
 
