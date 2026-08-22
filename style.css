@@ -513,8 +513,9 @@ button {
 
 .menu-tool-item {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   padding: 12px 14px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 12px;
@@ -529,24 +530,12 @@ button {
   transform: translateY(-1px);
 }
 
-.menu-tool-icon {
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.16);
-  font-size: 18px;
-  line-height: 1;
-}
-
-.menu-tool-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+/* ツールのロゴ。名前の代わりに置く（ロゴが無いツールは .menu-tool-name を使う） */
+.menu-tool-logo {
+  width: 150px;
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
 .menu-tool-name {
@@ -974,8 +963,10 @@ button {
   flex-shrink: 0;
 }
 
-/* カテゴリのアイコン。以前は空のimgが置かれていて、
-   画像が無いぶん「壊れた画像」の記号が5つ並んでしまっていた */
+/* カテゴリのアイコン。いまは絵文字の仮置き。
+   自作の画像ができたら、index.html の <span> を
+   <img class="category-item-img" src="images/○○.png" alt=""> に
+   差し替えるだけでよい（object-fitを効かせてあるので、このCSSは変更不要）。 */
 .category-item-img {
   width: 26px;
   height: 26px;
@@ -983,6 +974,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  object-fit: contain;
   font-size: 17px;
   line-height: 1;
 }
