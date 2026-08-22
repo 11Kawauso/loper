@@ -178,6 +178,7 @@ const state = {
   allPosts: [],          // 読み込み済みの投稿（無限スクロールで増える）
   lastDoc: null,          // Firestoreページングの続き位置
   currentCategory: 'all',
+  sortOrder: 'newest',      // 投稿一覧の並び替え（newest / deadline）
   tagBarCategory: 'all',
   activeTags: new Set(),
   activeRoles: new Set(),   // 「この役割を募集中」で絞り込む
@@ -341,6 +342,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function cacheElements() {
+  els.sortDropdown = document.getElementById('sortDropdown');
+  els.sortCurrent = document.getElementById('sortCurrent');
+  els.sortPulldown = document.getElementById('sortPulldown');
   els.categoryDropdown = document.getElementById('categoryDropdown');
   els.categoryCurrent = document.getElementById('categoryCurrent');
   els.categoryPulldown = document.getElementById('categoryPulldown');
@@ -551,6 +555,7 @@ function init() {
   setupCategorySidebar();
   setupSidebarToggle();
   setupPulldown();
+  setupSortDropdown();
   setupTagPanelToggle();
   setupTagListEvents();
   setupSelectedTagsDropdown();
@@ -596,6 +601,7 @@ function docToPost(docSnap) {
     date: formatDate(createdAt),
     createdAt: createdAt,
     deadlineDays: data.deadlineDays,
+    deadlineAt: data.deadlineAt && data.deadlineAt.toDate ? data.deadlineAt.toDate() : null,
     contact: data.contact || '',
     images: data.images || [],
     files: data.files || [],
@@ -652,6 +658,7 @@ async function createTestPosts(count = 20) {
         images: [],
         files: [],
         deadlineDays: template.deadlineDays,
+        deadlineAt: computeDeadlineAt(new Date(), template.deadlineDays),
         createdAt: fb.serverTimestamp(),
         pinnedBy: [],
         closed: false,
@@ -667,6 +674,54 @@ async function createTestPosts(count = 20) {
   console.log('テスト投稿の作成が完了しました。ページを再読み込みして確認してください。');
 }
 window.createTestPosts = createTestPosts;
+
+/* 「期限が近い順」で並べ替えるために後から追加した deadlineAt を、
+   すでにある投稿へ書き込む。Firestoreのルール上、投稿を更新できるのは
+   投稿者本人だけなので、対象はログイン中の本人の投稿だけになる。
+   ブラウザのコンソールから backfillDeadlineAt() で一度だけ実行する。
+   （deadlineAt を持たない投稿は「期限が近い順」の一覧に出てこないため） */
+async function backfillDeadlineAt() {
+  if (!state.currentUser) {
+    console.warn('先にログインしてから実行してください。');
+    return;
+  }
+  const fb = window._firebase;
+  let added = 0, already = 0, skipped = 0, failed = 0;
+
+  try {
+    const snap = await fb.getDocs(fb.query(
+      fb.collection(fb.db, 'posts'),
+      fb.where('authorUid', '==', state.currentUser.uid),
+      fb.limit(500)
+    ));
+
+    for (const d of snap.docs) {
+      const data = d.data();
+      if (data.deadlineAt) { already++; continue; }
+
+      const createdAt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : null;
+      if (!createdAt || !data.deadlineDays) { skipped++; continue; }
+
+      try {
+        await fb.updateDoc(fb.doc(fb.db, 'posts', d.id), {
+          deadlineAt: computeDeadlineAt(createdAt, data.deadlineDays),
+        });
+        added++;
+      } catch (err) {
+        console.error(d.id + 'の更新に失敗しました:', err);
+        failed++;
+      }
+    }
+  } catch (err) {
+    console.error('投稿の取得に失敗しました:', err);
+    return;
+  }
+
+  console.log('deadlineAtの書き込みが完了しました。'
+    + ' 追加: ' + added + ' / すでにあり: ' + already
+    + ' / 対象外: ' + skipped + ' / 失敗: ' + failed);
+}
+window.backfillDeadlineAt = backfillDeadlineAt;
 
 async function deleteTestPosts() {
   if (!state.currentUser) {
@@ -692,14 +747,30 @@ async function loadMorePosts(count = PAGE_SIZE) {
   const fb = window._firebase;
   if (!fb) return;
 
+  const requestId = postsRequestId;
   state.loading = true;
   state.loadError = false;
   setLoadingMoreVisible(true);
   try {
-    const constraints = [fb.orderBy('createdAt', 'desc'), fb.limit(count)];
+    const constraints = [];
+    if (state.sortOrder === 'deadline') {
+      /* 期限が近い順。不等式と並び替えが同じ項目なので複合インデックスは要らない。
+         ついでに期限切れをFirestore側で除外できる。
+         なお deadlineAt を持たない古い投稿はここに出てこないため、
+         コンソールから backfillDeadlineAt() を一度実行しておくこと。 */
+      constraints.push(fb.where('deadlineAt', '>', new Date()));
+      constraints.push(fb.orderBy('deadlineAt', 'asc'));
+    } else {
+      constraints.push(fb.orderBy('createdAt', 'desc'));
+    }
+    constraints.push(fb.limit(count));
     if (state.lastDoc) constraints.push(fb.startAfter(state.lastDoc));
+
     const q = fb.query(fb.collection(fb.db, 'posts'), ...constraints);
     const snap = await fb.getDocs(q);
+
+    // 待っているあいだに並び替えが切り替わっていたら、この結果は使わない
+    if (requestId !== postsRequestId) return;
 
     const newPosts = snap.docs.map(docToPost);
     state.allPosts = state.allPosts.concat(newPosts);
@@ -711,13 +782,17 @@ async function loadMorePosts(count = PAGE_SIZE) {
       state.reachedEnd = true;
     }
   } catch (err) {
+    if (requestId !== postsRequestId) return;
     console.error('投稿の読み込みに失敗しました:', err);
     state.loadError = true;
     showToast('投稿の読み込みに失敗しました');
   } finally {
-    state.loading = false;
-    setLoadingMoreVisible(false);
-    renderPosts();
+    // 古い読み込みの後始末で、新しい読み込みの状態を壊さないようにする
+    if (requestId === postsRequestId) {
+      state.loading = false;
+      setLoadingMoreVisible(false);
+      renderPosts();
+    }
   }
 }
 
@@ -1330,14 +1405,92 @@ function closePulldown() {
 /* =========================================================
    並び替え
    ========================================================= */
-/* 並び替えはマイページの一覧（投稿済み募集・期限切れ募集・ピン止め）だけで使う。
-   メイン画面は少しずつ読み込む作りのため、並べ替えても「読み込み済みの分」しか
-   対象にできず、続きを読み込むたびに順番が入れ替わってしまうので置いていない。 */
+
+/* 投稿一覧の並び替え。
+   以前はクライアント側で並べ替えていたため、少しずつ読み込む作りと噛み合わず
+   （読み込み済みの分しか並べ替えられず、続きを読むたびに順番が入れ替わる）
+   一度外していた。いまはFirestore側で並べ替え、その項目でページングするので、
+   無限スクロールとそのまま両立する。 */
+/* labelはプルダウンの中、shortは閉じているときの表示。
+   タグバーが狭いスマホでタグ一覧を潰さないよう、閉じている間は短く出す。 */
+const SORT_ORDERS = {
+  newest:   { label: '新着順',      short: '新着順' },
+  deadline: { label: '期限が近い順', short: '期限順' },
+};
+
+/* 並び替えを切り替えたあと、前の並びの遅れて届いた応答を捨てるための番号 */
+let postsRequestId = 0;
+
+function setupSortDropdown() {
+  if (!els.sortDropdown) return;
+
+  els.sortDropdown.addEventListener('click', (e) => {
+    if (e.target.closest('.pulldown-item')) return;
+    els.sortDropdown.classList.toggle('open');
+    els.sortPulldown.classList.toggle('open');
+  });
+
+  els.sortPulldown.querySelectorAll('.pulldown-item').forEach((item) => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectSortOrder(item.dataset.sort);
+      closeSortPulldown();
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!els.sortDropdown.contains(e.target)) closeSortPulldown();
+  });
+}
+
+function closeSortPulldown() {
+  els.sortDropdown.classList.remove('open');
+  els.sortPulldown.classList.remove('open');
+}
+
+function selectSortOrder(key) {
+  if (!SORT_ORDERS[key] || state.sortOrder === key) return;
+
+  state.sortOrder = key;
+  els.sortCurrent.textContent = SORT_ORDERS[key].short;
+  els.sortPulldown.querySelectorAll('.pulldown-item').forEach((item) => {
+    item.classList.toggle('active', item.dataset.sort === key);
+  });
+
+  reloadPostsFromStart();
+}
+
+/* 並び順が変わると続きの位置も変わるため、読み込み済みを捨てて先頭から取り直す */
+function reloadPostsFromStart() {
+  postsRequestId++;          // 進行中の読み込みの結果は捨てる
+  state.allPosts = [];
+  state.lastDoc = null;
+  state.reachedEnd = false;
+  state.loading = false;
+  state.loadError = false;
+  closeDetailModal();
+  renderPosts();
+  els.postsPane.scrollTop = 0;
+  loadMorePosts(INITIAL_PAGE_SIZE);
+}
+
+/* 並び替えはマイページの一覧（投稿済み募集・期限切れ募集・ピン止め）でも使う。
+   そちらは全件を手元に持っているので、これまで通りクライアント側で並べ替える。 */
 const MY_LIST_SORT_LABELS = {
   newest: '新着順',
   oldest: '古い順',
   deadline_near: '期限が近い順',
 };
+
+/* 募集期限の日時。並び替えのためにFirestoreにも deadlineAt として保存する。
+   投稿日時はサーバー側の時刻で入るので、ここで計算した値とは通信のぶんだけ
+   ずれるが、期限は日単位なので実用上の影響はない。 */
+function computeDeadlineAt(createdAt, deadlineDays) {
+  const base = createdAt instanceof Date ? new Date(createdAt) : new Date();
+  const days = Math.min(MAX_DEADLINE_DAYS, Math.max(1, Math.floor(Number(deadlineDays) || 30)));
+  base.setDate(base.getDate() + days);
+  return base;
+}
 
 function getPostDeadline(post) {
   if (!post.createdAt || !post.deadlineDays) return null;
@@ -2372,7 +2525,16 @@ function setupPostModal() {
           roles,
           // 内容が変わっていないなら、editedは今のままにしておく
           ...(changed ? { edited: true } : {}),
-          ...(repost ? { createdAt: fb.serverTimestamp(), deadlineDays: repostDays, closed: false } : {}),
+          // 期限そのものは変わらないが、まだ持っていない投稿にここで入れておく
+          ...(editingPost && editingPost.createdAt
+                ? { deadlineAt: computeDeadlineAt(editingPost.createdAt, editingPost.deadlineDays) }
+                : {}),
+          ...(repost ? {
+                createdAt: fb.serverTimestamp(),
+                deadlineDays: repostDays,
+                deadlineAt: computeDeadlineAt(new Date(), repostDays),
+                closed: false,
+              } : {}),
         });
 
         const repostCreatedAt = new Date();
@@ -2424,6 +2586,7 @@ function setupPostModal() {
         category, title, description, tags: tagsToSave, contact, images, files,
         roles,
         deadlineDays,
+        deadlineAt: computeDeadlineAt(new Date(), deadlineDays),
         createdAt: fb.serverTimestamp(),
         pinnedBy: [],
         closed: false,
@@ -5041,6 +5204,7 @@ function setupDeadlineEditModal() {
       await fb.updateDoc(fb.doc(fb.db, 'posts', String(post.id)), {
         createdAt: fb.serverTimestamp(),
         deadlineDays: days,
+        deadlineAt: computeDeadlineAt(new Date(), days),
         closed: false,
       });
       post.createdAt = new Date();

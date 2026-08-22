@@ -93,6 +93,21 @@
     </div>
 
     <button class="tag-scroll-hint tag-scroll-hint-right" id="tagScrollHintRight" aria-label="タグを右にスクロール" type="button">⇛</button>
+
+    <!-- 並び替え（カテゴリのプルダウンと同じ作り） -->
+    <div class="sort-dropdown" id="sortDropdown">
+      <span class="sort-current" id="sortCurrent">新着順</span>
+      <span class="dropdown-arrow">▽</span>
+
+      <div class="sort-pulldown" id="sortPulldown">
+        <div class="pulldown-item active" data-sort="newest">
+          <span class="category-item-icon">🆕</span><span>新着順</span>
+        </div>
+        <div class="pulldown-item" data-sort="deadline">
+          <span class="category-item-icon">⏳</span><span>期限が近い順</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- タグ一覧パネル（カテゴリ名クリックで開閉） -->
