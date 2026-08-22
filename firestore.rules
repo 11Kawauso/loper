@@ -37,6 +37,10 @@ service cloud.firestore {
           && d.description is string && d.description.size() <= 500
           && d.category in ['game', 'app', 'site', 'video']
           && d.contact is string && d.contact.size() <= 100
+          // 連絡先は必須。ただし必須化より前に作られた投稿があるため、
+          // すでに保存されている値をそのまま持ち回る更新は通す
+          && (d.contact.size() > 0
+              || (resource != null && d.contact == resource.data.contact))
           // 選択できるタグは100種類。自由記入分も考慮して余裕をもたせている
           && d.tags is list && d.tags.size() <= 150
           && d.images is list && d.images.size() <= 4
@@ -135,50 +139,6 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.reporterUid == request.auth.uid;
       allow read, update, delete: if false;
-    }
-
-    /* ブロック：ドキュメントIDは「ブロックした人のUID_された人のUID」。
-       この形にすることで、メッセージ送信時にexists()だけで
-       「相手が自分をブロックしていないか」を判定できる。
-       自分がブロックした一覧は本人だけが読める（相手には知らせない）。 */
-    match /blocks/{blockId} {
-      allow read: if request.auth != null && resource.data.blockerUid == request.auth.uid;
-
-      allow create: if request.auth != null
-        && request.resource.data.blockerUid == request.auth.uid
-        && request.resource.data.blockedUid is string
-        && request.resource.data.blockedUid != request.auth.uid
-        // IDと中身がずれていると遮断が効かなくなるため、必ず対応させる
-        && blockId == request.auth.uid + '_' + request.resource.data.blockedUid;
-
-      allow delete: if request.auth != null && resource.data.blockerUid == request.auth.uid;
-      allow update: if false;
-    }
-
-    /* メッセージ：ユーザー間の一方通行のやり取り。
-       作成は送信者本人のUIDで、閲覧は送信者・受信者本人のみ。
-       更新は受信者が既読フラグを立てる場合のみ許可し、本文の改ざんは防ぐ。
-       削除は受信者のみ（自分の受信箱から消す）。 */
-    match /messages/{messageId} {
-      allow read: if request.auth != null
-        && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid);
-
-      allow create: if request.auth != null
-        && request.resource.data.fromUid == request.auth.uid
-        && request.resource.data.toUid is string && request.resource.data.toUid != request.auth.uid
-        && request.resource.data.body is string && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 1000
-        && request.resource.data.fromName is string && request.resource.data.fromName.size() <= 20
-        && request.resource.data.fromAvatarUrl is string && request.resource.data.fromAvatarUrl.size() <= 400000
-        && request.resource.data.read == false
-        && request.resource.data.createdAt == request.time
-        // 相手にブロックされている場合は送信させない（画面側だけでなくここで遮断する）
-        && !exists(/databases/$(database)/documents/blocks/$(request.resource.data.toUid + '_' + request.auth.uid));
-
-      allow update: if request.auth != null && resource.data.toUid == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
-        && request.resource.data.read == true;
-
-      allow delete: if request.auth != null && resource.data.toUid == request.auth.uid;
     }
   }
 }

@@ -264,12 +264,8 @@ const POST_LIST_VIEWS = {
   },
 };
 
-let inboxMessages = [];          // マイページ「メッセージ」タブ用の受信メッセージ
-let messagesLoaded = false;      // 上記を今回のマイページ表示中に取得済みか
-let publicProfileTargetUid = null;   // 現在開いている他ユーザープロフィールのuid（メッセージ送信先）
+let publicProfileTargetUid = null;   // 現在開いている他ユーザープロフィールのuid
 let publicProfileTargetName = '';    // 同上・表示名
-
-let blockedUids = new Set();     // 自分がブロックしたユーザーのuid
 
 const CROP_SIZE = 280;    // トリムコンテナのサイズ（px）
 const CROP_RADIUS = 120;  // トリム円の半径（px）
@@ -394,8 +390,6 @@ function cacheElements() {
   els.menuProfileArea = document.querySelector('.menu-profile-area');
   els.menuProfileBtn = document.getElementById('menuProfileBtn');
   els.menuAuthBtn = document.getElementById('menuAuthBtn');
-  els.menuInboxBtn = document.getElementById('menuInboxBtn');
-  els.menuInboxBadge = document.getElementById('menuInboxBadge');
 
   els.detailPane = document.getElementById('detailPane');
   els.detailBackBtn = document.getElementById('detailBackBtn');
@@ -520,25 +514,14 @@ function cacheElements() {
   els.publicProfileLinks = document.getElementById('publicProfileLinks');
   els.publicProfileRoles = document.getElementById('publicProfileRoles');
   els.publicProfileGithub = document.getElementById('publicProfileGithub');
-  els.publicProfileMessageBtn = document.getElementById('publicProfileMessageBtn');
   els.publicProfileActions = document.getElementById('publicProfileActions');
   els.publicProfileReportBtn = document.getElementById('publicProfileReportBtn');
-  els.publicProfileBlockBtn = document.getElementById('publicProfileBlockBtn');
-  els.publicProfileBlockedNote = document.getElementById('publicProfileBlockedNote');
 
   els.userReportOverlay = document.getElementById('userReportOverlay');
   els.userReportClose = document.getElementById('userReportClose');
   els.userReportTitle = document.getElementById('userReportTitle');
   els.userReportDetail = document.getElementById('userReportDetail');
   els.userReportSend = document.getElementById('userReportSend');
-
-  els.messagesUnreadBadge = document.getElementById('messagesUnreadBadge');
-  els.messagesList = document.getElementById('messagesList');
-  els.messageComposeOverlay = document.getElementById('messageComposeOverlay');
-  els.messageComposeClose = document.getElementById('messageComposeClose');
-  els.messageComposeTitle = document.getElementById('messageComposeTitle');
-  els.messageComposeInput = document.getElementById('messageComposeInput');
-  els.messageComposeSend = document.getElementById('messageComposeSend');
 
   els.avatarCropOverlay = document.getElementById('avatarCropOverlay');
   els.avatarCropContainer = document.getElementById('avatarCropContainer');
@@ -573,7 +556,6 @@ function init() {
   setupRoleFilter();
   setupProfileRoles();
   setupProfileGithub();
-  setupMessageCompose();
   setupUserReport();
   applyProfileAvatar();
   setupDetailModal();
@@ -2504,6 +2486,12 @@ function setupPostModal() {
     const tags = [...postSelectedTags, ...freeTags];
     const description = els.postDescInput.value.trim() || '詳細はまだ記入されていません。';
     const contact = els.postContactInput.value.trim();
+    // 連絡先は必須。DM機能が無いため、ここが無いと応募のしようがなくなる
+    if (!contact) {
+      showToast('連絡先を入力してください');
+      els.postContactInput.focus();
+      return;
+    }
     const isEditing = editingPostId !== null;
 
     const finishSaving = async (newImages, newFiles) => {
@@ -2816,7 +2804,6 @@ function setupProfileIcon() {
   });
   els.menuProfileArea.addEventListener('click', openMyPageFromMenu);
   els.menuProfileBtn.addEventListener('click', openMyPageFromMenu);
-  els.menuInboxBtn.addEventListener('click', openMessagesFromMenu);
 
   // マイページ各タブへのショートカット
   els.menuShortcutBtns.forEach((btn) => {
@@ -2845,9 +2832,6 @@ function openMyPageFromMenu() {
 }
 
 // メニューからメッセージタブへ直接ジャンプする（未ログイン時はログインを促す）
-function openMessagesFromMenu() {
-  openMyPageTabFromMenu('messages', 'メッセージを利用するにはログインしてください');
-}
 
 /* メニュー画面のショートカットから、マイページの該当タブを直接開く */
 function openMyPageTabFromMenu(tab, loginMessage) {
@@ -2861,7 +2845,6 @@ function openMyPageTabFromMenu(tab, loginMessage) {
 
 function openMenu() {
   applyMenuProfile();
-  checkUnreadMessages();
   // メイン画面での操作（投稿の作成・締め切りなど）を反映するため、開くたびに取り直す
   refreshMyPostsAndPinned();
   els.menuOverlay.classList.add('show');
@@ -2878,15 +2861,13 @@ function applyMenuProfile() {
 }
 
 function openMyPage(tab = 'profile') {
-  // 開くたびに投稿一覧・ピン止め・メッセージは再取得させる
-  messagesLoaded = false;
+  // 開くたびに投稿一覧・ピン止めは再取得させる
   resetPostListView('myposts');
   resetPostListView('expired');
   resetPostListView('pinned');
   // 左メニューに件数を出すため、タブを開く前に取得を始めておく
   refreshMyPostsAndPinned();
   activateMyPageTab(tab);
-  checkUnreadMessages();
   els.myPageOverlay.classList.add('show');
 }
 
@@ -2921,16 +2902,6 @@ async function activateMyPageTab(tab) {
     }
     renderPinnedPosts();
   }
-
-  if (tab === 'messages') {
-    if (!messagesLoaded) {
-      els.messagesList.innerHTML = '<div class="expired-posts-empty">読み込み中…</div>';
-      await loadInboxMessages();
-      messagesLoaded = true;
-    }
-    renderInboxMessages();
-    markInboxMessagesRead();
-  }
 }
 
 function applyProfileAvatar() {
@@ -2949,40 +2920,12 @@ function setupPublicProfile() {
     if (e.target === els.publicProfileOverlay) closePublicProfile();
   });
 
-  els.publicProfileMessageBtn.addEventListener('click', () => {
-    if (!state.currentUser) {
-      showLoginPrompt('メッセージを送るにはログインしてください');
-      return;
-    }
-    openMessageCompose(publicProfileTargetUid, publicProfileTargetName);
-  });
-
   els.publicProfileReportBtn.addEventListener('click', () => {
     if (!state.currentUser) {
       showLoginPrompt('通報するにはログインしてください');
       return;
     }
     openUserReport();
-  });
-
-  els.publicProfileBlockBtn.addEventListener('click', () => {
-    if (!state.currentUser) {
-      showLoginPrompt('ブロックするにはログインしてください');
-      return;
-    }
-    const uid = publicProfileTargetUid;
-    const name = publicProfileTargetName;
-    if (isBlocked(uid)) {
-      showGenericConfirm(
-        (name || 'このユーザー') + 'のブロックを解除しますか？相手からメッセージが届くようになります。',
-        () => unblockUser(uid, name)
-      );
-    } else {
-      showGenericConfirm(
-        (name || 'このユーザー') + 'をブロックしますか？相手からのメッセージが届かなくなり、受信済みのメッセージも表示されなくなります。',
-        () => blockUser(uid, name)
-      );
-    }
   });
 }
 
@@ -2992,7 +2935,7 @@ async function openPublicProfile(uid, fallback) {
   if (!uid) return; // 運営名義の投稿など、投稿者が存在しない場合は開かない
 
   publicProfileTargetUid = uid;
-  applyPublicProfileBlockState();
+  applyPublicProfileActions();
 
   els.publicProfileOverlay.classList.add('show');
   renderPublicProfile({
@@ -3881,91 +3824,18 @@ function setupProfileGithub() {
   });
 }
 
+
+
+
+
 /* =========================================================
-   ブロック・ユーザー通報
+   ユーザー通報
    ========================================================= */
 
-/* ブロックはドキュメントIDを「自分のUID_相手のUID」にしておく。
-   Firestoreのルール側から exists() だけで判定できるようにするため。 */
-function blockDocId(blockerUid, blockedUid) {
-  return blockerUid + '_' + blockedUid;
-}
-
-/* 自分がブロックした相手の一覧を取得する（ログイン時に一度だけ） */
-async function loadBlockedUids() {
-  if (!state.currentUser) {
-    blockedUids = new Set();
-    return;
-  }
-  const fb = window._firebase;
-  try {
-    const q = fb.query(fb.collection(fb.db, 'blocks'), fb.where('blockerUid', '==', state.currentUser.uid), fb.limit(500));
-    const snap = await fb.getDocs(q);
-    blockedUids = new Set(snap.docs.map((d) => d.data().blockedUid));
-  } catch (err) {
-    console.error('ブロック一覧の取得に失敗しました:', err);
-    blockedUids = new Set();
-  }
-}
-
-function isBlocked(uid) {
-  return !!uid && blockedUids.has(uid);
-}
-
-/* ブロックする。以後その相手からのメッセージは受け取らない
-   （送信の遮断はFirestoreのルール側で行う）。 */
-async function blockUser(uid, name) {
-  const fb = window._firebase;
-  if (!fb || !state.currentUser || !uid) return;
-
-  try {
-    await fb.setDoc(fb.doc(fb.db, 'blocks', blockDocId(state.currentUser.uid, uid)), {
-      blockerUid: state.currentUser.uid,
-      blockedUid: uid,
-      createdAt: fb.serverTimestamp(),
-    });
-    blockedUids.add(uid);
-
-    // すでに届いている相手のメッセージも受信箱から隠す
-    inboxMessages = inboxMessages.filter((m) => m.fromUid !== uid);
-    renderInboxMessages();
-    checkUnreadMessages();
-
-    applyPublicProfileBlockState();
-    showToast((name || 'このユーザー') + 'をブロックしました');
-  } catch (err) {
-    console.error('ブロックに失敗しました:', err);
-    showToast('ブロックに失敗しました');
-  }
-}
-
-async function unblockUser(uid, name) {
-  const fb = window._firebase;
-  if (!fb || !state.currentUser || !uid) return;
-
-  try {
-    await fb.deleteDoc(fb.doc(fb.db, 'blocks', blockDocId(state.currentUser.uid, uid)));
-    blockedUids.delete(uid);
-    applyPublicProfileBlockState();
-    showToast((name || 'このユーザー') + 'のブロックを解除しました');
-  } catch (err) {
-    console.error('ブロック解除に失敗しました:', err);
-    showToast('ブロック解除に失敗しました');
-  }
-}
-
-/* 開いているプロフィールのブロック状態に合わせて、ボタンと注意書きを切り替える */
-function applyPublicProfileBlockState() {
-  const uid = publicProfileTargetUid;
-  const isOwnProfile = state.currentUser && uid === state.currentUser.uid;
-  const blocked = isBlocked(uid);
-
-  // 自分のプロフィールには通報・ブロックを出さない
+/* 自分自身のプロフィールには通報ボタンを出さない */
+function applyPublicProfileActions() {
+  const isOwnProfile = state.currentUser && publicProfileTargetUid === state.currentUser.uid;
   els.publicProfileActions.style.display = isOwnProfile ? 'none' : '';
-  els.publicProfileMessageBtn.style.display = (isOwnProfile || blocked) ? 'none' : '';
-  els.publicProfileBlockedNote.style.display = blocked ? '' : 'none';
-  els.publicProfileBlockBtn.textContent = blocked ? 'ブロックを解除' : 'ブロックする';
-  els.publicProfileBlockBtn.classList.toggle('danger', !blocked);
 }
 
 function setupUserReport() {
@@ -4017,214 +3887,15 @@ async function sendUserReport() {
   }
 }
 
-/* =========================================================
-   メッセージ（一方通行・ユーザー間のやり取り）
-   ========================================================= */
-function setupMessageCompose() {
-  els.messageComposeClose.addEventListener('click', closeMessageCompose);
-  els.messageComposeOverlay.addEventListener('click', (e) => {
-    if (e.target === els.messageComposeOverlay) closeMessageCompose();
-  });
-  els.messageComposeSend.addEventListener('click', sendMessage);
-}
 
-function openMessageCompose(toUid, toName) {
-  if (!toUid) return;
-  els.messageComposeInput.value = '';
-  els.messageComposeTitle.textContent = (toName || '名前') + 'さんにメッセージを送る';
-  els.messageComposeOverlay.classList.add('show');
-}
 
-function closeMessageCompose() {
-  els.messageComposeOverlay.classList.remove('show');
-}
 
-async function sendMessage() {
-  const fb = window._firebase;
-  if (!fb || !state.currentUser || !publicProfileTargetUid) return;
 
-  const body = els.messageComposeInput.value.trim();
-  if (!body) return;
 
-  els.messageComposeSend.disabled = true;
-  try {
-    await fb.addDoc(fb.collection(fb.db, 'messages'), {
-      fromUid: state.currentUser.uid,
-      fromName: state.profile.name || '名前',
-      fromAvatarUrl: state.profile.avatarUrl || 'images/ProfileIcon.png',
-      toUid: publicProfileTargetUid,
-      body,
-      read: false,
-      createdAt: fb.serverTimestamp(),
-    });
-    showToast('メッセージを送信しました');
-    closeMessageCompose();
-  } catch (err) {
-    console.error('メッセージの送信に失敗しました:', err);
-    // 相手にブロックされている場合もここに来る（ルール側で拒否される）。
-    // ブロックされていることは相手に知られないよう、理由は伏せて伝える。
-    if (err.code === 'permission-denied') {
-      showToast('このユーザーにはメッセージを送れません');
-    } else {
-      showToast('送信に失敗しました');
-    }
-  } finally {
-    els.messageComposeSend.disabled = false;
-  }
-}
 
-/* 受信メッセージ一覧を取得する（マイページ「メッセージ」タブ表示時） */
-async function loadInboxMessages() {
-  if (!state.currentUser) {
-    inboxMessages = [];
-    return;
-  }
-  const fb = window._firebase;
-  try {
-    const q = fb.query(fb.collection(fb.db, 'messages'), fb.where('toUid', '==', state.currentUser.uid), fb.limit(200));
-    const snap = await fb.getDocs(q);
-    inboxMessages = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      // ブロック後に届いた分はルール側で防げるが、ブロック前に届いていた分はここで隠す
-      .filter((m) => !isBlocked(m.fromUid))
-      .sort((a, b) => (b.createdAt ? b.createdAt.toMillis() : 0) - (a.createdAt ? a.createdAt.toMillis() : 0));
-  } catch (err) {
-    console.error('メッセージの取得に失敗しました:', err);
-    inboxMessages = [];
-  }
-}
 
-function renderInboxMessages() {
-  els.messagesList.innerHTML = '';
 
-  if (inboxMessages.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'expired-posts-empty';
-    empty.textContent = 'メッセージはまだありません';
-    els.messagesList.appendChild(empty);
-    return;
-  }
 
-  inboxMessages.forEach((msg) => {
-    const item = document.createElement('div');
-    item.className = 'message-item' + (msg.read ? '' : ' unread');
-
-    // 送信者のアイコン・名前はクリックでその人のプロフィールを開く
-    const openSenderProfile = () => {
-      if (!msg.fromUid) return;
-      closeMyPage();
-      openPublicProfile(msg.fromUid, { name: msg.fromName, avatarUrl: msg.fromAvatarUrl });
-    };
-
-    const avatar = document.createElement('div');
-    avatar.className = 'message-item-avatar' + (msg.fromUid ? ' clickable' : '');
-    setBackgroundImageSafely(avatar, msg.fromAvatarUrl);
-    if (msg.fromUid) avatar.addEventListener('click', openSenderProfile);
-
-    const info = document.createElement('div');
-    info.className = 'message-item-info';
-
-    const head = document.createElement('div');
-    head.className = 'message-item-head';
-
-    const name = document.createElement('span');
-    name.className = 'message-item-name' + (msg.fromUid ? ' clickable' : '');
-    name.textContent = truncateName(msg.fromName) || '名前';
-    if (msg.fromUid) name.addEventListener('click', openSenderProfile);
-    head.appendChild(name);
-
-    if (!msg.read) {
-      const dot = document.createElement('span');
-      dot.className = 'message-item-unread-dot';
-      head.appendChild(dot);
-    }
-
-    const body = document.createElement('div');
-    body.className = 'message-item-body';
-    body.textContent = msg.body || '';
-
-    info.appendChild(head);
-    info.appendChild(body);
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'message-item-delete-btn';
-    deleteBtn.textContent = '×';
-    deleteBtn.title = 'このメッセージを削除';
-    deleteBtn.setAttribute('aria-label', 'このメッセージを削除');
-    deleteBtn.addEventListener('click', () => {
-      showGenericConfirm('このメッセージを削除しますか？この操作は取り消せません。', () => deleteInboxMessage(msg));
-    });
-
-    item.appendChild(avatar);
-    item.appendChild(info);
-    item.appendChild(deleteBtn);
-    els.messagesList.appendChild(item);
-  });
-}
-
-/* 受信したメッセージを自分の受信箱から削除する（Firestore側でも受信者のみ削除できる） */
-async function deleteInboxMessage(msg) {
-  const fb = window._firebase;
-  if (!fb) return;
-  try {
-    await fb.deleteDoc(fb.doc(fb.db, 'messages', msg.id));
-    inboxMessages = inboxMessages.filter((m) => m.id !== msg.id);
-    renderInboxMessages();
-    checkUnreadMessages();
-    showToast('メッセージを削除しました');
-  } catch (err) {
-    console.error('メッセージの削除に失敗しました:', err);
-    showToast('削除に失敗しました');
-  }
-}
-
-/* 未読メッセージの赤丸バッジ（メニューの受信ボタン・マイページのメッセージタブ）をまとめて切り替える */
-function setUnreadBadgeVisible(visible) {
-  els.messagesUnreadBadge.style.display = visible ? '' : 'none';
-  els.menuInboxBadge.style.display = visible ? '' : 'none';
-}
-
-/* メッセージタブを開いたタイミングで、未読メッセージをまとめて既読にする */
-async function markInboxMessagesRead() {
-  const fb = window._firebase;
-  const unread = inboxMessages.filter((m) => !m.read);
-  if (!fb || unread.length === 0) return;
-
-  unread.forEach((m) => { m.read = true; });
-  setUnreadBadgeVisible(false);
-
-  for (const m of unread) {
-    try {
-      await fb.updateDoc(fb.doc(fb.db, 'messages', m.id), { read: true });
-    } catch (err) {
-      console.error('既読への更新に失敗しました:', err);
-    }
-  }
-}
-
-/* マイページ・メニューを開いたタイミングで、未読メッセージの有無だけ軽く確認する */
-async function checkUnreadMessages() {
-  if (!state.currentUser) {
-    setUnreadBadgeVisible(false);
-    return;
-  }
-  const fb = window._firebase;
-  try {
-    const q = fb.query(
-      fb.collection(fb.db, 'messages'),
-      fb.where('toUid', '==', state.currentUser.uid),
-      fb.where('read', '==', false),
-      fb.limit(50)
-    );
-    const snap = await fb.getDocs(q);
-    // ブロック済みの相手からの未読でバッジが点いたままにならないようにする
-    const hasUnread = snap.docs.some((d) => !isBlocked(d.data().fromUid));
-    setUnreadBadgeVisible(hasUnread);
-  } catch (err) {
-    console.error('未読メッセージの確認に失敗しました:', err);
-  }
-}
 
 function closePublicProfile() {
   els.publicProfileOverlay.classList.remove('show');
@@ -5376,9 +5047,6 @@ async function onFirebaseLogin(user) {
   els.myPageContent.style.display = 'flex';
   els.myPageNav.style.display = 'flex';
 
-  // ブロック一覧は受信箱の絞り込みに使うため、メッセージを読む前に取得しておく
-  await loadBlockedUids();
-
   const fb = window._firebase;
   const userRef = fb.doc(fb.db, 'users', user.uid);
 
@@ -5483,11 +5151,6 @@ function onFirebaseLogout() {
   renderMyGithubSection();
   renderPosts();
   closeDetailModal();
-
-  inboxMessages = [];
-  messagesLoaded = false;
-  setUnreadBadgeVisible(false);
-  blockedUids = new Set();
 
   mySettingsPosts = [];
   mySettingsPostsLoaded = false;
