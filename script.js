@@ -561,6 +561,7 @@ function init() {
   setupAvatarCrop();
   setupMyPage();
   setupPublicProfile();
+  applyIncomingPostParams();
   setupNews();
   setupRoleFilter();
   setupProfileRoles();
@@ -2160,22 +2161,97 @@ function closeDetailModal() {
 /* =========================================================
    投稿作成モーダル
    ========================================================= */
+/* 新規投稿のフォームを開く。下書きがあれば読み込む。
+   「募集する」ボタンと、外部サイトからの受け取りの両方から使う。 */
+function openNewPostModal(restoredMessage) {
+  resetPostForm();
+  if (restorePostDraft()) {
+    showToast(restoredMessage || '下書きを復元しました');
+  }
+  els.postModalTitle.textContent = '投稿を作成';
+  els.postSubmitBtn.textContent = '投稿する';
+  els.postDeadlineGroup.style.display = '';
+  els.postRepostHint.style.display = 'none';
+  els.postModalOverlay.classList.add('show');
+}
+
 function setupPostButton() {
   els.postButton.addEventListener('click', () => {
     if (!state.currentUser) {
       showLoginPrompt();
       return;
     }
-    resetPostForm();
-    if (restorePostDraft()) {
-      showToast('下書きを復元しました');
-    }
-    els.postModalTitle.textContent = '投稿を作成';
-    els.postSubmitBtn.textContent = '投稿する';
-    els.postDeadlineGroup.style.display = '';
-    els.postRepostHint.style.display = 'none';
-    els.postModalOverlay.classList.add('show');
+    openNewPostModal();
   });
+}
+
+/* =========================================================
+   外部サイトからの下書き受け取り
+   loper-IdeaShare などから
+     index.html?title=...&desc=...&category=game
+   の形で来たとき、その内容を投稿フォームに入れて開く。
+   ログインを挟んでも消えないよう、いったん下書きとして保存する。
+   ========================================================= */
+const PENDING_NEW_POST_KEY = 'loper_pendingNewPost';
+
+function applyIncomingPostParams() {
+  let params;
+  try {
+    params = new URLSearchParams(location.search);
+  } catch (err) {
+    return;
+  }
+
+  const title = (params.get('title') || '').trim();
+  const desc = (params.get('desc') || '').trim();
+  const category = params.get('category') || '';
+  if (!title && !desc) return;
+
+  // 外から来る値なので、フォームと同じ上限まで切り詰めてから使う
+  const known = CATEGORIES.some((c) => c.id === category && c.id !== 'all');
+  const draft = {
+    title: title.slice(0, 30),
+    category: known ? category : 'game',
+    description: desc.slice(0, 500),
+    contact: '',
+    freeTags: '',
+    selectedTags: [],
+    roles: [],
+    deadline: '30',
+  };
+
+  try {
+    localStorage.setItem(POST_DRAFT_KEY, JSON.stringify(draft));
+    sessionStorage.setItem(PENDING_NEW_POST_KEY, '1');
+  } catch (err) { /* localStorageが使えない環境では何もしない */ }
+
+  // 再読み込みで二重に開かないよう、URLからパラメータを消しておく
+  try {
+    history.replaceState(null, '', location.pathname + location.hash);
+  } catch (err) { /* noop */ }
+}
+
+/* ログイン状態が分かった時点で呼ぶ。
+   ログイン済みならフォームを開き、まだならログインを促す
+   （下書きは残るので、ログイン後に「募集する」を押せば復元される）。 */
+function consumePendingNewPost() {
+  let pending = false;
+  try {
+    pending = sessionStorage.getItem(PENDING_NEW_POST_KEY) === '1';
+  } catch (err) {
+    return;
+  }
+  if (!pending) return;
+
+  if (!state.currentUser) {
+    showLoginPrompt('募集を投稿するにはログインしてください');
+    return;
+  }
+
+  try { sessionStorage.removeItem(PENDING_NEW_POST_KEY); } catch (err) { /* noop */ }
+  // カテゴリは外部サイトから渡されないことがあり、既定のままだと
+  // 気づかず「ゲーム」で投稿されてしまう。連絡先も必須なので一緒に促す。
+  openNewPostModal('アイデアを読み込みました。カテゴリと連絡先を確認してください');
 }
 
 /* =========================================================
@@ -5145,6 +5221,9 @@ async function onFirebaseLogin(user) {
 
   profileLoading = false;
 
+  // 外部サイトから下書きを持って来ていれば、ここで投稿フォームを開く
+  consumePendingNewPost();
+
   // ログイン直後ならそのユーザー名で取得し、そうでなければ古くなったものを取り直す。
   // 表示はここで待たせず、取得できた時点で差し替える。
   consumePendingGithubUsername().then(async () => {
@@ -5187,6 +5266,9 @@ function onFirebaseLogout() {
   renderMyGithubSection();
   renderPosts();
   closeDetailModal();
+
+  // 外部サイトから来ていて未ログインなら、ここでログインを促す
+  consumePendingNewPost();
 
   mySettingsPosts = [];
   mySettingsPostsLoaded = false;
