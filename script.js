@@ -1991,13 +1991,18 @@ function setupInfiniteScroll() {
    count … 帯1つあたりの枚数。遠いものほど数を多くして密度を出す
    min/max … 破片の大きさ（px）
    alpha … 板全体の不透明度。遠いものほど薄くして空気遠近を付ける
-   blur … 板全体のぼかし（px）。遠いものほどピントを外す */
+
+   板は1枚ずつが画面いっぱいの大きさを持つ合成レイヤーになるため、
+   枚数を増やすとスクロールが目に見えて重くなる。奥行きが分かる最小限の
+   4枚に抑えること。以前は5枚あり、さらに遠い3枚に blur を掛けていたが、
+   ぼかしは板全体（画面幅×約1900px、Retinaでは4倍の画素数）に毎フレーム
+   掛かるため、これが重さの主因だった。遠さは「小さい・遅い・薄い」の
+   3つで十分伝わるので、ぼかしは使わない。 */
 const GLASS_LAYERS = [
-  { speed: 0.07, count: 18, min: 16, max: 32,  alpha: 0.50, blur: 2.2 },
-  { speed: 0.15, count: 14, min: 28, max: 50,  alpha: 0.62, blur: 1.3 },
-  { speed: 0.25, count: 11, min: 44, max: 76,  alpha: 0.74, blur: 0.6 },
-  { speed: 0.38, count: 7,  min: 68, max: 112, alpha: 0.85, blur: 0 },
-  { speed: 0.52, count: 5,  min: 96, max: 158, alpha: 0.95, blur: 0 },
+  { speed: 0.08, count: 8, min: 18, max: 34,  alpha: 0.45 },
+  { speed: 0.18, count: 6, min: 34, max: 60,  alpha: 0.60 },
+  { speed: 0.32, count: 5, min: 58, max: 96,  alpha: 0.75 },
+  { speed: 0.50, count: 3, min: 92, max: 150, alpha: 0.90 },
 ];
 
 /* 破片の面の色。サイトのカテゴリ色（青・紫）とミント色から取っている。
@@ -2014,6 +2019,9 @@ let glassBandHeight = 0;
 let glassScrollQueued = false;
 let glassResizeTimer = null;
 let glassResizeBound = false;
+// 作り直しが要るかの判定に使う、いま組んである前提
+let glassBuiltHeight = 0;
+let glassBuiltNarrow = false;
 
 function glassRandom(min, max) {
   return min + Math.random() * (max - min);
@@ -2097,7 +2105,6 @@ function createGlassLayer(layer, count) {
   el.className = 'glass-layer';
   el.style.height = glassBandHeight * 2 + 'px';
   el.style.opacity = String(layer.alpha);
-  if (layer.blur) el.style.filter = 'blur(' + layer.blur + 'px)';
 
   const band = createGlassBand(layer, count);
   band.style.top = '0px';
@@ -2114,20 +2121,32 @@ function buildGlassBackground() {
   els.glassBg.textContent = '';
   glassLayers = [];
 
-  // 帯は画面より高くしておく。折り返しの継ぎ目が画面内に入らないようにするため。
-  glassBandHeight = Math.max(900, els.postsPane.clientHeight + 320);
+  glassBuiltHeight = els.postsPane.clientHeight;
+  glassBuiltNarrow = els.glassBg.clientWidth < 700;
 
-  // 画面が狭いときは枚数を減らす（スマホでの描画の負担を抑える）
-  const narrow = window.innerWidth < 700;
+  // 帯は画面より高くしておく。折り返しの継ぎ目が画面内に入らないようにするため。
+  // ただし板の高さは帯の2倍になり、そのまま合成レイヤーの面積になるので、
+  // 画面を覆える範囲でできるだけ低くする。
+  glassBandHeight = Math.max(680, glassBuiltHeight + 140);
 
   GLASS_LAYERS.forEach((layer) => {
-    const count = narrow ? Math.max(2, Math.round(layer.count * 0.55)) : layer.count;
+    // 幅が狭いときは枚数を減らす（スマホでの描画の負担を抑える）
+    const count = glassBuiltNarrow ? Math.max(2, Math.round(layer.count * 0.55)) : layer.count;
     const el = createGlassLayer(layer, count);
     els.glassBg.appendChild(el);
     glassLayers.push({ el: el, speed: layer.speed });
   });
 
   updateGlassParallax();
+}
+
+/* 作り直しが要るのは、帯の高さが合わなくなったときと、
+   枚数を変える幅の境目をまたいだときだけ。
+   横位置は％で置いてあるので、幅が変わっただけなら作り直さない。 */
+function glassNeedsRebuild() {
+  if (els.glassBg.clientWidth === 0) return false;   // 表示されていない間は触らない
+  if ((els.glassBg.clientWidth < 700) !== glassBuiltNarrow) return true;
+  return Math.abs(els.postsPane.clientHeight - glassBuiltHeight) > 60;
 }
 
 function updateGlassParallax() {
@@ -2160,14 +2179,26 @@ function setupGlassBackground() {
     }, { passive: true });
   }
 
-  // 画面の高さが変わると帯の高さが合わなくなるので作り直す。
-  // 連続して発火するため、止まってからまとめて1回だけ行う。
-  if (!glassResizeBound) {
-    glassResizeBound = true;
-    window.addEventListener('resize', () => {
-      clearTimeout(glassResizeTimer);
-      glassResizeTimer = setTimeout(buildGlassBackground, 200);
-    });
+  // 大きさが変わったら作り直す。連続して発火するので、
+  // 止まってからまとめて1回だけ、しかも必要なときだけ行う。
+  if (glassResizeBound) return;
+  glassResizeBound = true;
+
+  const onGlassResize = () => {
+    clearTimeout(glassResizeTimer);
+    glassResizeTimer = setTimeout(() => {
+      if (glassNeedsRebuild()) buildGlassBackground();
+    }, 200);
+  };
+
+  // 画面サイズの変更だけでなく、サイドバーの開閉など
+  // 一覧の大きさが変わる理由すべてを拾いたいので要素側を見る。
+  // 0×0で作られたまま（表示前に初期化された場合）でも、
+  // 表示された時点で拾って作り直せる。
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(onGlassResize).observe(els.glassBg);
+  } else {
+    window.addEventListener('resize', onGlassResize);
   }
 }
 
