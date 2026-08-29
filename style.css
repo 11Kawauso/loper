@@ -1112,11 +1112,48 @@ button {
   position: relative;
 }
 
+/* ================= 投稿一覧の背景（ガラスの破片・視差スクロール） =================
+   破片は奥行きごとに .glass-layer へまとめて置き、板ごと動かしている。
+   破片を1つずつ動かすとスクロール中に触るスタイルの数が増えるため。
+   速さの決め方・帯の折り返しは script.js の setupGlassBackground() 側にある。 */
+.glass-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* 背景なので、クリックは必ず後ろの投稿カードに通す */
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glass-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* 高さ・透け具合・ぼかし・ずらす量はJSが入れる */
+  will-change: transform;
+}
+
+/* 同じ並びの破片を2つ縦に並べたうちの1つ分 */
+.glass-band {
+  position: absolute;
+  left: 0;
+  width: 100%;
+}
+
+/* 破片1つ。形（clip-path）・大きさ・位置・傾き・面の色はJSが入れる */
+.glass-shard {
+  position: absolute;
+}
+
 .content-slider {
   display: flex;
   width: 200%;
   height: 100%;
   transition: transform 0.3s ease;
+  /* 破片より必ず手前に出す */
+  position: relative;
+  z-index: 1;
 }
 
 .content-slider.show-detail {

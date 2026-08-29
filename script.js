@@ -368,6 +368,7 @@ function cacheElements() {
 
   els.postButton = document.getElementById('postButton');
   els.contentArea = document.getElementById('contentArea');
+  els.glassBg = document.getElementById('glassBg');
   els.contentSlider = document.getElementById('contentSlider');
   els.postsPane = document.getElementById('postsPane');
   els.postsGrid = document.getElementById('postsGrid');
@@ -572,6 +573,7 @@ function init() {
   setupPostModal();
   setupPostRoles();
   setupInfiniteScroll();
+  setupGlassBackground();
   watchPostsGridWidth();
   setupGenericConfirm();
   setupDeadlineEditModal();
@@ -1975,6 +1977,198 @@ function setupInfiniteScroll() {
       if (shouldPrefetchMore()) loadMorePosts();
     });
   });
+}
+
+/* =========================================================
+   投稿一覧の背景（ガラスの破片・視差スクロール）
+   =========================================================
+   破片を奥行き別の板（.glass-layer）に振り分け、一覧をスクロールすると
+   板ごと違う速さで動かす。速さはどれも1未満なので、投稿より必ず遅く動く。
+   小さい破片ほど遠くにある扱いにして遅く・淡く・ぼかし、
+   大きい破片ほど手前として速く・濃く・くっきり出す。 */
+
+/* speed … 投稿のスクロール量に対する移動量の割合（1.0なら投稿と同じ速さ）
+   count … 帯1つあたりの枚数。遠いものほど数を多くして密度を出す
+   min/max … 破片の大きさ（px）
+   alpha … 板全体の不透明度。遠いものほど薄くして空気遠近を付ける
+   blur … 板全体のぼかし（px）。遠いものほどピントを外す */
+const GLASS_LAYERS = [
+  { speed: 0.07, count: 18, min: 16, max: 32,  alpha: 0.50, blur: 2.2 },
+  { speed: 0.15, count: 14, min: 28, max: 50,  alpha: 0.62, blur: 1.3 },
+  { speed: 0.25, count: 11, min: 44, max: 76,  alpha: 0.74, blur: 0.6 },
+  { speed: 0.38, count: 7,  min: 68, max: 112, alpha: 0.85, blur: 0 },
+  { speed: 0.52, count: 5,  min: 96, max: 158, alpha: 0.95, blur: 0 },
+];
+
+/* 破片の面の色。サイトのカテゴリ色（青・紫）とミント色から取っている。
+   ガラスなので、どれも白の下に薄く覗く程度の濃さにしてある。 */
+const GLASS_TINTS = [
+  'rgba(104, 194, 203, 0.55)',
+  'rgba(124, 170, 228, 0.48)',
+  'rgba(168, 148, 220, 0.40)',
+  'rgba(255, 255, 255, 0.62)',
+];
+
+let glassLayers = [];
+let glassBandHeight = 0;
+let glassScrollQueued = false;
+let glassResizeTimer = null;
+let glassResizeBound = false;
+
+function glassRandom(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+/* 破片ひとつの輪郭。中心から3〜5方向へ長さのばらばらな頂点を取ると、
+   割れたガラスらしい角ばった形になる。単位は要素に対する％。 */
+function glassShardShape() {
+  const corners = 3 + Math.floor(Math.random() * 3);
+  const step = 360 / corners;
+  const points = [];
+
+  for (let i = 0; i < corners; i++) {
+    // 等間隔から少しずらす。きっちり等間隔だと正多角形に近づいて破片に見えない
+    const deg = i * step + glassRandom(-step * 0.3, step * 0.3);
+    const rad = (deg * Math.PI) / 180;
+    const len = glassRandom(30, 50);
+    const x = (50 + Math.cos(rad) * len).toFixed(1);
+    const y = (50 + Math.sin(rad) * len).toFixed(1);
+    points.push(x + '% ' + y + '%');
+  }
+
+  return 'polygon(' + points.join(', ') + ')';
+}
+
+function createGlassShard(layer) {
+  const el = document.createElement('div');
+  el.className = 'glass-shard';
+
+  const size = glassRandom(layer.min, layer.max);
+  // 縦横を同じにすると粒に見えるので、細長い破片も混ざるように崩す
+  const ratio = glassRandom(0.55, 1.5);
+  const tint = GLASS_TINTS[Math.floor(Math.random() * GLASS_TINTS.length)];
+  const shape = glassShardShape();
+
+  el.style.width = size.toFixed(1) + 'px';
+  el.style.height = (size * ratio).toFixed(1) + 'px';
+  el.style.clipPath = shape;
+  el.style.webkitClipPath = shape;
+  el.style.transform = 'rotate(' + glassRandom(-40, 40).toFixed(1) + 'deg)';
+
+  // 1本目＝表面を斜めに走る細い光。2本目＝破片の面そのものの色。
+  // 先に書いたほうが手前に重なる。
+  el.style.backgroundImage =
+    'linear-gradient(' + Math.round(glassRandom(0, 360)) + 'deg,' +
+      ' rgba(255, 255, 255, 0) 41%,' +
+      ' rgba(255, 255, 255, 0.6) 50%,' +
+      ' rgba(255, 255, 255, 0) 59%), ' +
+    'linear-gradient(' + Math.round(glassRandom(0, 360)) + 'deg,' +
+      ' rgba(255, 255, 255, 0.72) 0%,' +
+      ' rgba(255, 255, 255, 0.06) 30%,' +
+      ' ' + tint + ' 60%,' +
+      ' rgba(255, 255, 255, 0.42) 100%)';
+
+  return el;
+}
+
+/* 帯1つ分の破片を作る。縦は帯を枚数で等分し、その中でずらして置く
+   （完全な乱数だと固まったり大きく空いたりするため）。 */
+function createGlassBand(layer, count) {
+  const band = document.createElement('div');
+  band.className = 'glass-band';
+  band.style.height = glassBandHeight + 'px';
+
+  for (let i = 0; i < count; i++) {
+    const shard = createGlassShard(layer);
+    shard.style.top = (((i + Math.random()) / count) * glassBandHeight).toFixed(1) + 'px';
+    // 横は％で置く。幅が変わっても作り直さずに済む
+    shard.style.left = glassRandom(-3, 97).toFixed(2) + '%';
+    band.appendChild(shard);
+  }
+
+  return band;
+}
+
+/* 板1枚。同じ帯を2つ縦に重ねておき、ずらす量を帯の高さで折り返す。
+   こうすると、どこまで下へスクロールしても背景が途切れない。
+   2つ目は1つ目の複製なので、折り返した瞬間も絵が変わらない。 */
+function createGlassLayer(layer, count) {
+  const el = document.createElement('div');
+  el.className = 'glass-layer';
+  el.style.height = glassBandHeight * 2 + 'px';
+  el.style.opacity = String(layer.alpha);
+  if (layer.blur) el.style.filter = 'blur(' + layer.blur + 'px)';
+
+  const band = createGlassBand(layer, count);
+  band.style.top = '0px';
+
+  const copy = band.cloneNode(true);
+  copy.style.top = glassBandHeight + 'px';
+
+  el.appendChild(band);
+  el.appendChild(copy);
+  return el;
+}
+
+function buildGlassBackground() {
+  els.glassBg.textContent = '';
+  glassLayers = [];
+
+  // 帯は画面より高くしておく。折り返しの継ぎ目が画面内に入らないようにするため。
+  glassBandHeight = Math.max(900, els.postsPane.clientHeight + 320);
+
+  // 画面が狭いときは枚数を減らす（スマホでの描画の負担を抑える）
+  const narrow = window.innerWidth < 700;
+
+  GLASS_LAYERS.forEach((layer) => {
+    const count = narrow ? Math.max(2, Math.round(layer.count * 0.55)) : layer.count;
+    const el = createGlassLayer(layer, count);
+    els.glassBg.appendChild(el);
+    glassLayers.push({ el: el, speed: layer.speed });
+  });
+
+  updateGlassParallax();
+}
+
+function updateGlassParallax() {
+  const scrollTop = els.postsPane.scrollTop;
+
+  glassLayers.forEach((layer) => {
+    // 帯の高さで折り返す。iOSの行き過ぎ（scrollTopが負）でも上に空きが
+    // 出ないよう、必ず0以上に直してから符号を付ける。
+    const moved = scrollTop * layer.speed;
+    const wrapped = ((moved % glassBandHeight) + glassBandHeight) % glassBandHeight;
+    layer.el.style.transform = 'translate3d(0, ' + (-wrapped).toFixed(1) + 'px, 0)';
+  });
+}
+
+function setupGlassBackground() {
+  if (!els.glassBg) return;
+
+  buildGlassBackground();
+
+  // OSの「視差効果を減らす」設定のときは動かさない（破片は置いたまま）
+  if (!prefersReducedMotion()) {
+    els.postsPane.addEventListener('scroll', () => {
+      // スクロールのたびに触ると重いので、1フレームに1回だけまとめて動かす
+      if (glassScrollQueued) return;
+      glassScrollQueued = true;
+      requestAnimationFrame(() => {
+        glassScrollQueued = false;
+        updateGlassParallax();
+      });
+    }, { passive: true });
+  }
+
+  // 画面の高さが変わると帯の高さが合わなくなるので作り直す。
+  // 連続して発火するため、止まってからまとめて1回だけ行う。
+  if (!glassResizeBound) {
+    glassResizeBound = true;
+    window.addEventListener('resize', () => {
+      clearTimeout(glassResizeTimer);
+      glassResizeTimer = setTimeout(buildGlassBackground, 200);
+    });
+  }
 }
 
 /* =========================================================
