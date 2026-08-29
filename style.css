@@ -2,7 +2,8 @@
   --header-bg: #6FA6A6;
   --tagbar-bg: #A9D6D3;
   --search-bg: #8FC4C1;
-  --search-placeholder: #5E8C8A;
+  /* 元の #5E8C8A はバーの背景に対して薄すぎて読みにくかったため濃くした */
+  --search-placeholder: #3F6B69;
 
   --sidebar-bg: #4E7E8A;
   --sidebar-border: rgba(255, 255, 255, 0.15);
@@ -42,6 +43,25 @@
 
   /* 募集する役割（枠）の埋まり具合バー */
   --role-fill: #CDE9E5;
+
+  /* ---- 共通スケール ----
+     影・文字色をここに集約している。個々の場所で数値を書き足すと
+     少しずつズレて画面ごとに濃さが変わるため、必ずここから選ぶこと。 */
+
+  /* 白背景の上に置く文字。本文→補足→ごく控えめ、の3段階。
+     いずれも白地でコントラスト比4.5:1以上を満たす値にしてある。 */
+  --text-body: #54737A;
+  --text-muted: #5F8087;
+  --text-faint: #7A9298;
+
+  /* 影は青緑寄りの黒にしている。純黒だと背景のミント色の上で
+     灰色が浮いて見えるため。 */
+  --shadow-sm: 0 1px 2px rgba(41, 74, 80, 0.05), 0 2px 6px rgba(41, 74, 80, 0.06);
+  --shadow-md: 0 6px 14px rgba(41, 74, 80, 0.10), 0 2px 4px rgba(41, 74, 80, 0.06);
+  --shadow-lg: 0 12px 32px rgba(41, 74, 80, 0.18);
+
+  /* キーボード操作の位置を示す輪。全部品で同じものを使う。 */
+  --focus-ring: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 0 5px #45777D;
 }
 
 * {
@@ -64,6 +84,13 @@ html, body {
 
 button {
   font-family: inherit;
+}
+
+/* キーボードで移動したときだけ位置を示す輪を出す。
+   :focus ではなく :focus-visible なので、マウスで押しても輪は出ない。 */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .visually-hidden {
@@ -95,6 +122,11 @@ button {
   padding: 0 18px;
   gap: 16px;
   flex-shrink: 0;
+  /* ヘッダー・タグバー・本体が同系色で地続きに見えてしまうので、
+     影で前後関係を付けている。z-indexはタグバーより上。 */
+  box-shadow: 0 1px 3px rgba(41, 74, 80, 0.18);
+  position: relative;
+  z-index: 3;
 }
 
 .logo-area {
@@ -149,6 +181,13 @@ button {
   height: 36px;
   padding: 0 8px 0 16px;
   position: relative;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+/* 入力中はバーを明るくして、いま打ち込める場所だと分かるようにする */
+.search-area:focus-within {
+  background: #A6D5D2;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.75);
 }
 
 /* 検索オプション（検索バーにフォーカスしたとき下に表示） */
@@ -381,6 +420,8 @@ button {
   max-width: 80%;
   background: var(--sidebar-bg);
   border-radius: 28px 0 0 28px;
+  /* 黒幕だけだと本体と同じ高さに見えるので、左に影を落として手前に出す */
+  box-shadow: -8px 0 28px rgba(41, 74, 80, 0.28);
   padding: 22px 24px 28px;
   display: flex;
   flex-direction: column;
@@ -472,12 +513,13 @@ button {
   border: none;
   background: transparent;
   border-radius: 10px;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
   cursor: pointer;
 }
 
 .menu-list-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.13);
+  color: #FFFFFF;
 }
 
 /* ショートカットの件数（項目名の右端に寄せる。未取得のうちは表示しない） */
@@ -612,6 +654,11 @@ button {
   height: 42px;
   background: var(--tagbar-bg);
   flex-shrink: 0;
+  /* ヘッダーの影を受けつつ、本体の一覧にも薄く影を落として
+     「ヘッダー > タグバー > 一覧」の重なり順を見た目で分かるようにする */
+  box-shadow: 0 1px 2px rgba(41, 74, 80, 0.10);
+  position: relative;
+  z-index: 2;
 }
 
 .sidebar-toggle-btn {
@@ -794,8 +841,9 @@ button {
   color: var(--text-dark);
   white-space: nowrap;
   cursor: pointer;
-  padding: 4px 11px;
-  border-radius: 12px;
+  padding: 4px 12px;
+  /* 投稿カードの .tag-pill と同じ丸みにそろえている */
+  border-radius: 999px;
   transition: background 0.15s, color 0.15s;
 }
 
@@ -897,7 +945,8 @@ button {
 .sidebar {
   width: 172px;
   flex-shrink: 0;
-  background: var(--sidebar-bg);
+  /* 上をわずかに明るくして、ヘッダーからの光の当たり方をそろえる */
+  background: linear-gradient(180deg, #578793 0%, var(--sidebar-bg) 180px);
   display: flex;
   flex-direction: column;
 }
@@ -952,13 +1001,17 @@ button {
 }
 
 .category-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.10);
+  color: #FFFFFF;
 }
 
 .category-item.active {
-  background: rgba(255, 255, 255, 0.10);
+  /* 選択中はハイライトを左から効かせる。均一に敷くより、
+     左端の色の帯と地続きに見えて「いまここ」が伝わりやすい。 */
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
   border-left-color: var(--category-header-color);
   color: #FFFFFF;
+  font-weight: bold;
 }
 
 .category-item-icon {
@@ -1026,7 +1079,7 @@ button {
 
 .post-button {
   width: 100%;
-  height: 42px;
+  height: 44px;
   border: none;
   border-radius: 21px;
   background: var(--header-bg);
@@ -1052,7 +1105,9 @@ button {
 /* ================= 投稿一覧／投稿詳細（スライド切替） ================= */
 .content-area {
   flex: 1;
-  background: var(--content-bg);
+  /* 単色ベタ塗りだと白いカードが平坦に見えるので、上をわずかに濃くして
+     奥行きを付けている。差は小さいので帯には見えない。 */
+  background: linear-gradient(180deg, #D8F1F0 0%, var(--content-bg) 220px);
   overflow: hidden;
   position: relative;
 }
@@ -1110,6 +1165,18 @@ button {
   flex-direction: column;
 }
 
+/* 画面が広いほど本文の1行が長くなって読みにくくなるため、
+   左右の余白を広げて中央寄りの読み幅に収める。
+   max-width で包まないのは、.detail-pane が flex 列で
+   「戻る」ボタンの位置や .modal-footer の margin-top:auto が
+   そのまま効いている構造を壊さないため。 */
+@media (min-width: 1100px) {
+  .detail-pane {
+    padding-left: clamp(28px, 10vw, 200px);
+    padding-right: clamp(28px, 10vw, 200px);
+  }
+}
+
 .detail-pane.cat-game  { border-top-color: var(--card-border-game); }
 .detail-pane.cat-app   { border-top-color: var(--card-border-app); }
 .detail-pane.cat-site  { border-top-color: var(--card-border-site); }
@@ -1129,7 +1196,7 @@ button {
   border-radius: 20px;
   cursor: pointer;
   margin-bottom: 18px;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.15s;
 }
 
 .detail-back-btn span {
@@ -1141,11 +1208,15 @@ button {
 
 .detail-back-btn:hover {
   background: #CDE7E5;
+  /* 押せることが分かるよう、わずかに左へ動かす（戻る方向） */
+  transform: translateX(-2px);
 }
 
 .post-card {
   background: var(--card-bg);
-  border: 3px solid var(--card-border-game);
+  /* 枠は2px。3pxだとカテゴリ色が主役になってしまい、
+     並べたときにタイトルより枠のほうが先に目に入っていた。 */
+  border: 2px solid var(--card-border-game);
   border-radius: 18px;
   padding: 16px 18px;
   cursor: pointer;
@@ -1153,14 +1224,21 @@ button {
   flex-direction: column;
   gap: 10px;
   position: relative;
+  /* 押していないときも薄い影を敷いて、背景から浮かせる */
+  box-shadow: var(--shadow-sm);
   transition: transform 0.15s, box-shadow 0.15s;
   /* 長い文字列でグリッド列が引き伸ばされないようにする */
   min-width: 0;
 }
 
 .post-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.post-card:active {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 /* カテゴリ別の枠色（ゲームは青枠／アプリは紫枠／サイトは茶色枠／映像は白枠） */
@@ -1288,9 +1366,12 @@ button {
 }
 
 .post-title {
-  font-size: 17px;
+  /* カード内でいちばん先に読ませたい要素なので、本文(13px)との差を広げた */
+  font-size: 18px;
   font-weight: bold;
-  line-height: 1.5;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: #2C4B51;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1313,16 +1394,21 @@ button {
   white-space: nowrap;
 }
 
-/* 内容（投稿の本文）枠 */
+/* 内容（投稿の本文）枠。
+   以前は枠線付きの箱だったが、カード自身の枠と二重になって
+   線が多く見えていたため、線を外して薄い塗りだけで区切っている。 */
 .post-content-box {
-  border: 2px solid var(--content-box-border);
-  border-radius: 10px;
-  background: var(--content-box-bg);
-  padding: 10px 12px;
+  border: none;
+  border-radius: 12px;
+  background: #F1FAFA;
+  padding: 12px 14px;
   font-size: 13px;
-  line-height: 1.7;
-  color: #5B7378;
-  height: 110px;
+  line-height: 1.75;
+  color: var(--text-body);
+  /* 高さは中身なり。以前は110px固定だったため、短い投稿では箱の下半分が
+     まるごと空白になり、逆に長い投稿では5行目が上下に割れて切れていた。
+     行数の上限は下の -webkit-line-clamp が押さえるので、高さは指定しない。 */
+  height: auto;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 5;
@@ -1359,9 +1445,11 @@ button {
   background: var(--tag-pill-bg);
   color: var(--tag-pill-text);
   font-size: 12px;
-  padding: 3px 11px;
-  border-radius: 10px;
+  /* 上下の余白が3pxだと文字が窮屈で、押せる部品に見えなかった */
+  padding: 4px 12px;
+  border-radius: 999px;
   white-space: nowrap;
+  line-height: 1.5;
 }
 
 /* 投稿カード・詳細画面のタグはクリックで検索できる */
@@ -1392,8 +1480,10 @@ button {
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: #7A9CA0;
+  /* #7A9CA0 は白地でコントラストが足りず読みづらかった */
+  color: var(--text-muted);
   margin-top: auto;
+  padding-top: 2px;
 }
 
 .post-deadline {
@@ -1410,27 +1500,35 @@ button {
   position: absolute;
   top: -12px;
   right: -12px;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: #FFFFFF;
-  border: 2px solid var(--content-box-border);
+  /* 枠線ではなく影で浮かせる。線だとカードの枠・本文の枠と合わせて
+     角に線が三重に集まって見えていた。 */
+  border: none;
+  box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
   z-index: 2;
-  transition: background 0.15s, transform 0.15s;
+  /* 未ピンのときは少し引っ込ませ、ピン済みとの差を分かりやすくする */
+  opacity: 0.72;
+  transition: background 0.15s, transform 0.15s, opacity 0.15s, box-shadow 0.15s;
 }
 
 .post-pin-btn:hover {
   transform: scale(1.1);
+  opacity: 1;
+  box-shadow: var(--shadow-md);
 }
 
 .post-pin-btn.pinned {
   background: #FFD54F;
   border-color: #FFD54F;
+  opacity: 1;
 }
 
 /* ピンを付けたときのアニメーション */
@@ -1457,7 +1555,7 @@ button {
 
 .ad-label {
   font-size: 11px;
-  color: #aaa;
+  color: var(--text-faint);
   letter-spacing: 1px;
 }
 
@@ -1475,7 +1573,7 @@ button {
   grid-column: 1 / -1;
   text-align: center;
   padding: 24px;
-  color: #7A9CA0;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
@@ -1505,6 +1603,8 @@ button {
   scrollbar-width: none;
   padding: 28px;
   position: relative;
+  /* 半透明の黒幕だけだと紙が板に貼り付いて見えるので、影で浮かせる */
+  box-shadow: var(--shadow-lg);
 }
 
 .modal::-webkit-scrollbar { display: none; }
@@ -1570,6 +1670,14 @@ button {
   font-weight: bold;
   line-height: 1.5;
   margin: 0 0 14px;
+  color: #2C4B51;
+}
+
+/* 詳細ページは1ページに1件しか出ないので、一覧のカードより見出しを強くする */
+.detail-pane .modal-title {
+  font-size: 25px;
+  line-height: 1.4;
+  margin-bottom: 18px;
 }
 
 .modal-image-box {
@@ -1625,8 +1733,12 @@ button {
 
 .modal-content-box {
   height: auto;
-  min-height: 140px;
+  /* 以前は140px固定下限で、数行の投稿だと箱の下がまるごと空いていた。
+     最低限の高さだけ残して、あとは中身なりに縮むようにする。 */
+  min-height: 72px;
   max-height: 320px;
+  padding: 16px 18px;
+  font-size: 14px;
   overflow-y: auto;
   scrollbar-width: none;
   display: block;
@@ -1646,11 +1758,13 @@ button {
   margin-bottom: 20px;
 }
 
-/* 詳細ページでは投稿日時・期限をページ下側に配置 */
+/* 詳細ページでは投稿日時・期限をページ下側に配置。
+   本文から遠く離れて宙に浮くので、細い区切り線で下段だと分かるようにする。 */
 .detail-pane .modal-footer {
   margin-top: auto;
   margin-bottom: 0;
-  padding-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--content-box-border);
 }
 
 /* 投稿詳細の添付ファイル */
@@ -1770,17 +1884,26 @@ button {
   font-family: inherit;
   outline: none;
   color: var(--text-dark);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   border-color: var(--card-border);
+  /* 枠線の色が変わるだけだと気付きにくいので、薄い輪も足す */
+  box-shadow: 0 0 0 3px rgba(93, 127, 203, 0.16);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #9BB3B7;
 }
 
 .form-group textarea {
   resize: vertical;
   min-height: 120px;
+  line-height: 1.7;
 }
 
 .form-submit {
